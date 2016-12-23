@@ -1,3 +1,5 @@
+/*
+ * 
 This license applies to all files in this repository unless otherwise specifically
 stated inside of the file. 
 
@@ -17,6 +19,7 @@ stated inside of the file.
    limitations under the License.
  ---------------------------------------------------------------------------
 
+ */
 MUSIC README
 ===============
 
@@ -33,4 +36,16 @@ by presenting a MUlti-SIte Coordination service (MUSIC), that combines a strongl
 service with an eventually consistent state store to provide abstractions that enable rich
 distributed coordination on shared state, as and when required.
 
-This is the repository for MUSIC.  The pom.xml corresponds to the rest-based version of MUSIC. 
+This is the repository for MUSIC.  There are two pom.xml files here which correspond to two
+artifacts that may be built:
+
+ * pom-jar.xml - builds the __MUSIC-core__ artifact (a jar file containing just the core of MUSIC)
+ * pom-war.xml - builds the __MUSIC-REST-webapp__ artifact (a war file containing a REST webapp for MUSIC)
+
+For now, it is best to build these as follows:
+
+	mvn -f pom-jar.xml install
+	mvn -f pom-war.xml install
+	mvn -f pom-jar.xml javadoc:javadoc     # to build the Javadoc
+
+NOTE: Future work => this should be split into two directories trees, since it builds two artifacts

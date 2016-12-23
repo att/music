@@ -20,8 +20,7 @@ stated inside of the file.
 MUSIC README
 ===============
 
-ATT's ECOMP platform aims to provide automated control, orchestration and fault management of
-services traversing multiple AIC sites. However, the complexity of replicated, multi-site
+However, the complexity of replicated, multi-site
 distributed applications brings forth the need for rich distribution coordination patterns to manage
 these applications. We contend that, to build such patterns, it is necessary to tightly integrate
 coordination primitives such as mutual exclusion and barriers with state-management in these

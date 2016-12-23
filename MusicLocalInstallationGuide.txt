@@ -1,0 +1,49 @@
+/*
+ * 
+This licence applies to all files in this repository unless otherwise specifically
+stated inside of the file. 
+
+ ---------------------------------------------------------------------------
+   Copyright (c) 2016 AT&T Intellectual Property
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at:
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+ ---------------------------------------------------------------------------
+
+ */
+{\rtf1\ansi\ansicpg1252\cocoartf1348\cocoasubrtf170
+{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;\red56\green110\blue255;}
+{\*\listtable{\list\listtemplateid1\listhybrid{\listlevel\levelnfc0\levelnfcn0\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{decimal\}}{\leveltext\leveltemplateid1\'01\'00;}{\levelnumbers\'01;}\fi-360\li720\lin720 }{\listname ;}\listid1}}
+{\*\listoverridetable{\listoverride\listid1\listoverridecount0\ls1}}
+\margl1440\margr1440\vieww28520\viewh16580\viewkind0
+\deftab720
+\pard\tx220\tx720\pardeftab720\li720\fi-720
+\ls1\ilvl0
+\f0\fs24 \cf0 {\listtext	1	}\expnd0\expndtw0\kerning0
+If you are using a VM make sure it has at least 8 GB of RAM (I think it works even with 4 GB, but with 2 GB it did give issues).\'a0\
+\pard\tx220\tx720\pardeftab720\li720\fi-720
+\ls1\ilvl0\cf0 \kerning1\expnd0\expndtw0 {\listtext	2	}\expnd0\expndtw0\kerning0
+Ensure you have java jdk 7 or 8 working on your machine.\'a0\
+\ls1\ilvl0\kerning1\expnd0\expndtw0 {\listtext	3	}\expnd0\expndtw0\kerning0
+Download apache cassandra 3.0\'a0and follow these\'a0{\field{\*\fldinst{HYPERLINK "https://wiki.apache.org/cassandra/GettingStarted"}}{\fldrslt \cf2 \expnd0\expndtw0\kerning0
+\ul \ulc2 instructions}}\'a0till and including Step 4. By the end of this you should have Cassandra working.\'a0\
+\ls1\ilvl0\kerning1\expnd0\expndtw0 {\listtext	4	}\expnd0\expndtw0\kerning0
+Download Zookeeper 3.4.6 from\'a0and follow these\'a0{\field{\*\fldinst{HYPERLINK "https://zookeeper.apache.org/doc/r3.4.6/zookeeperStarted.html"}}{\fldrslt \cf2 \expnd0\expndtw0\kerning0
+\ul \ulc2 instructions}}\'a0pertaining to the standalone operation. By the end of this you should have Zookeeper working.\'a0\
+\ls1\ilvl0\kerning1\expnd0\expndtw0 {\listtext	5	}\expnd0\expndtw0\kerning0
+Download Apache Tomcat 8 and follow\'a0these\'a0{\field{\*\fldinst{HYPERLINK "https://wolfpaulus.com/journal/mac/tomcat8/"}}{\fldrslt \cf2 \expnd0\expndtw0\kerning0
+\ul \ulc2 instructions}}\'a0for mac installation (I have not used other OSes, but this is standard stuff). \'a0Download the music war file from\'a0{\field{\*\fldinst{HYPERLINK "https://codecloud.web.att.com/projects/ST_CLOUDQOS/repos/music/browse/MUSIC.war"}}{\fldrslt \cf2 \expnd0\expndtw0\kerning0
+\ul \ulc2 here}}\'a0into the webapps folder of the tomcat installation.\'a0\
+\ls1\ilvl0\kerning1\expnd0\expndtw0 {\listtext	6	}\expnd0\expndtw0\kerning0
+Download the client app for Music from\'a0{\field{\*\fldinst{HYPERLINK "https://codecloud.web.att.com/projects/ST_CLOUDQOS/repos/music/browse/examples/VoteAppMusicJava"}}{\fldrslt \cf2 \expnd0\expndtw0\kerning0
+\ul \ulc2 here}}\'a0, then\'a0use a java editor to import the maven project, VoteAppForMUSIC, and then run the file VotingApp. The expected output should be pretty easy to understand just by looking at the file VotingApp.java. \'a0}

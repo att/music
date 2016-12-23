@@ -17,10 +17,7 @@ stated inside of the file.
    limitations under the License.
  ---------------------------------------------------------------------------
 
-MUSIC README
-===============
-
-However, the complexity of replicated, multi-site
+The complexity of replicated, multi-site
 distributed applications brings forth the need for rich distribution coordination patterns to manage
 these applications. We contend that, to build such patterns, it is necessary to tightly integrate
 coordination primitives such as mutual exclusion and barriers with state-management in these

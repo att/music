@@ -22,6 +22,7 @@ stated inside of the file.
  */
 package com.att.research.music.datastore;
 
+import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
@@ -32,6 +33,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
+import com.att.research.music.main.MusicUtil;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.ColumnDefinitions;
 import com.datastax.driver.core.ConsistencyLevel;
@@ -81,7 +83,6 @@ public class MusicDataStore {
 	}
 	
 	private void connectToCassaCluster(){
-		System.out.println("wrong");
 		Iterator<String> it = getAllPossibleLocalIps().iterator();
 		String address= "localhost";
 		System.out.println("Iterating through possible ips.."+getAllPossibleLocalIps());
@@ -90,11 +91,13 @@ public class MusicDataStore {
 				cluster = Cluster.builder().withPort(9042).addContactPoint(address).build();
 				//cluster.getConfiguration().getSocketOptions().setReadTimeoutMillis(Integer.MAX_VALUE);
 				Metadata metadata = cluster.getMetadata();
+				System.out.println("Connected to "+address+"!");
 				System.out.printf("Connected to cluster: %s\n", 
 						metadata.getClusterName());
 				for ( Host host : metadata.getAllHosts() ) {
 					System.out.printf("Datacenter: %s; Host broadcast: %s; Rack: %s\n",
 							host.getDatacenter(), host.getBroadcastAddress(), host.getRack());
+							
 				}
 				session = cluster.connect();
 				break;
@@ -104,6 +107,16 @@ public class MusicDataStore {
 			} 
 		}
 	}
+	
+	public  ArrayList<String> getAllNodePublicIps(){
+		Metadata metadata = cluster.getMetadata();
+		ArrayList<String> nodePublicIps = new ArrayList<String>();
+		for ( Host host : metadata.getAllHosts() ) {
+			nodePublicIps.add(host.getBroadcastAddress().getHostAddress());
+		}
+		return nodePublicIps;
+	}
+	
 	private void connectToCassaCluster(String address){	
 		cluster = Cluster.builder().withPort(9042).addContactPoint(address).build();
 		//cluster.getConfiguration().getSocketOptions().setReadTimeoutMillis(Integer.MAX_VALUE);
@@ -118,7 +131,7 @@ public class MusicDataStore {
 	}
 
 	public ResultSet executeGetQuery(String query){
-		System.out.println("Executing normal get query");
+		System.out.println("Executing normal get query:"+query);
 		long start = System.currentTimeMillis();
 		Statement statement = new SimpleStatement(query);
 		statement.setConsistencyLevel(ConsistencyLevel.ONE);
@@ -130,7 +143,7 @@ public class MusicDataStore {
 
 	public ResultSet executeCriticalGetQuery(String query){
 		Statement statement = new SimpleStatement(query);
-		System.out.println("Executing critical get query");
+		System.out.println("Executing critical get query:"+query);
 		statement.setConsistencyLevel(ConsistencyLevel.QUORUM);
 		ResultSet results = session.execute(statement);
 		return results;	
@@ -149,7 +162,7 @@ public class MusicDataStore {
 	}
 
 	public void executePutQuery(String query, String consistency){
-		System.out.println("in data store handle, executing put..");
+		if(MusicUtil.debug) System.out.println("in data store handle, executing put:"+query);
 		long start = System.currentTimeMillis();
 		Statement statement = new SimpleStatement(query);
 		if(consistency.equalsIgnoreCase("atomic")){
@@ -167,7 +180,7 @@ public class MusicDataStore {
 
 	public void createSchema() { 
 		Statement statement = new SimpleStatement("CREATE KEYSPACE IF NOT EXISTS bharath WITH replication " + 
-				"= {'class':'SimpleStrategy', 'replication_factor':3};");
+				"= {'class':'SimpleStrategy', 'replication_factor':1};");
 		statement.setConsistencyLevel(ConsistencyLevel.ALL);
 		session.execute(statement);
 
@@ -275,7 +288,13 @@ public class MusicDataStore {
 //		cluster.close();
 //	}
 	public static void main(String[] args) {
-		String remoteIp = "135.197.226.98";
+		String test = "bharath-music-0";
+		String newTest = test.replace("-", "_");
+		System.out.println(newTest);
+		System.exit(0);
+		String remoteIp = "135.197.226.68";
+	//	String remoteIp = "135.197.226.98";
+		
 		MusicDataStore client =null;
 		client = new MusicDataStore(remoteIp);
 		client.createSchema();

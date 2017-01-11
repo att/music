@@ -459,19 +459,15 @@ public class VotingApp {
 		return null;
 	}
 	public static void main(String[] args) {
-		String[] shankarMusicNodes = {"135.197.226.98","135.197.226.99","135.207.223.43"};
+		String[] shankarMusicNodes = {"135.197.226.113","135.197.226.49"};
 
 	//	String[] msValetMusicNodes = {"135.197.240.160","135.197.226.37","135.207.223.50"};
-
-	//	String[] halMusicNodes = {"135.197.240.158","135.197.226.68","135.197.226.49","135.197.241.85"};
-		
+	
 	//	String[] joeMusicNodes = {"135.197.226.83","135.197.226.84","135.197.226.85"};
 
-		String [] localMusic = {"localhost"};
-		System.out.println("hooo");
 		long start = System.currentTimeMillis();
 			for(int i =0; i < 5;++i){
-				VotingApp vHandle = new VotingApp(localMusic);
+				VotingApp vHandle = new VotingApp(shankarMusicNodes);
 				vHandle.overAllTests();
 
 				System.out.println("=====================================");

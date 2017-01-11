@@ -33,14 +33,14 @@ import java.util.Scanner;
 public class MusicUtil {
 	public static String myZkHost = "localhost";
 	public static String myCassaHost = "localhost";
-	private static String confLocation = "/var/lib/music/music.conf";
-	private static String testLocation = "/users/bharathb/musicTest.conf";
-	public static final String musicInternalKeySpaceName = "MusicInternals";
+	public static final String musicInternalKeySpaceName = "MusicInternalKeySpace";
+	public static final String nodeIdsTable ="nodeIds";
+	public static final String evPutsTable = "evPutTracker_";
 	public static final boolean debug = true;
 	public static final String version = "1.0.0";
 	public static final String msg = "-First version of Music on the public git-";
-
-	public static String getMyPublicIp(){
+	
+/*	public static String getMyPublicIp(){
 		String myIp = null;
 		try {
 			Scanner fileScanner = new Scanner(new File(confLocation));
@@ -55,35 +55,34 @@ public class MusicUtil {
 		}
 
 		return myIp;	
-/*		String agaveMusicNode = "135.207.223.43";
+		String agaveMusicNode = "135.207.223.43";
 		String bigSiteMusicNode = "135.197.226.98";
 		if((System.currentTimeMillis() %2)==0)
 			return agaveMusicNode;
 		else 
 			return bigSiteMusicNode;
-*/	}
+	}
 	
 	public static String getMusicNodeURL(){
 		return "http://"+MusicUtil.getMyPublicIp()+":8080/MUSIC/rest";
 	}
-	
+*/	
 	public static String getMyId(){
-		String id = null;
+		InetAddress IP;
+		String hostName="";
 		try {
-			Scanner fileScanner = new Scanner(new File(confLocation));
-			String line = fileScanner.next();
-			String[] idArray = line.split(":");
-			id = idArray[1];
-			fileScanner.close();
-		} catch (FileNotFoundException e) {
+			IP = Inet4Address.getLocalHost();
+			hostName = IP.getHostName();
+		} catch (UnknownHostException e1) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();
+			e1.printStackTrace();
 		}
+		return hostName.replace("-", "_");
 
-		return id;	
 	}
 	
-	public static ArrayList<String> getOtherMusicPublicIps(){
+
+/*	public static ArrayList<String> getOtherMusicPublicIps(){
 		ArrayList<String> listOfNodeIps = new ArrayList<String>();
 		try {
 			Scanner fileScanner = new Scanner(new File(confLocation));
@@ -129,11 +128,11 @@ public class MusicUtil {
 		}
 		return listOfNodeIds;
 	}
-
+*/
 	public static String getTestType(){
 		String testType = "";
 		try {
-			Scanner fileScanner = new Scanner(new File(testLocation));
+			Scanner fileScanner = new Scanner(new File(""));
 			testType = fileScanner.next();//ignore the my id line
 			String batchSize = fileScanner.next();//ignore the my public ip line
 			fileScanner.close();
@@ -155,9 +154,6 @@ public class MusicUtil {
 	
 	public static void main(String[] args){
 		System.out.println(MusicUtil.getMyId());
-		System.out.println(MusicUtil.getMyPublicIp());
-		System.out.println(MusicUtil.getOtherMusicNodeIds());
-		System.out.println(MusicUtil.getOtherMusicPublicIps());
 	}
 	
 }

@@ -24,6 +24,7 @@ package com.att.research.music.main;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -44,18 +45,19 @@ import com.att.research.music.datastore.jsonobjects.JsonDelete;
 import com.att.research.music.datastore.jsonobjects.JsonInsert;
 import com.att.research.music.datastore.jsonobjects.JsonKeySpace;
 import com.att.research.music.datastore.jsonobjects.JsonTable;
+import com.att.research.music.datastore.jsonobjects.RestMusicFunctions;
 import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.TableMetadata;
 
 
-@Path("/new")
+@Path("/formal")
 public class FormalRestMusic {
 	@GET
 	@Path("/version")
 	@Produces(MediaType.TEXT_PLAIN)
 	public String version() {
-		return MusicUtil.version+" cassa host:"+MusicUtil.myCassaHost+" zk host:"+MusicUtil.myZkHost+" "+ MusicUtil.version;
+		return MusicUtil.version+" cassa host:"+MusicUtil.myCassaHost+" zk host:"+MusicUtil.myZkHost+" formally verified "+ MusicUtil.version;
 	}
 
 	@GET
@@ -73,17 +75,6 @@ public class FormalRestMusic {
 	}
 	
 	@GET
-	@Path("/digestnew/{ip}/{key}")
-	@Produces(MediaType.APPLICATION_JSON)	
-	public MusicDigest selectNew(@PathParam("ip") String publicIp, @PathParam("key") String key){
-		long start = System.currentTimeMillis();
-		MusicDigest mg = MusicCore.getRemoteDigest(publicIp, key);
-		long end = System.currentTimeMillis();
-		if(MusicUtil.debug) System.out.println("In the new digest function, time taken:"+(end-start));
-		return mg;
-	} 
-
-	@GET
 	@Path("/warmup")
 	public void warmup() {
 		MusicCore.getDSHandle();
@@ -95,33 +86,12 @@ public class FormalRestMusic {
 	public void warmupRemote(@PathParam("ip") String remoteIp) {
 		MusicCore.getDSHandle(remoteIp);
 	}
-
-	@POST
-	@Path("/init")
-	public void initializeNode(){
-		//populate ip list
-		String nodeId = MusicUtil.getMyId();
-
-		
-		//first clean they keyspace in case it exists from before
-		String keyspaceName = MusicUtil.musicInternalKeySpaceName;
-//		String dropQuery = "DROP KEYSPACE IF EXISTS "+keyspaceName+";";
-//		if(MusicUtil.debug) System.out.println("drop ksp query:"+ dropQuery);
-//		MusicCore.generalPut(dropQuery, "eventual");
-
-		
-		String ksQuery ="CREATE KEYSPACE  IF NOT EXISTS "+ keyspaceName +" WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 3 };";
-		if(MusicUtil.debug) System.out.println("create ksp query:"+ ksQuery);
-		MusicCore.generalPut(ksQuery, "eventual");
-		
-		//create table to track eventual puts
-		String tableName = "EvPutStatusAt"+nodeId;
-		String tabQuery = "CREATE TABLE IF NOT EXISTS "+keyspaceName+"."+tableName+" (key text PRIMARY KEY, status text);"; 
-		if(MusicUtil.debug) System.out.println("create table query:"+ tabQuery);
-
-		MusicCore.generalPut(tabQuery, "eventual");
+	@GET
+	@Path("/nodeId")
+	@Produces(MediaType.TEXT_PLAIN)
+	public String getMyId() {
+		return MusicUtil.getMyId();
 	}
-
 
 
 /*	puts the requesting process in the q for this lock. The corresponding node will be
@@ -178,7 +148,9 @@ public class FormalRestMusic {
 	@Path("/keyspaces/{name}")
 	@Consumes(MediaType.APPLICATION_JSON)
 	public void createKeySpace(JsonKeySpace  kspObject,@PathParam("name") String keyspaceName) throws Exception{
-	//	String consistency = kspObject.getConsistencyInfo().get("type");
+		//first create music internal stuff by calling the initialization routine
+		MusicCore.initializeNode();
+		
 		String consistency = "eventual";//for now this needs only eventual consistency
 		long start = System.currentTimeMillis();
 		Map<String,Object> replicationInfo = kspObject.getReplicationInfo();
@@ -193,7 +165,6 @@ public class FormalRestMusic {
 		if(MusicUtil.debug) System.out.println("Time taken for setting up query in create keyspace:"+ (end-start));
 		MusicCore.generalPut(query, consistency);
 	}
- 	
 
 	@DELETE
 	@Path("/keyspaces/{name}")
@@ -277,13 +248,21 @@ public class FormalRestMusic {
 	public void insertIntoTable(JsonInsert insObj, @PathParam("keyspace") String keyspace, @PathParam("tablename") String tablename, @Context UriInfo info) throws Exception{
 				Map<String,Object> valuesMap =  insObj.getValues();
 		TableMetadata tableInfo = MusicCore.returnColumnMetadata(keyspace, tablename);
+		String primaryKeyName = tableInfo.getPrimaryKey().get(0).getName();
 		String fieldsString="(vector_ts,";
 		String vectorTs = "'"+Thread.currentThread().getId()+System.currentTimeMillis()+"'";
 		String valueString ="("+vectorTs+",";
 		int counter =0;
+		String primaryKey="";
 		for (Map.Entry<String, Object> entry : valuesMap.entrySet()){
 			fieldsString = fieldsString+""+entry.getKey();
 			Object valueObj = entry.getValue();	
+			System.out.println("---"+primaryKeyName+" "+entry.getKey()+" "+entry.getValue());
+			if(primaryKeyName.equals(entry.getKey())){
+				primaryKey= entry.getValue()+"";
+				System.out.println("primary key is:"+ primaryKey);
+			}
+				
 			DataType colType = tableInfo.getColumn(entry.getKey()).getType();
 			valueString = valueString + MusicCore.convertToSqlDataType(colType,valueObj);		
 			if(counter==valuesMap.size()-1){
@@ -320,36 +299,13 @@ public class FormalRestMusic {
 		query = query +";";
 		if(MusicUtil.debug) System.out.println(query);
 
-		//get the row specifier
-		String rowSpec="";
-		counter =0;
-		MultivaluedMap<String, String> rowParams = info.getQueryParameters();
-		String primaryKey = "";
-		for (MultivaluedMap.Entry<String, List<String>> entry : rowParams.entrySet()){
-			String keyName = entry.getKey();
-			List<String> valueList = entry.getValue();
-			String indValue = valueList.get(0);
-			DataType colType = tableInfo.getColumn(entry.getKey()).getType();
-			String formattedValue = MusicCore.convertToSqlDataType(colType,indValue);	
-			primaryKey = primaryKey + indValue;
-			rowSpec = rowSpec + keyName +"="+ formattedValue;
-			if(counter!=rowParams.size()-1)
-				rowSpec = rowSpec+" AND ";
-			counter = counter +1;
-		}
 		String consistency = insObj.getConsistencyInfo().get("type");
-/*		boolean operationResult = false;
 		if(consistency.equalsIgnoreCase("eventual"))
-			operationResult = MusicCore.eventualPut(keyspace,tablename,primaryKey, query);
+			MusicCore.eventualPut(keyspace,tablename,primaryKey, query);
 		else if(consistency.equalsIgnoreCase("atomic")){
 			String lockId = insObj.getConsistencyInfo().get("lockId");
-			operationResult = MusicCore.atomicPut(keyspace,tablename,primaryKey, query, lockId);
+			MusicCore.criticalPut(keyspace,tablename,primaryKey, query, lockId);
 		}
-		return operationResult; 	
-*/		
-		if(MusicUtil.debug) System.out.println(query);
-		MusicCore.generalPut(query, consistency);
-
 	}
 
 	@PUT
@@ -414,7 +370,6 @@ public class FormalRestMusic {
 			query = query + " USING TIMESTAMP "+ timestamp;
 		}
 		query = query + " SET "+fieldValueString+" WHERE "+rowSpec+";";
-		if(MusicUtil.debug) System.out.println(query);
 		
 		String consistency = insObj.getConsistencyInfo().get("type");
 

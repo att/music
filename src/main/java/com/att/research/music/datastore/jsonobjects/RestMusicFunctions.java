@@ -27,7 +27,7 @@ import java.util.Map;
 
 import javax.ws.rs.core.MediaType;
 
-
+import com.att.research.music.main.MusicUtil;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
@@ -40,7 +40,7 @@ public class RestMusicFunctions {
 	private String musicUrl;
 	
 	public RestMusicFunctions(String musicNodeIp){
-		musicUrl = "http://"+musicNodeIp+":8080/MUSIC/rest";
+		musicUrl = "http://"+musicNodeIp+":8080/MUSIC/rest/formal";
 	}
 	
 	public void createKeyspaceEventual(String keyspaceName){
@@ -151,6 +151,25 @@ public class RestMusicFunctions {
 		
 	}
 
+	public String getMusicId(){
+		
+		Client client = Client.create();
+
+		WebResource webResource = client
+				.resource(musicUrl+"/nodeId");
+		if(MusicUtil.debug)System.out.println("the url sent to get the id:"+musicUrl+"/nodeId");
+		ClientResponse response = webResource.accept("text/plain")
+				.get(ClientResponse.class);
+
+		if (response.getStatus() != 200) {
+			throw new RuntimeException("Failed : HTTP error code : "
+					+ response.getStatus());
+		}
+
+		String output = response.getEntity(String.class);
+		return output;
+	}
+	
 	public Map<String, String> getMusicDigest(String key){
 		ClientConfig clientConfig = new DefaultClientConfig();
 

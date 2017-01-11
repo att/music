@@ -79,7 +79,7 @@ public class RestMusic {
 	@Path("/version")
 	@Produces(MediaType.TEXT_PLAIN)
 	public String version() {
-		return MusicUtil.version+" cassa host:"+MusicUtil.myCassaHost+" zk host:"+MusicUtil.myZkHost+" "+ MusicUtil.version;
+		return MusicUtil.version+" cassa host:"+MusicUtil.myCassaHost+" zk host:"+MusicUtil.myZkHost+" "+ "main "+MusicUtil.version;
 	}
 
 	@GET
@@ -494,7 +494,7 @@ public class RestMusic {
 		return results;
 	}
 
-	@GET
+/*	@GET
 	@Path("/digest/{key}")
 	@Produces(MediaType.APPLICATION_JSON)	
 	public MusicDigest select(@PathParam("key") String key){
@@ -504,7 +504,7 @@ public class RestMusic {
 		System.out.println("In the new digest function, time taken:"+(end-start));
 		return mg;
 	} 
-
+*/
 	@GET
 	@Path("/keyspaces/{keyspace}/tables/{tablename}/rows")
 	@Produces(MediaType.APPLICATION_JSON)	

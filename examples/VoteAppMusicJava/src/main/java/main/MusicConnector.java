@@ -55,7 +55,7 @@ public class MusicConnector {
 */	
 	
 	public String getMusicNodeURL(){
-			String musicurl = "http://"+getMusicNodeIp()+":8080/MUSIC/rest";
+			String musicurl = "http://"+getMusicNodeIp()+":8080/MUSIC/rest/formal";
 			//System.out.println(musicurl);
 			return musicurl;
 	}

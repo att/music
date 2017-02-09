@@ -1,0 +1,363 @@
+package com.att.research.camusic;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.util.ArrayList;
+
+import org.apache.log4j.Logger;
+
+import com.datastax.driver.core.ResultSet;
+import com.datastax.driver.core.Session;
+/**
+* <h1>MUSIC SQL Manager</h1>
+* Program that helps  take data written to a SQL database
+* and seamlessly integrate it with MUSIC that maintains data in a no-sql data-store (Cassandra) and protects
+* access to it with a distributed locking service (based on Zookeeper)
+* 
+* 
+*
+* @author  Bharath Balasubramanian
+* @version 1.0
+* @since   2014-03-31 
+*/
+public class MusicSqlManager {
+	private static Session musicSession = null;
+	private static Connection sqlCon=null;
+	String myId;
+	String[] allReplicaIds;
+	private final String triggerClassName = SQLOperationHandler.class.getName();
+	final String primaryKeyName="ID_";//todo: get it automatically..
+	final static Logger logger = Logger.getLogger(MusicSqlManager.class);
+
+	public MusicSqlManager(ArrayList<String> sqlTableNames){
+		this.myId = ConfigDetails.myId;
+		this.allReplicaIds = ConfigDetails.allReplicaIds;
+		createMusicKeyspace();
+		for (String tableName : sqlTableNames) {
+			createSQLTriggers(tableName);
+			createEntityAndDirtyRowsTableInMusic(tableName);	
+		}
+	}
+	
+	
+	public MusicSqlManager(){}
+	
+	/**
+	 * This function create triggers on the database for each row after every insert
+	 * update and delete and before every select.
+	 * @param tableName This is the table on which triggers are being created.
+	 */
+	private synchronized void createSQLTriggers(String tableName){
+		executeSQLWrite("CREATE TRIGGER IF NOT EXISTS TRI_INS_"+tableName+" AFTER INSERT ON "+tableName+"  FOR EACH ROW CALL \""+triggerClassName+"\"");
+		executeSQLWrite("CREATE TRIGGER IF NOT EXISTS TRI_UPDATE_"+tableName+" AFTER UPDATE ON "+tableName+"  FOR EACH ROW CALL \""+triggerClassName+"\"");
+		executeSQLWrite("CREATE TRIGGER IF NOT EXISTS TRI_DEL_"+tableName+" AFTER DELETE ON "+tableName+"  FOR EACH ROW CALL \""+triggerClassName+"\"");
+		executeSQLWrite("CREATE TRIGGER IF NOT EXISTS TRI_SEL_"+tableName+" BEFORE SELECT ON "+tableName+"  CALL \""+triggerClassName+"\"");
+
+	}
+
+	/*
+	 * Music-related functions
+	 */
+	/**
+	 * 
+	 */
+	/**
+	 * This function creates a keyspace in Music/Cassandra to store the data 
+	 * corresponding to the sql tables
+	 */
+	private void createMusicKeyspace(){
+		String keyspaceCreate = "CREATE KEYSPACE IF NOT EXISTS camunda  "
+				+ "WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 3 };";
+		executeMusicWriteQuery(keyspaceCreate);	
+	}
+	
+	/**
+	 * This function creates two tables for every table in sql: (i) a table with the exact same name 
+	 * as the sql table storing the sql data in text format. (ii) a dirty bits table that stores the keys in the cassandra table
+	 * that are yet to be updated in the sql table (they were written by some other node)
+	 * 
+	 * @param tableName This is the table name of the sql table
+	 */
+	private void createEntityAndDirtyRowsTableInMusic(String tableName){	
+		
+		ArrayList<String> columnNames = getSQLColumnNames(tableName);
+		if(columnNames.isEmpty()){
+			logger.info("there is no table named "+ tableName);
+			return;
+		}
+
+		int numOfFields = columnNames.size();
+		
+		String fieldsString = "(";
+		for(int counter =0; counter < numOfFields;++counter){		
+			fieldsString = fieldsString +"f"+counter+" text";
+			if(counter ==0)
+				fieldsString = fieldsString +" PRIMARY KEY";
+			if(counter==numOfFields-1)
+				fieldsString = fieldsString+")";
+			else 
+				fieldsString = fieldsString+",";
+		}
+		
+		
+		String mainTableQuery =  "CREATE TABLE IF NOT EXISTS camunda."+tableName+" "+ fieldsString+";"; 
+		executeMusicWriteQuery(mainTableQuery);
+		
+		
+		//create dirtybitsTable at all replicas 
+		for(int i=0; i < allReplicaIds.length;++i){
+			String dirtyRowsTableName = "dirty_"+tableName+"_"+allReplicaIds[i];
+			String dirtyTableQuery = "CREATE TABLE IF NOT EXISTS camunda."+ dirtyRowsTableName+" (dirtyRowKeys text PRIMARY KEY);"; 
+			executeMusicWriteQuery(dirtyTableQuery);
+		}
+
+	}
+
+	/**
+	 * This function is called whenever there is an insert or update to a local sql table, wherein it updates the 
+	 * music/cassandra tables (both dirty bits and actual data) corresponding to the sql write. Music propagates it to 
+	 * the other replicas
+	 * @param tableName This is the table that has changed.
+	 * @param changedRow This is information about the row that has changed
+	 * @param changedRowKey This is the primary key of the changed row
+	 */
+	public  void updateDirtyRowAndEntityTableInMusic(String tableName,Object[] changedRow, String changedRowKey){
+		logger.info("in update dirty row and entity table in Music"+tableName+" "+changedRow+" "+changedRowKey);
+		//mark the dirty rows in music for all the replica tables
+		for(int i=0; i < allReplicaIds.length;++i){
+			String dirtyRowsTableName = "dirty_"+tableName+"_"+allReplicaIds[i];
+			String dirtyTableQuery = "INSERT INTO camunda."+ dirtyRowsTableName+"(dirtyRowKeys) VALUES ($$'"+ changedRowKey+"'$$);"; 
+			executeMusicWriteQuery(dirtyTableQuery);
+		}
+		
+		//read the row from the sql database
+		
+		String valueString = "(";
+		String fieldsString="(";	
+		for(int i =0; i < changedRow.length;++i){
+			Object entry = changedRow[i];
+			fieldsString = fieldsString+"f"+i;
+			if(entry == null)
+				valueString = valueString + "'null'"; 
+			else if((entry instanceof String) || (entry instanceof Timestamp))
+					valueString = valueString + "$$'"+entry+"'$$";
+			else
+				valueString = valueString +"'"+entry+"'";
+			if(i == (changedRow.length -1)){
+				fieldsString = fieldsString+")";
+				valueString = valueString+")";
+			}
+			else{
+				fieldsString = fieldsString+",";
+				valueString = valueString+",";
+			}
+		}
+
+		//update local music node. note: in cassandra u can insert again on an existing key..it becomes and update
+		String musicQuery =  "INSERT INTO camunda."+tableName+" "+ fieldsString+" VALUES "+ valueString+";";   
+		executeMusicWriteQuery(musicQuery);
+	}
+	
+	/**
+	 * This function is called whenever there is a delete to a row on  a local sql table, wherein it updates the 
+	 * music/cassandra tables (both dirty bits and actual data) corresponding to the sql write. Music propagates it to 
+	 * the other replicas
+	 * @param tableName This is the table that has changed.
+	 * @param deletedRowKey This is the primary key of the delete row
+	 */
+	public  void deleteFromEntityTableInMusic(String tableName,String deletedRowKey){
+		String musicQuery =  "DELETE FROM camunda."+tableName+"  WHERE f0=$$'"+ deletedRowKey+"'$$;";   
+		executeMusicWriteQuery(musicQuery);
+	}
+	
+	/**
+	 * This function is called whenever there is a select on a local sql table, wherein it first checks the local
+	 * dirty bits table to see if there are any keys in cassandra whose value has not yet been sent to sql
+	 * @param tableName This is the table on which the select is being performed
+	 */
+	public  void readDirtyRowsAndUpdateDb(String tableName){
+		//read dirty rows of this table from Music
+		String dirtyRowIdsTableName = "camunda.dirty_"+tableName+"_"+myId;
+		String dirtyRowIdsQuery = "select * from "+dirtyRowIdsTableName+";";
+		ResultSet results = executeMusicRead(dirtyRowIdsQuery);
+		for (com.datastax.driver.core.Row row : results) {
+			String dirtyRowId = row.getString(0);//only one column
+			String dirtyRowQuery = "select * from camunda."+tableName+" where f0=$$"+dirtyRowId+"$$;";
+			ResultSet dirtyRows = executeMusicRead(dirtyRowQuery);
+			for (com.datastax.driver.core.Row singleDirtyRow : dirtyRows){//there can only be one. 
+				writeMusicRowToSQLDb(singleDirtyRow,tableName,primaryKeyName,getSQLColumnNames(tableName));
+			}
+		}
+	}
+	
+	/**
+	 * This functions copies the contents of a row in Music into the corresponding row in the sql table
+	 * @param musicRow This is the row in Music that is being copied into sql
+	 * @param tableName This is the name of the table in both Music and swl
+	 * @param primaryKeyName This is the primary key of the row
+	 * @param columnNames These are the column names
+	 */
+	private void writeMusicRowToSQLDb(com.datastax.driver.core.Row musicRow, String tableName, String primaryKeyName,ArrayList<String> columnNames){
+		//first construct the value string and column name string for the db write
+		logger.info("Writing for table "+ tableName);
+		int numOfColumns = columnNames.size();
+		String valueString = "(";
+		String columnNameString = "("; //needed onyl when we are doing an update
+		for(int i=0; i < numOfColumns ;++i){
+			valueString = valueString + musicRow.getString("f"+i);
+			columnNameString = columnNameString + columnNames.get(i);
+			if(i == (numOfColumns -1)){
+				valueString = valueString+")";
+				columnNameString = columnNameString +")";
+			}
+			else{
+				valueString = valueString+",";
+				columnNameString = columnNameString +",";
+			}
+		}
+		String primaryKeyValue = musicRow.getString("f0");
+		String selectQuery = "select "+ primaryKeyName+" FROM "+tableName+" WHERE "+primaryKeyName+"="+primaryKeyValue+";";
+		java.sql.ResultSet rs = executeSQLRead(selectQuery);
+		String dbWriteQuery=null;
+		try {
+			if(rs.next()){//this entry is there, do an update
+				dbWriteQuery = "UPDATE "+tableName+" SET "+columnNameString+" = "+ valueString +"WHERE "+primaryKeyName+"="+primaryKeyValue+";";
+			}else
+				dbWriteQuery = "INSERT INTO "+tableName+" VALUES"+valueString+";";
+			executeSQLWrite(dbWriteQuery);
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		//clean the music dirty bits table
+		String dirtyRowIdsTableName = "camunda.dirty_"+tableName+"_"+myId;
+		String deleteQuery = "delete from "+dirtyRowIdsTableName+" where dirtyRowKeys=$$"+primaryKeyValue+"$$;";
+		executeMusicWriteQuery(deleteQuery);
+	}
+	
+	/**
+	 * This method executes a write query in Music
+	 * @param query
+	 */
+	private  void executeMusicWriteQuery(String query){
+		getMusicSession().execute(query);
+	}
+	
+	/**
+	 * This method executes a read query in Music
+	 * @param query
+	 */
+	private  ResultSet executeMusicRead(String query){
+		return getMusicSession().execute(query);
+	}
+	
+	/**This method gets a connection to Music
+	 * @return
+	 */
+	private   Session getMusicSession(){	
+		//create cassa session
+		if(musicSession == null)
+			musicSession = new MusicConnector(ConfigDetails.musicAddress).getSession();
+		return musicSession;
+	}
+
+	
+	/*
+	 * SQL related functions
+	 */
+	
+	/**
+	 * This method queries the information_schema table to obtain the column names of a particular table
+	 * @param tableName
+	 * @return
+	 */
+	private ArrayList<String> getSQLColumnNames(String tableName){
+		ArrayList<String> columnNames = new ArrayList<String>();
+		try {
+			java.sql.ResultSet rsColumnNames = executeSQLRead("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS C where TABLE_NAME='"+tableName+"'");
+			while(rsColumnNames.next()){
+				String columnName = rsColumnNames.getString("COLUMN_NAME");
+				columnNames.add(columnName);			
+			}
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return columnNames;
+	}
+	/**
+	 * This method executes a write query in sql
+	 * @param query
+	 */
+	private  void executeSQLWrite(String query){
+		try {
+			getSqlConnection().createStatement().execute(query);
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	
+	/**
+	 * This method executes a read query in Music
+	 * @param query
+	 */
+	private java.sql.ResultSet executeSQLRead(String query){
+		java.sql.ResultSet rs = null;
+		try {
+			rs = getSqlConnection().createStatement().executeQuery(query);
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return rs;
+	}
+	
+	/**This method gets a connection to sql
+	 * @return
+	 */
+	private Connection getSqlConnection(){
+		//initialize the sql connection
+		try {
+			if(sqlCon == null)
+				sqlCon = DriverManager.getConnection(ConfigDetails.sqlUrl,ConfigDetails.userName,ConfigDetails.passwd);
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return sqlCon;
+	}
+
+	private  void printSqlTables() throws SQLException{
+		try {
+			getSqlConnection().setAutoCommit(false);
+			java.sql.ResultSet rs = executeSQLRead("SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA='PUBLIC' ");
+			while (rs.next()) {
+				logger.info(rs.getString("TABLE_NAME") + "|");
+			}
+			System.out.println();
+			getSqlConnection().commit();
+		} catch (SQLException e) {
+			logger.error("Exception Message " + e.getLocalizedMessage());
+		} catch (Exception e) {
+			e.printStackTrace();
+		} 
+	}
+
+	public static void main(String[] args) throws Exception {
+		System.out.println("Starting music-sql-manager..printing out all tables..");
+		MusicSqlManager handle = new MusicSqlManager();
+		try {
+			while(true){
+				handle.printSqlTables();
+				Thread.sleep(2000);
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+	}
+
+
+}

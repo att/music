@@ -15,7 +15,7 @@ public class H2Example {
     private static final String DB_CONNECTION = "jdbc:h2:~/data/test;AUTO_SERVER=TRUE;DATABASE_EVENT_LISTENER="+TestTriggerHandler.class.getName();
     private static final String DB_USER = "";
     private static final String DB_PASSWORD = "";
-
+    private static Connection dbConnection = null;
     public static void main(String[] args) throws Exception {
         try {
             insertWithStatement();
@@ -54,19 +54,21 @@ public class H2Example {
         }
     }
 
-    private static Connection getDBConnection() {
-        Connection dbConnection = null;
-        try {
-            Class.forName(DB_DRIVER);
-        } catch (ClassNotFoundException e) {
-            System.out.println(e.getMessage());
-        }
-        try {
-            dbConnection = DriverManager.getConnection(DB_CONNECTION, DB_USER, DB_PASSWORD);
-            return dbConnection;
-        } catch (SQLException e) {
-            System.out.println(e.getMessage());
-        }
+    public static Connection getDBConnection() {
+    	if(dbConnection == null){
+    		System.out.println("Db connection null");
+	        try {
+	            Class.forName(DB_DRIVER);
+	        } catch (ClassNotFoundException e) {
+	            System.out.println(e.getMessage());
+	        }
+	        try {
+	            dbConnection = DriverManager.getConnection(DB_CONNECTION, DB_USER, DB_PASSWORD);
+	            return dbConnection;
+	        } catch (SQLException e) {
+	            System.out.println(e.getMessage());
+	        }
+	    	}
         return dbConnection;
     }
 }

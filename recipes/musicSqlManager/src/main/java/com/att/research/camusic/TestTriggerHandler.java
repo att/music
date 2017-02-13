@@ -2,8 +2,11 @@ package com.att.research.camusic;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.StringTokenizer;
 
 import org.h2.api.DatabaseEventListener;
 /**
@@ -86,7 +89,26 @@ public class TestTriggerHandler implements DatabaseEventListener{
 
 	@Override
 	public void setProgress(int arg0, String arg1, int arg2, int arg3) {
-		System.out.println("Event!!!"+arg0+"|"+arg1+"|"+arg2+"|"+arg3);
+		StringTokenizer st = new StringTokenizer(arg1);
+		String first = st.nextToken();
+		String second = st.nextToken();
+		String third = st.nextToken();
+		if(first.equalsIgnoreCase("create") && second.equalsIgnoreCase("table")){
+			System.out.println("table creation event!");
+			System.out.println(third);
+	        Connection connection = H2Example.getDBConnection();
+	        try {
+				Statement stmt = connection.createStatement();
+				ResultSet rs = stmt.executeQuery("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS C where TABLE_NAME= 'PERSON'");
+				while(rs.next()){
+					String columnName = rs.getString("COLUMN_NAME");
+					System.out.println(columnName);
+				}
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
 	}
 
 }

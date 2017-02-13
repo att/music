@@ -13,7 +13,7 @@ import java.util.ArrayList;
 * @since   2014-03-31 
 */
 
-public class SQLOperationHandler implements org.h2.api.Trigger{
+public class SQLTriggerHandler implements org.h2.api.Trigger{
 	MusicSqlManager musicHandle;
 	String tableName;
 	String triggerName;
@@ -64,10 +64,10 @@ public class SQLOperationHandler implements org.h2.api.Trigger{
 			Connection con = DriverManager.getConnection("jdbc:h2:mem:camunda", "sa", "" );
 			java.sql.Statement stmt = con.createStatement();
 			stmt.execute("CREATE TABLE TRIGGER_TEST_TABLE (COL1 VARCHAR, COL2 INTEGER)");
-			stmt.execute("CREATE TRIGGER IF NOT EXISTS TRI_INS AFTER INSERT ON TRIGGER_TEST_TABLE FOR EACH ROW CALL \""+SQLOperationHandler.class.getName()+"\"");
-			stmt.execute("CREATE TRIGGER IF NOT EXISTS TRI_INS AFTER INSERT ON TRIGGER_TEST_TABLE FOR EACH ROW CALL \""+SQLOperationHandler.class.getName()+"\"");
-			stmt.execute("CREATE TRIGGER TRI_UP AFTER UPDATE ON TRIGGER_TEST_TABLE FOR EACH ROW CALL \""+SQLOperationHandler.class.getName()+"\"");
-			stmt.execute("CREATE TRIGGER TRI_DEL AFTER DELETE ON TRIGGER_TEST_TABLE FOR EACH ROW CALL \""+SQLOperationHandler.class.getName()+"\"");
+			stmt.execute("CREATE TRIGGER IF NOT EXISTS TRI_INS AFTER INSERT ON TRIGGER_TEST_TABLE FOR EACH ROW CALL \""+SQLTriggerHandler.class.getName()+"\"");
+			stmt.execute("CREATE TRIGGER IF NOT EXISTS TRI_INS AFTER INSERT ON TRIGGER_TEST_TABLE FOR EACH ROW CALL \""+SQLTriggerHandler.class.getName()+"\"");
+			stmt.execute("CREATE TRIGGER TRI_UP AFTER UPDATE ON TRIGGER_TEST_TABLE FOR EACH ROW CALL \""+SQLTriggerHandler.class.getName()+"\"");
+			stmt.execute("CREATE TRIGGER TRI_DEL AFTER DELETE ON TRIGGER_TEST_TABLE FOR EACH ROW CALL \""+SQLTriggerHandler.class.getName()+"\"");
 
 			
 			stmt.execute("INSERT INTO  TRIGGER_TEST_TABLE VALUES('bharath',25)");

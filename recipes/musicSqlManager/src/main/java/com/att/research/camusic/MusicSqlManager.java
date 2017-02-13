@@ -26,7 +26,7 @@ public class MusicSqlManager {
 	private static Connection sqlCon=null;
 	String myId;
 	String[] allReplicaIds;
-	private final String triggerClassName = SQLOperationHandler.class.getName();
+	private final String triggerClassName = SQLTriggerHandler.class.getName();
 	final String primaryKeyName="ID_";//todo: get it automatically..
 	final static Logger logger = Logger.getLogger(MusicSqlManager.class);
 

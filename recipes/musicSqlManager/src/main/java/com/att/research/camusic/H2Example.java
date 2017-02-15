@@ -12,7 +12,7 @@ import java.sql.Statement;
 public class H2Example {
 
     private static final String DB_DRIVER = "org.h2.Driver";
-    private static final String DB_CONNECTION = "jdbc:h2:~/data/test;AUTO_SERVER=TRUE;DATABASE_EVENT_LISTENER="+TestTriggerHandler.class.getName();
+    private static final String DB_CONNECTION = "jdbc:h2:~/data/test;AUTO_SERVER=TRUE;DATABASE_EVENT_LISTENER="+DbEventTriggerHandler.class.getName();
     private static final String DB_USER = "";
     private static final String DB_PASSWORD = "";
     private static Connection dbConnection = null;
@@ -31,7 +31,7 @@ public class H2Example {
         try {
             connection.setAutoCommit(false);
             stmt = connection.createStatement();
-            stmt.execute("CREATE TABLE PERSON(id int primary key, name varchar(255))");
+            stmt.execute("CREATE TABLE PERSON(id int, name varchar(255), primary key (id,name))");
             stmt.execute("INSERT INTO PERSON(id, name) VALUES(1, 'Anju')");
             stmt.execute("INSERT INTO PERSON(id, name) VALUES(2, 'Sonia')");
             stmt.execute("INSERT INTO PERSON(id, name) VALUES(3, 'Asha')");

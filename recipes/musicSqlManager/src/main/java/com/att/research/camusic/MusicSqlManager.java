@@ -2,6 +2,7 @@ package com.att.research.camusic;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 
@@ -23,37 +24,29 @@ import com.datastax.driver.core.Session;
 */
 public class MusicSqlManager {
 	private static Session musicSession = null;
-	private static Connection sqlCon=null;
-	String myId;
-	String[] allReplicaIds;
-	private final String triggerClassName = SQLTriggerHandler.class.getName();
-	final String primaryKeyName="ID_";//todo: get it automatically..
+	private static Connection dbConnection=null;
 	final static Logger logger = Logger.getLogger(MusicSqlManager.class);
-
-	public MusicSqlManager(ArrayList<String> sqlTableNames){
-		this.myId = ConfigDetails.myId;
-		this.allReplicaIds = ConfigDetails.allReplicaIds;
+	
+	/**
+	 * This function initializes both the database and MUSIC for the new table
+	 * @param tableName This is the table on which triggers are being created.
+	 */
+	public void initializeDbAndMusicForTable(String tableName){
+		createSQLTriggers(tableName);
 		createMusicKeyspace();
-		for (String tableName : sqlTableNames) {
-			createSQLTriggers(tableName);
-			createEntityAndDirtyRowsTableInMusic(tableName);	
-		}
+		createEntityAndDirtyRowsTableInMusic(tableName);	
 	}
-	
-	
-	public MusicSqlManager(){}
 	
 	/**
 	 * This function create triggers on the database for each row after every insert
 	 * update and delete and before every select.
 	 * @param tableName This is the table on which triggers are being created.
 	 */
-	private synchronized void createSQLTriggers(String tableName){
-		executeSQLWrite("CREATE TRIGGER IF NOT EXISTS TRI_INS_"+tableName+" AFTER INSERT ON "+tableName+"  FOR EACH ROW CALL \""+triggerClassName+"\"");
-		executeSQLWrite("CREATE TRIGGER IF NOT EXISTS TRI_UPDATE_"+tableName+" AFTER UPDATE ON "+tableName+"  FOR EACH ROW CALL \""+triggerClassName+"\"");
-		executeSQLWrite("CREATE TRIGGER IF NOT EXISTS TRI_DEL_"+tableName+" AFTER DELETE ON "+tableName+"  FOR EACH ROW CALL \""+triggerClassName+"\"");
-		executeSQLWrite("CREATE TRIGGER IF NOT EXISTS TRI_SEL_"+tableName+" BEFORE SELECT ON "+tableName+"  CALL \""+triggerClassName+"\"");
-
+	private void createSQLTriggers(String tableName){
+		executeSQLWrite("CREATE TRIGGER IF NOT EXISTS TRI_INS_"+tableName+" AFTER INSERT ON "+tableName+"  FOR EACH ROW CALL \""+ConfigDetails.triggerClassName+"\"");
+		executeSQLWrite("CREATE TRIGGER IF NOT EXISTS TRI_UPDATE_"+tableName+" AFTER UPDATE ON "+tableName+"  FOR EACH ROW CALL \""+ConfigDetails.triggerClassName+"\"");
+		executeSQLWrite("CREATE TRIGGER IF NOT EXISTS TRI_DEL_"+tableName+" AFTER DELETE ON "+tableName+"  FOR EACH ROW CALL \""+ConfigDetails.triggerClassName+"\"");
+		executeSQLWrite("CREATE TRIGGER IF NOT EXISTS TRI_SEL_"+tableName+" BEFORE SELECT ON "+tableName+"  CALL \""+ConfigDetails.triggerClassName+"\"");
 	}
 
 	/*
@@ -80,7 +73,6 @@ public class MusicSqlManager {
 	 * @param tableName This is the table name of the sql table
 	 */
 	private void createEntityAndDirtyRowsTableInMusic(String tableName){	
-		
 		ArrayList<String> columnNames = getSQLColumnNames(tableName);
 		if(columnNames.isEmpty()){
 			logger.info("there is no table named "+ tableName);
@@ -106,8 +98,8 @@ public class MusicSqlManager {
 		
 		
 		//create dirtybitsTable at all replicas 
-		for(int i=0; i < allReplicaIds.length;++i){
-			String dirtyRowsTableName = "dirty_"+tableName+"_"+allReplicaIds[i];
+		for(int i=0; i < ConfigDetails.allReplicaIds.length;++i){
+			String dirtyRowsTableName = "dirty_"+tableName+"_"+ConfigDetails.allReplicaIds[i];
 			String dirtyTableQuery = "CREATE TABLE IF NOT EXISTS camunda."+ dirtyRowsTableName+" (dirtyRowKeys text PRIMARY KEY);"; 
 			executeMusicWriteQuery(dirtyTableQuery);
 		}
@@ -125,8 +117,8 @@ public class MusicSqlManager {
 	public  void updateDirtyRowAndEntityTableInMusic(String tableName,Object[] changedRow, String changedRowKey){
 		logger.info("in update dirty row and entity table in Music"+tableName+" "+changedRow+" "+changedRowKey);
 		//mark the dirty rows in music for all the replica tables
-		for(int i=0; i < allReplicaIds.length;++i){
-			String dirtyRowsTableName = "dirty_"+tableName+"_"+allReplicaIds[i];
+		for(int i=0; i < ConfigDetails.allReplicaIds.length;++i){
+			String dirtyRowsTableName = "dirty_"+tableName+"_"+ConfigDetails.allReplicaIds[i];
 			String dirtyTableQuery = "INSERT INTO camunda."+ dirtyRowsTableName+"(dirtyRowKeys) VALUES ($$'"+ changedRowKey+"'$$);"; 
 			executeMusicWriteQuery(dirtyTableQuery);
 		}
@@ -178,7 +170,7 @@ public class MusicSqlManager {
 	 */
 	public  void readDirtyRowsAndUpdateDb(String tableName){
 		//read dirty rows of this table from Music
-		String dirtyRowIdsTableName = "camunda.dirty_"+tableName+"_"+myId;
+		String dirtyRowIdsTableName = "camunda.dirty_"+tableName+"_"+ConfigDetails.myId;
 		String dirtyRowIdsQuery = "select * from "+dirtyRowIdsTableName+";";
 		ResultSet results = executeMusicRead(dirtyRowIdsQuery);
 		for (com.datastax.driver.core.Row row : results) {
@@ -186,7 +178,7 @@ public class MusicSqlManager {
 			String dirtyRowQuery = "select * from camunda."+tableName+" where f0=$$"+dirtyRowId+"$$;";
 			ResultSet dirtyRows = executeMusicRead(dirtyRowQuery);
 			for (com.datastax.driver.core.Row singleDirtyRow : dirtyRows){//there can only be one. 
-				writeMusicRowToSQLDb(singleDirtyRow,tableName,primaryKeyName,getSQLColumnNames(tableName));
+				writeMusicRowToSQLDb(singleDirtyRow,tableName,ConfigDetails.primaryKeyName,getSQLColumnNames(tableName));
 			}
 		}
 	}
@@ -232,9 +224,19 @@ public class MusicSqlManager {
 		}
 		
 		//clean the music dirty bits table
-		String dirtyRowIdsTableName = "camunda.dirty_"+tableName+"_"+myId;
+		String dirtyRowIdsTableName = "camunda.dirty_"+tableName+"_"+ConfigDetails.myId;
 		String deleteQuery = "delete from "+dirtyRowIdsTableName+" where dirtyRowKeys=$$"+primaryKeyValue+"$$;";
 		executeMusicWriteQuery(deleteQuery);
+	}
+	
+	/**
+	 * Clears the dirty bits table (for all replicas) and the main table in Music for this db table
+	 * @param tableName This is the table that has been deleted
+	 */
+	public void clearMusicForTable(String tableName){
+		executeMusicWriteQuery("drop table camunda."+tableName+";");
+		for(int i=0; i < ConfigDetails.allReplicaIds.length;++i)
+			executeMusicWriteQuery("drop table camunda.dirty_"+tableName+"_"+i+";");
 	}
 	
 	/**
@@ -288,12 +290,16 @@ public class MusicSqlManager {
 		return columnNames;
 	}
 	/**
-	 * This method executes a write query in sql
+	 * This method executes a write query in the sql database
 	 * @param query
 	 */
 	private  void executeSQLWrite(String query){
 		try {
-			getSqlConnection().createStatement().execute(query);
+			Connection con = getDbConnection();
+			Statement stmt = con.createStatement();
+			stmt.execute(query);
+			stmt.close();
+			con.commit();
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -301,13 +307,17 @@ public class MusicSqlManager {
 	}
 	
 	/**
-	 * This method executes a read query in Music
+	 * This method executes a read query in the sql database
 	 * @param query
 	 */
 	private java.sql.ResultSet executeSQLRead(String query){
 		java.sql.ResultSet rs = null;
 		try {
-			rs = getSqlConnection().createStatement().executeQuery(query);
+			Connection con = getDbConnection();
+			Statement stmt = con.createStatement();
+			rs = stmt.executeQuery(query);
+			stmt.close();
+			con.commit();
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -315,49 +325,46 @@ public class MusicSqlManager {
 		return rs;
 	}
 	
-	/**This method gets a connection to sql
+	/**This method gets a connection to the sql database
 	 * @return
 	 */
-	private Connection getSqlConnection(){
-		//initialize the sql connection
-		try {
-			if(sqlCon == null)
-				sqlCon = DriverManager.getConnection(ConfigDetails.sqlUrl,ConfigDetails.userName,ConfigDetails.passwd);
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		return sqlCon;
-	}
-
-	private  void printSqlTables() throws SQLException{
-		try {
-			getSqlConnection().setAutoCommit(false);
-			java.sql.ResultSet rs = executeSQLRead("SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA='PUBLIC' ");
-			while (rs.next()) {
-				logger.info(rs.getString("TABLE_NAME") + "|");
-			}
-			System.out.println();
-			getSqlConnection().commit();
-		} catch (SQLException e) {
-			logger.error("Exception Message " + e.getLocalizedMessage());
-		} catch (Exception e) {
-			e.printStackTrace();
-		} 
-	}
+    private static Connection getDbConnection() {
+    	if(dbConnection == null){
+    		logger.info("Db connection null");
+	        try {
+	            Class.forName(ConfigDetails.DB_DRIVER);
+	        } catch (ClassNotFoundException e) {
+	        	logger.info(e.getMessage());
+	        }
+	        try {
+	            dbConnection = DriverManager.getConnection(ConfigDetails.DB_CONNECTION, ConfigDetails.DB_USER, ConfigDetails.DB_PASSWORD);
+	            return dbConnection;
+	        } catch (SQLException e) {
+	        	logger.info(e.getMessage());
+	        }
+	    	}
+        return dbConnection;
+    }
 
 	public static void main(String[] args) throws Exception {
 		System.out.println("Starting music-sql-manager..printing out all tables..");
 		MusicSqlManager handle = new MusicSqlManager();
-		try {
-			while(true){
-				handle.printSqlTables();
-				Thread.sleep(2000);
-			}
-		} catch (SQLException e) {
-			e.printStackTrace();
+		handle.executeSQLWrite("CREATE TABLE PERSON(id int, name varchar(255), primary key (id,name))");
+		handle.executeSQLWrite("INSERT INTO PERSON(id, name) VALUES(1, 'Anju')");
+		handle.executeSQLWrite("INSERT INTO PERSON(id, name) VALUES(2, 'Sonia')");
+		handle.executeSQLWrite("INSERT INTO PERSON(id, name) VALUES(3, 'Asha')");
+
+		java.sql.ResultSet rs = handle.executeSQLRead("select * from PERSON");
+		logger.info("H2 In-Memory Database inserted through Statement");
+		while (rs.next()) {
+			logger.info("Id " + rs.getInt("id") + " Name " + rs.getString("name"));
 		}
+		
+		rs = handle.executeSQLRead("SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA='PUBLIC' ");
+		while (rs.next()) {
+			logger.info(rs.getString("TABLE_NAME") + "|");
+		}
+		logger.info("");
+		handle.executeSQLWrite("DROP TABLE PERSON");
 	}
-
-
 }

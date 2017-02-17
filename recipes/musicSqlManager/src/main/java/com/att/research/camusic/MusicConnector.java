@@ -62,6 +62,11 @@ public class MusicConnector {
 		return session;
 	}
 	
+	public void close(){
+		session.close();
+		cluster.close();
+	}
+	
 	private void connectToCassaCluster(String address){
 		System.out.println("wrong");
 		Iterator<String> it = getAllPossibleLocalIps().iterator();

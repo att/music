@@ -51,21 +51,33 @@ public class DbEventTriggerHandler implements DatabaseEventListener{
 
 	@Override
 	/**
-	 * This method gets triggered on every db event which we wish to use to capture table creation and deletion
-	 * todo: capture keyspace or schema events
+	 * This method gets triggered on every db event which we wish to use to capture table creation. Currently does not support capture keyspace/schema/table drop events.
+	 * Drops are hard, because we do not want to drop a table until it is committed in a transaction and that is hard to capture. 
+	 * 
 	 */
 	public void setProgress(int arg0, String arg1, int arg2, int arg3) {
+		logger.debug("Db event:"+arg1);
 		StringTokenizer st = new StringTokenizer(arg1);
 		String first = st.nextToken();
 		String second = st.nextToken();
 		String third = st.nextToken();
 		if(first.equalsIgnoreCase("create") && second.equalsIgnoreCase("table")){
-			String tableName = third.substring(0, third.indexOf("("));
-			createTableEvent(tableName);
-		}else if(first.equalsIgnoreCase("drop") && second.equalsIgnoreCase("table")){
+			try {
+				String tableName = third.substring(0, third.indexOf("("));
+				ResultSet rs = new MusicSqlManager().executeSQLRead("SELECT * FROM INFORMATION_SCHEMA.TABLES where TABLE_NAME= '"+tableName+"'");
+				if(rs.next())
+					createTableEvent(tableName);
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		
+	/* 	
+	 * else if(first.equalsIgnoreCase("drop") && second.equalsIgnoreCase("table")){
 			String tableName = third.substring(0, third.indexOf("("));
 			new MusicSqlManager().clearMusicForTable(tableName);
-		}
+		}*/ 
 	}
 	
 	/**This method is called when a table is created in the database to enable the corresponding intializations in the
@@ -73,21 +85,22 @@ public class DbEventTriggerHandler implements DatabaseEventListener{
 	 * @param tableName
 	 */
 	private void createTableEvent(String tableName){
-		logger.info("Table creation event:table name:"+tableName);
-        Connection connection = H2Example.getDBConnection();
+      //  Connection connection = H2Example.getDBConnection();
         try {
-			Statement stmt = connection.createStatement();
-			ResultSet rs = stmt.executeQuery("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.INDEXES C where TABLE_NAME= 'PERSON'");
+		//	Statement stmt = connection.createStatement();
+        	
+			ResultSet rs = new MusicSqlManager().executeSQLRead("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.INDEXES C where TABLE_NAME= '"+tableName+"'");
 			ArrayList<String> primaryKeys = new ArrayList<String>();
 			while(rs.next()){
 				String keyName = rs.getString("COLUMN_NAME");
 				primaryKeys.add(keyName);
 			}
 			if((primaryKeys.size() == 1) && (primaryKeys.get(0).equals("ID_"))){
+				logger.info("Table "+tableName+" created, primary keys:"+primaryKeys);
 				new MusicSqlManager().initializeDbAndMusicForTable(tableName);
 			}
 			else
-				logger.warn("Table "+tableName+" does not have supported primary keys:"+primaryKeys);
+				logger.warn("Table creation event, table "+tableName+" ignored since it does not have supported primary keys :"+primaryKeys);
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

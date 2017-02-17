@@ -25,6 +25,7 @@ import com.datastax.driver.core.Session;
 public class MusicSqlManager {
 	private static Session musicSession = null;
 	private static Connection dbConnection=null;
+	private static MusicConnector mCon = null;
 	final static Logger logger = Logger.getLogger(MusicSqlManager.class);
 	
 	/**
@@ -43,10 +44,15 @@ public class MusicSqlManager {
 	 * @param tableName This is the table on which triggers are being created.
 	 */
 	private void createSQLTriggers(String tableName){
-		executeSQLWrite("CREATE TRIGGER IF NOT EXISTS TRI_INS_"+tableName+" AFTER INSERT ON "+tableName+"  FOR EACH ROW CALL \""+ConfigDetails.triggerClassName+"\"");
-		executeSQLWrite("CREATE TRIGGER IF NOT EXISTS TRI_UPDATE_"+tableName+" AFTER UPDATE ON "+tableName+"  FOR EACH ROW CALL \""+ConfigDetails.triggerClassName+"\"");
-		executeSQLWrite("CREATE TRIGGER IF NOT EXISTS TRI_DEL_"+tableName+" AFTER DELETE ON "+tableName+"  FOR EACH ROW CALL \""+ConfigDetails.triggerClassName+"\"");
-		executeSQLWrite("CREATE TRIGGER IF NOT EXISTS TRI_SEL_"+tableName+" BEFORE SELECT ON "+tableName+"  CALL \""+ConfigDetails.triggerClassName+"\"");
+		try {
+			executeSQLWrite("CREATE TRIGGER IF NOT EXISTS TRI_INS_"+tableName+" AFTER INSERT ON "+tableName+"  FOR EACH ROW CALL \""+ConfigDetails.triggerClassName+"\"");
+			executeSQLWrite("CREATE TRIGGER IF NOT EXISTS TRI_UPDATE_"+tableName+" AFTER UPDATE ON "+tableName+"  FOR EACH ROW CALL \""+ConfigDetails.triggerClassName+"\"");
+			executeSQLWrite("CREATE TRIGGER IF NOT EXISTS TRI_DEL_"+tableName+" AFTER DELETE ON "+tableName+"  FOR EACH ROW CALL \""+ConfigDetails.triggerClassName+"\"");
+			executeSQLWrite("CREATE TRIGGER IF NOT EXISTS TRI_SEL_"+tableName+" BEFORE SELECT ON "+tableName+"  CALL \""+ConfigDetails.triggerClassName+"\"");
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
 	/*
@@ -209,7 +215,20 @@ public class MusicSqlManager {
 			}
 		}
 		String primaryKeyValue = musicRow.getString("f0");
-		String selectQuery = "select "+ primaryKeyName+" FROM "+tableName+" WHERE "+primaryKeyName+"="+primaryKeyValue+";";
+		String dbWriteQuery=null;
+		try{
+			dbWriteQuery = "INSERT INTO "+tableName+" VALUES"+valueString+";";
+			executeSQLWrite(dbWriteQuery);
+		} catch (SQLException e) {
+			dbWriteQuery = "UPDATE "+tableName+" SET "+columnNameString+" = "+ valueString +"WHERE "+primaryKeyName+"="+primaryKeyValue+";";
+			try {
+				executeSQLWrite(dbWriteQuery);
+			} catch (SQLException e1) {
+				e1.printStackTrace();
+			}
+		}
+
+/*		String selectQuery = "select "+ primaryKeyName+" FROM "+tableName+" WHERE "+primaryKeyName+"="+primaryKeyValue+";";
 		java.sql.ResultSet rs = executeSQLRead(selectQuery);
 		String dbWriteQuery=null;
 		try {
@@ -222,7 +241,7 @@ public class MusicSqlManager {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		
+		*/
 		//clean the music dirty bits table
 		String dirtyRowIdsTableName = "camunda.dirty_"+tableName+"_"+ConfigDetails.myId;
 		String deleteQuery = "delete from "+dirtyRowIdsTableName+" where dirtyRowKeys=$$"+primaryKeyValue+"$$;";
@@ -260,8 +279,11 @@ public class MusicSqlManager {
 	 */
 	private   Session getMusicSession(){	
 		//create cassa session
-		if(musicSession == null)
-			musicSession = new MusicConnector(ConfigDetails.musicAddress).getSession();
+		if(musicSession == null){
+			logger.info("New Music session created");
+			mCon = new MusicConnector(ConfigDetails.musicAddress);
+			musicSession = mCon.getSession();
+		}
 		return musicSession;
 	}
 
@@ -290,34 +312,27 @@ public class MusicSqlManager {
 		return columnNames;
 	}
 	/**
-	 * This method executes a write query in the sql database
+	 * This method executes a write query in the sql database. 
 	 * @param query
 	 */
-	private  void executeSQLWrite(String query){
-		try {
+	public  void executeSQLWrite(String query) throws SQLException{
 			Connection con = getDbConnection();
 			Statement stmt = con.createStatement();
 			stmt.execute(query);
 			stmt.close();
 			con.commit();
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
 	}
 	
 	/**
 	 * This method executes a read query in the sql database
 	 * @param query
 	 */
-	private java.sql.ResultSet executeSQLRead(String query){
+	public java.sql.ResultSet executeSQLRead(String query){
 		java.sql.ResultSet rs = null;
 		try {
 			Connection con = getDbConnection();
 			Statement stmt = con.createStatement();
 			rs = stmt.executeQuery(query);
-			stmt.close();
-			con.commit();
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -330,7 +345,7 @@ public class MusicSqlManager {
 	 */
     private static Connection getDbConnection() {
     	if(dbConnection == null){
-    		logger.info("Db connection null");
+			logger.info("New db connection created");
 	        try {
 	            Class.forName(ConfigDetails.DB_DRIVER);
 	        } catch (ClassNotFoundException e) {
@@ -346,25 +361,34 @@ public class MusicSqlManager {
         return dbConnection;
     }
 
+    public void close(){
+    	try {
+			getDbConnection().close();
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+    	mCon.close();
+    }
 	public static void main(String[] args) throws Exception {
 		System.out.println("Starting music-sql-manager..printing out all tables..");
 		MusicSqlManager handle = new MusicSqlManager();
-		handle.executeSQLWrite("CREATE TABLE PERSON(id int, name varchar(255), primary key (id,name))");
-		handle.executeSQLWrite("INSERT INTO PERSON(id, name) VALUES(1, 'Anju')");
-		handle.executeSQLWrite("INSERT INTO PERSON(id, name) VALUES(2, 'Sonia')");
-		handle.executeSQLWrite("INSERT INTO PERSON(id, name) VALUES(3, 'Asha')");
+		handle.executeSQLWrite("CREATE TABLE TEST_MANY_KEYS(id int, name varchar(255), primary key (id,name))");
+		
+		handle.executeSQLWrite("CREATE TABLE TEST_NO_KEYS(id int, name varchar(255))");
 
-		java.sql.ResultSet rs = handle.executeSQLRead("select * from PERSON");
-		logger.info("H2 In-Memory Database inserted through Statement");
+		handle.executeSQLWrite("CREATE TABLE PERSON(ID_ varchar(255), name varchar(255), primary key (ID_))");
+	
+		handle.executeSQLWrite("INSERT INTO PERSON(ID_, name) VALUES('1', 'Anju')");
+		handle.executeSQLWrite("INSERT INTO PERSON(ID_, name) VALUES('2', 'Sonia')");
+		handle.executeSQLWrite("INSERT INTO PERSON(ID_, name) VALUES('3', 'Asha')");
+
+		java.sql.ResultSet rs = handle.executeSQLRead("select * from PERSON where ID_='1'");
 		while (rs.next()) {
-			logger.info("Id " + rs.getInt("id") + " Name " + rs.getString("name"));
+			logger.info("ID_ " + rs.getInt("ID_") + " Name " + rs.getString("name"));
 		}
 		
-		rs = handle.executeSQLRead("SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA='PUBLIC' ");
-		while (rs.next()) {
-			logger.info(rs.getString("TABLE_NAME") + "|");
-		}
-		logger.info("");
 		handle.executeSQLWrite("DROP TABLE PERSON");
+		handle.close();
 	}
 }

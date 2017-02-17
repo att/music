@@ -22,13 +22,16 @@
 Local Installation Guide for Music
 ==================================
 
+Prerequisites
+=============
+If you are using a VM make sure it has at least 8 GB of RAM (It may work with 4 GB, but with 2 GB it does give issues).
+
 Instructions
 ============
-1. If you are using a VM make sure it has at least 8 GB of RAM (I think it works even with 4 GB, but with 2 GB it did give issues).
-2. Ensure you have java jdk 7 or 8 working on your machine.
-3. Download apache cassandra 3.0 and follow these `instructions <http://cassandra.apache.org/doc/latest/getting_started/index.html>`__ till and including Step 4. By the end of this you should have Cassandra working.
-4. Download Zookeeper 3.4.6 from and follow these `instructions <https://zookeeper.apache.org/doc/r3.4.6/zookeeperStarted.html>`__ pertaining to the standalone operation. By the end of this you should have Zookeeper working.
-5. Download the latest Apache Tomcat and follow these `instructions <https://wolfpaulus.com/journal/mac/tomcat/>`__ for mac installation (I have not used other OSes, but this is standard stuff).  Build the music war file and place within the webapps folder of the tomcat installation.
-6. Download the client app for Music from `here <https://github.com/att/music/tree/master/examples/VoteAppMusicJava>`__, then use a java editor to import the maven project, VoteAppForMUSIC, and then run the file VotingApp.  The expected output should be pretty easy to understand just by looking at the file VotingApp.java.
+1. Ensure you have java jdk 8 or above working on your machine.
+2. Download apache cassandra 3.0 and follow these `instructions <http://cassandra.apache.org/doc/latest/getting_started/installing.html>`__ till and including Step 4. By the end of this you should have Cassandra working.
+3. Download Zookeeper 3.4.6 from and follow these `instructions <http://cassandra.apache.org/download/>`__ pertaining to the standalone operation. By the end of this you should have Zookeeper working.
+4. Download the latest Apache Tomcat and follow these `instructions <http://tecadmin.net/install-tomcat-9-on-ubuntu/>`__ (this is for version 9).  Build the music war file and place within the webapps folder of the tomcat installation.
+5. Download the client app for Music from `here <https://github.com/att/music/tree/master/examples/VoteAppMusicJava>`__, then use a java editor to import the maven project, VoteAppForMUSIC, and then run the file VotingApp.  The expected output should be pretty easy to understand just by looking at the file VotingApp.java.
 
 

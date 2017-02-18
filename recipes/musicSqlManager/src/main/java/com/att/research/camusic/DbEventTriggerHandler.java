@@ -96,11 +96,12 @@ public class DbEventTriggerHandler implements DatabaseEventListener{
 				primaryKeys.add(keyName);
 			}
 			if((primaryKeys.size() == 1) && (primaryKeys.get(0).equals("ID_"))){
+				logger.info("-----------------------------------------------------");
 				logger.info("Table "+tableName+" created, primary keys:"+primaryKeys);
 				new MusicSqlManager().initializeDbAndMusicForTable(tableName);
 			}
 			else
-				logger.warn("Table creation event, table "+tableName+" ignored since it does not have supported primary keys :"+primaryKeys);
+				logger.debug("Table creation event, table "+tableName+" ignored since it does not have supported primary keys :"+primaryKeys);
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

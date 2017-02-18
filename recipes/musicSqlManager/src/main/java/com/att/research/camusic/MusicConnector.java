@@ -10,6 +10,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
+import org.apache.log4j.Logger;
+
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.ColumnDefinitions;
 import com.datastax.driver.core.ConsistencyLevel;
@@ -29,13 +31,13 @@ import com.datastax.driver.core.exceptions.NoHostAvailableException;
 public class MusicConnector {
 	private Session session;
 	private Cluster cluster;
-	
+	final static Logger logger = Logger.getLogger(MusicConnector.class);
+
 	protected MusicConnector(){
 		//to defeat instantiation since this is a singleton
 	}
 	
 	public MusicConnector(String address){
-		System.out.println("Connecting to cass cluster..");
 		connectToCassaCluster(address);
 	}
 
@@ -68,24 +70,23 @@ public class MusicConnector {
 	}
 	
 	private void connectToCassaCluster(String address){
-		System.out.println("wrong");
 		Iterator<String> it = getAllPossibleLocalIps().iterator();
-		System.out.println("Iterating through possible ips.."+getAllPossibleLocalIps());
+		logger.info("Iterating through possible ips:"+getAllPossibleLocalIps());
 		while(it.hasNext()){
 			try {
 				cluster = Cluster.builder().withPort(9042).addContactPoint(address).build();
 				//cluster.getConfiguration().getSocketOptions().setReadTimeoutMillis(Integer.MAX_VALUE);
 				Metadata metadata = cluster.getMetadata();
-				System.out.printf("Connected to cluster: %s\n", 
+/*				logger.info("Connected to cluster: %s\n", 
 						metadata.getClusterName());
 				for ( Host host : metadata.getAllHosts() ) {
 					System.out.printf("Datacenter: %s; Host broadcast: %s; Rack: %s\n",
 							host.getDatacenter(), host.getBroadcastAddress(), host.getRack());
-				}
+				}*/
+				logger.info("Connected to cluster:"+metadata.getClusterName()+" at address:"+address);
 				session = cluster.connect();
 				break;
 			} catch (NoHostAvailableException e) {
-				System.out.println("Cant find host:"+ address);
 				address= it.next();
 			} 
 		}

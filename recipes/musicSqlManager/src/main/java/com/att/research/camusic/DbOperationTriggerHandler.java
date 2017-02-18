@@ -36,25 +36,32 @@ public class DbOperationTriggerHandler implements org.h2.api.Trigger{
 	@Override
 	public void fire(Connection arg0, Object[] oldRow, Object[] newRow)
 			throws SQLException {
-		logger.info("-----Trigger Name:---"+ triggerName+" "+ oldRow+"|"+newRow);
 		if((oldRow ==null) && (newRow == null)){//this is a select Query; just merge the table
+			logger.info("-----------------------------------------------------");
+			logger.info("In trigger fire, Trigger Name:"+ triggerName+", Operation type: select");
 			musicHandle.readDirtyRowsAndUpdateDb(tableName);
 		}else
 		if(oldRow == null){//this is an insert
+			logger.info("-----------------------------------------------------");
 			String rowKey = (String)newRow[0];//key of inserted row
-			logger.info("*********In trigger fire:"+ tableName + "-insert**********");
+			logger.info("In trigger fire, Trigger Name:"+ triggerName+", Operation type: insert");
 			musicHandle.updateDirtyRowAndEntityTableInMusic(tableName, newRow,rowKey);
 			return; 
 		}else 
 		if(newRow == null){	//this is a delete
+			logger.info("-----------------------------------------------------");
 			String rowKey = (String)oldRow[0];//key of deleted row
-			logger.info("*********In trigger fire:"+ tableName + "-delete**********");
+			logger.info("In trigger fire, Trigger Name:"+ triggerName+", Operation type: delete");
 			musicHandle.deleteFromEntityTableInMusic(tableName,rowKey);		
 			return;
 		}else{//this is an update
-			String rowKey = (String)oldRow[0];//key of updated row
-			logger.info("*********In trigger fire:"+ tableName + "-update**********");
-			musicHandle.updateDirtyRowAndEntityTableInMusic(tableName, newRow,rowKey);
+			if(MusicSqlManager.getIsUpdateInProgress())//to avoid cycylical updates
+				MusicSqlManager.setIsUpdateInProgress(false);
+			else{
+				logger.info("-----------------------------------------------------");
+				String rowKey = (String)oldRow[0];//key of updated row
+				logger.info("In trigger fire, Trigger Name:"+ triggerName+", Operation type: update");
+				musicHandle.updateDirtyRowAndEntityTableInMusic(tableName, newRow,rowKey);}
 		}	}
 
 	@Override

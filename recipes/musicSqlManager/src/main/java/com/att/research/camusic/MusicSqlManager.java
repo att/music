@@ -27,7 +27,15 @@ public class MusicSqlManager {
 	private static Connection dbConnection=null;
 	private static MusicConnector mCon = null;
 	final static Logger logger = Logger.getLogger(MusicSqlManager.class);
+	private static boolean isUpdateInProgress=false;
 	
+	public synchronized static void setIsUpdateInProgress(boolean value){
+		isUpdateInProgress = value;
+	}
+	
+	public synchronized static boolean getIsUpdateInProgress(){
+		return isUpdateInProgress;
+	}
 	/**
 	 * This function initializes both the database and MUSIC for the new table
 	 * @param tableName This is the table on which triggers are being created.
@@ -35,7 +43,7 @@ public class MusicSqlManager {
 	public void initializeDbAndMusicForTable(String tableName){
 		createSQLTriggers(tableName);
 		createMusicKeyspace();
-		createEntityAndDirtyRowsTableInMusic(tableName);	
+		createDataAndDirtyMusicTables(tableName);	
 	}
 	
 	/**
@@ -78,13 +86,8 @@ public class MusicSqlManager {
 	 * 
 	 * @param tableName This is the table name of the sql table
 	 */
-	private void createEntityAndDirtyRowsTableInMusic(String tableName){	
+	private void createDataAndDirtyMusicTables(String tableName){	
 		ArrayList<String> columnNames = getSQLColumnNames(tableName);
-		if(columnNames.isEmpty()){
-			logger.info("there is no table named "+ tableName);
-			return;
-		}
-
 		int numOfFields = columnNames.size();
 		
 		String fieldsString = "(";
@@ -121,7 +124,6 @@ public class MusicSqlManager {
 	 * @param changedRowKey This is the primary key of the changed row
 	 */
 	public  void updateDirtyRowAndEntityTableInMusic(String tableName,Object[] changedRow, String changedRowKey){
-		logger.info("in update dirty row and entity table in Music"+tableName+" "+changedRow+" "+changedRowKey);
 		//mark the dirty rows in music for all the replica tables
 		for(int i=0; i < ConfigDetails.allReplicaIds.length;++i){
 			String dirtyRowsTableName = "dirty_"+tableName+"_"+ConfigDetails.allReplicaIds[i];
@@ -129,7 +131,7 @@ public class MusicSqlManager {
 			executeMusicWriteQuery(dirtyTableQuery);
 		}
 		
-		//read the row from the sql database
+		//format the db row
 		
 		String valueString = "(";
 		String fieldsString="(";	
@@ -180,6 +182,7 @@ public class MusicSqlManager {
 		String dirtyRowIdsQuery = "select * from "+dirtyRowIdsTableName+";";
 		ResultSet results = executeMusicRead(dirtyRowIdsQuery);
 		for (com.datastax.driver.core.Row row : results) {
+			logger.info("-----------------------");
 			String dirtyRowId = row.getString(0);//only one column
 			String dirtyRowQuery = "select * from camunda."+tableName+" where f0=$$"+dirtyRowId+"$$;";
 			ResultSet dirtyRows = executeMusicRead(dirtyRowQuery);
@@ -197,8 +200,10 @@ public class MusicSqlManager {
 	 * @param columnNames These are the column names
 	 */
 	private void writeMusicRowToSQLDb(com.datastax.driver.core.Row musicRow, String tableName, String primaryKeyName,ArrayList<String> columnNames){
+		//set the update in progress flag to ensure that we dont cyclically update again
+		setIsUpdateInProgress(true);
+
 		//first construct the value string and column name string for the db write
-		logger.info("Writing for table "+ tableName);
 		int numOfColumns = columnNames.size();
 		String valueString = "(";
 		String columnNameString = "("; //needed onyl when we are doing an update
@@ -220,6 +225,7 @@ public class MusicSqlManager {
 			dbWriteQuery = "INSERT INTO "+tableName+" VALUES"+valueString+";";
 			executeSQLWrite(dbWriteQuery);
 		} catch (SQLException e) {
+			logger.info("Insert failed because row exists, do an update");
 			dbWriteQuery = "UPDATE "+tableName+" SET "+columnNameString+" = "+ valueString +"WHERE "+primaryKeyName+"="+primaryKeyValue+";";
 			try {
 				executeSQLWrite(dbWriteQuery);
@@ -263,6 +269,7 @@ public class MusicSqlManager {
 	 * @param query
 	 */
 	private  void executeMusicWriteQuery(String query){
+		logger.info("Executing music write:"+ query);
 		getMusicSession().execute(query);
 	}
 	
@@ -271,6 +278,7 @@ public class MusicSqlManager {
 	 * @param query
 	 */
 	private  ResultSet executeMusicRead(String query){
+		logger.info("Executing music read:"+ query);
 		return getMusicSession().execute(query);
 	}
 	
@@ -316,6 +324,7 @@ public class MusicSqlManager {
 	 * @param query
 	 */
 	public  void executeSQLWrite(String query) throws SQLException{
+			logger.info("Executing SQL write:"+ query);
 			Connection con = getDbConnection();
 			Statement stmt = con.createStatement();
 			stmt.execute(query);
@@ -328,6 +337,7 @@ public class MusicSqlManager {
 	 * @param query
 	 */
 	public java.sql.ResultSet executeSQLRead(String query){
+		logger.info("Executing SQL read:"+ query);
 		java.sql.ResultSet rs = null;
 		try {
 			Connection con = getDbConnection();
@@ -371,24 +381,32 @@ public class MusicSqlManager {
     	mCon.close();
     }
 	public static void main(String[] args) throws Exception {
-		System.out.println("Starting music-sql-manager..printing out all tables..");
-		MusicSqlManager handle = new MusicSqlManager();
-		handle.executeSQLWrite("CREATE TABLE TEST_MANY_KEYS(id int, name varchar(255), primary key (id,name))");
+		logger.info("Starting music-sql-manager..");
+		Statement stmt = MusicSqlManager.getDbConnection().createStatement();
+		stmt.execute("CREATE TABLE TEST_MANY_KEYS(id int, name varchar(255), primary key (id,name))");
 		
-		handle.executeSQLWrite("CREATE TABLE TEST_NO_KEYS(id int, name varchar(255))");
+		stmt.execute("CREATE TABLE TEST_NO_KEYS(id int, name varchar(255))");
 
-		handle.executeSQLWrite("CREATE TABLE PERSON(ID_ varchar(255), name varchar(255), primary key (ID_))");
+		stmt.execute("CREATE TABLE PERSON(ID_ varchar(255), name varchar(255), primary key (ID_))");
 	
-		handle.executeSQLWrite("INSERT INTO PERSON(ID_, name) VALUES('1', 'Anju')");
-		handle.executeSQLWrite("INSERT INTO PERSON(ID_, name) VALUES('2', 'Sonia')");
-		handle.executeSQLWrite("INSERT INTO PERSON(ID_, name) VALUES('3', 'Asha')");
+		stmt.execute("INSERT INTO PERSON(ID_, name) VALUES('1', 'Anju')");
+		stmt.execute("INSERT INTO PERSON(ID_, name) VALUES('2', 'Sonia')");
+		stmt.execute("INSERT INTO PERSON(ID_, name) VALUES('3', 'Asha')");
 
-		java.sql.ResultSet rs = handle.executeSQLRead("select * from PERSON where ID_='1'");
+		java.sql.ResultSet rs = stmt.executeQuery("select * from PERSON");
+
 		while (rs.next()) {
 			logger.info("ID_ " + rs.getInt("ID_") + " Name " + rs.getString("name"));
 		}
 		
-		handle.executeSQLWrite("DROP TABLE PERSON");
-		handle.close();
+		
+		stmt.execute("DROP TABLE PERSON");
+		
+		while(true){
+			rs = stmt.executeQuery("Select * from INFORMATION_SCHEMA.TABLES where TABLE_TYPE='PUBLIC'");
+			while (rs.next()) {
+				logger.info(rs.getString("TABLE_NAME"));
+			}
+		}
 	}
 }

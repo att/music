@@ -3,7 +3,9 @@ package com.att.research.camusic;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.HashSet;
 import java.util.Properties;
+import java.util.Set;
 
 import org.apache.log4j.Logger;
 
@@ -20,8 +22,19 @@ public class ConfigDetails {
 	final static Logger logger = Logger.getLogger(ConfigDetails.class);
 
 	public static void main(String[] args){
-		populate();
+		Set<String> a= new HashSet<String>();
+		a.add("a");
+		a.add("bi");
+		
+		Set<String> b= new HashSet<String>();
+		b.add("b");
+		b.add("a");
+		
+		System.out.println(a.equals(b));
+		
+	
 	}
+
 	public static void populate(){
 		Properties prop = new Properties();
 		InputStream input = null;

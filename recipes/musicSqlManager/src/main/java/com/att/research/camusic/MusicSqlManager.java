@@ -277,7 +277,7 @@ public class MusicSqlManager {
 	 * This method executes a write query in Music
 	 * @param query
 	 */
-	private  void executeMusicWriteQuery(String query){
+	public  void executeMusicWriteQuery(String query){
 		logger.info("Executing music write:"+ query);
 		getMusicSession().execute(query);
 	}
@@ -286,7 +286,7 @@ public class MusicSqlManager {
 	 * This method executes a read query in Music
 	 * @param query
 	 */
-	private  ResultSet executeMusicRead(String query){
+	public  ResultSet executeMusicRead(String query){
 		logger.info("Executing music read:"+ query);
 		return getMusicSession().execute(query);
 	}
@@ -395,18 +395,38 @@ public class MusicSqlManager {
     
 	public static void main(String[] args) throws Exception {
 		MusicSqlManager handle = new MusicSqlManager();
-		Statement stmt = handle.getDbConnection().createStatement();
- 		java.sql.ResultSet rs;
+		
+    	handle.executeSQLWrite("CREATE TABLE TEST_NO_KEYS (id int, name varchar(255))");
+    	
+
+    	handle.executeSQLWrite("CREATE TABLE PERSON (ID_ varchar(255), name varchar(255), primary key (ID_))");
+    	handle.executeSQLWrite("INSERT INTO PERSON (ID_, name) VALUES('1', 'Anju')");
+    	handle.executeSQLWrite("INSERT INTO PERSON (ID_, name) VALUES('2', 'Sonia')");
+    	handle.executeSQLWrite("INSERT INTO PERSON (ID_, name) VALUES('3', 'Sameer')");
+    	   	
+    	handle.executeSQLWrite("UPDATE PERSON SET NAME='Sonia Sharma' where ID_='2'");
+    	
+    	handle.executeSQLWrite("DELETE FROM PERSON WHERE ID_='1'");
+
+
+ 		java.sql.ResultSet dbRs = handle.executeSQLRead("select * from PERSON");
+
+		while (dbRs.next()) {
+			logger.info("ID_ " + dbRs.getInt("ID_") + " Name " + dbRs.getString("name"));
+		}
+
+		handle.executeSQLWrite("DROP table PERSON");
+		handle.executeSQLWrite("DROP table TEST_NO_KEYS");
+		
 
 		while(true){
-			rs = stmt.executeQuery("SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA='PUBLIC' ");
+			dbRs = handle.executeSQLRead("SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA='PUBLIC' ");
 			String publicTables="";
-			while (rs.next()) {
-				publicTables = publicTables +"|"+rs.getString("TABLE_NAME");
+			while (dbRs.next()) {
+				publicTables = publicTables +"|"+dbRs.getString("TABLE_NAME");
 			}
 			logger.info("Public Tables:"+publicTables);
 			Thread.sleep(2000);
-
 		}
 	}
 }

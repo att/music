@@ -31,6 +31,6 @@ Instructions
 MusicSqlManager.java with all the required libraries
 4. Configure the config.properties and the log4j.properties and place it in the same folder as the
 jar 
-2. Run the jar using java -jar mdbc.jar and you should see the log4j printouts for a basic test case
+5. Run the jar using java -jar mdbc.jar and you should see the log4j printouts for a basic test case
 in which we create tables, insert, update, delete and select rows from it and finally a constant loop
 that prints out all the public tables in this database. 

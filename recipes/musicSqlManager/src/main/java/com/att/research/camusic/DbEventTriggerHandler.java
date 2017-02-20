@@ -56,14 +56,14 @@ public class DbEventTriggerHandler implements DatabaseEventListener{
 	 * 
 	 */
 	public void setProgress(int arg0, String arg1, int arg2, int arg3) {
-		logger.debug("Db event:"+arg1);
 		StringTokenizer st = new StringTokenizer(arg1);
 		String first = st.nextToken();
 		String second = st.nextToken();
 		String third = st.nextToken();
 		if(first.equalsIgnoreCase("create") && second.equalsIgnoreCase("table")){
+			String tableName = third;
 			try {
-				String tableName = third.substring(0, third.indexOf("("));
+				logger.info("In set progress, the table name:"+tableName);
 				ResultSet rs = new MusicSqlManager().executeSQLRead("SELECT * FROM INFORMATION_SCHEMA.TABLES where TABLE_NAME= '"+tableName+"'");
 				if(rs.next())
 					createTableEvent(tableName);
@@ -85,10 +85,8 @@ public class DbEventTriggerHandler implements DatabaseEventListener{
 	 * @param tableName
 	 */
 	private void createTableEvent(String tableName){
-      //  Connection connection = H2Example.getDBConnection();
-        try {
-		//	Statement stmt = connection.createStatement();
-        	
+		logger.info("Real table creation event:"+tableName);
+        try {       	
 			ResultSet rs = new MusicSqlManager().executeSQLRead("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.INDEXES C where TABLE_NAME= '"+tableName+"'");
 			ArrayList<String> primaryKeys = new ArrayList<String>();
 			while(rs.next()){
@@ -101,7 +99,7 @@ public class DbEventTriggerHandler implements DatabaseEventListener{
 				new MusicSqlManager().initializeDbAndMusicForTable(tableName);
 			}
 			else
-				logger.debug("Table creation event, table "+tableName+" ignored since it does not have supported primary keys :"+primaryKeys);
+				logger.info("Table creation event, table "+tableName+" ignored since it does not have supported primary keys :"+primaryKeys);
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

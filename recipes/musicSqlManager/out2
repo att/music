@@ -1,0 +1,1008 @@
+2017-02-19 11:05:46 INFO  MusicSqlManager:384 - Starting music-sql-manager with db listener info..
+2017-02-19 11:05:46 INFO  MusicSqlManager:358 - New db connection created
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_GE_PROPERTY ( 
+NAME_ varchar(64), 
+VALUE_ varchar(300), 
+REV_ integer, 
+primary key (NAME_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_GE_PROPERTY ( 
+NAME_ varchar(64), 
+VALUE_ varchar(300), 
+REV_ integer, 
+primary key (NAME_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_GE_BYTEARRAY ( 
+ID_ varchar(64), 
+REV_ integer, 
+NAME_ varchar(255), 
+DEPLOYMENT_ID_ varchar(64), 
+BYTES_ longvarbinary, 
+GENERATED_ bit, 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_GE_BYTEARRAY ( 
+ID_ varchar(64), 
+REV_ integer, 
+NAME_ varchar(255), 
+DEPLOYMENT_ID_ varchar(64), 
+BYTES_ longvarbinary, 
+GENERATED_ bit, 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_RE_DEPLOYMENT ( 
+ID_ varchar(64), 
+NAME_ varchar(255), 
+DEPLOY_TIME_ timestamp, 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_RE_DEPLOYMENT ( 
+ID_ varchar(64), 
+NAME_ varchar(255), 
+DEPLOY_TIME_ timestamp, 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_RU_EXECUTION ( 
+ID_ varchar(64), 
+REV_ integer, 
+PROC_INST_ID_ varchar(64), 
+BUSINESS_KEY_ varchar(255), 
+PARENT_ID_ varchar(64), 
+PROC_DEF_ID_ varchar(64), 
+SUPER_EXEC_ varchar(64), 
+SUPER_CASE_EXEC_ varchar(64), 
+CASE_INST_ID_ varchar(64), 
+ACT_INST_ID_ varchar(64), 
+ACT_ID_ varchar(255), 
+IS_ACTIVE_ bit, 
+IS_CONCURRENT_ bit, 
+IS_SCOPE_ bit, 
+IS_EVENT_SCOPE_ bit, 
+SUSPENSION_STATE_ integer, 
+CACHED_ENT_STATE_ integer, 
+SEQUENCE_COUNTER_ integer, 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_RU_EXECUTION ( 
+ID_ varchar(64), 
+REV_ integer, 
+PROC_INST_ID_ varchar(64), 
+BUSINESS_KEY_ varchar(255), 
+PARENT_ID_ varchar(64), 
+PROC_DEF_ID_ varchar(64), 
+SUPER_EXEC_ varchar(64), 
+SUPER_CASE_EXEC_ varchar(64), 
+CASE_INST_ID_ varchar(64), 
+ACT_INST_ID_ varchar(64), 
+ACT_ID_ varchar(255), 
+IS_ACTIVE_ bit, 
+IS_CONCURRENT_ bit, 
+IS_SCOPE_ bit, 
+IS_EVENT_SCOPE_ bit, 
+SUSPENSION_STATE_ integer, 
+CACHED_ENT_STATE_ integer, 
+SEQUENCE_COUNTER_ integer, 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_RU_JOB ( 
+ID_ varchar(64) NOT NULL, 
+REV_ integer, 
+TYPE_ varchar(255) NOT NULL, 
+LOCK_EXP_TIME_ timestamp, 
+LOCK_OWNER_ varchar(255), 
+EXCLUSIVE_ boolean, 
+EXECUTION_ID_ varchar(64), 
+PROCESS_INSTANCE_ID_ varchar(64), 
+PROCESS_DEF_ID_ varchar(64), 
+PROCESS_DEF_KEY_ varchar(64), 
+RETRIES_ integer, 
+EXCEPTION_STACK_ID_ varchar(64), 
+EXCEPTION_MSG_ varchar(4000), 
+DUEDATE_ timestamp, 
+REPEAT_ varchar(255), 
+HANDLER_TYPE_ varchar(255), 
+HANDLER_CFG_ varchar(4000), 
+DEPLOYMENT_ID_ varchar(64), 
+SUSPENSION_STATE_ integer, 
+JOB_DEF_ID_ varchar(64), 
+SEQUENCE_COUNTER_ integer, 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_RU_JOB ( 
+ID_ varchar(64) NOT NULL, 
+REV_ integer, 
+TYPE_ varchar(255) NOT NULL, 
+LOCK_EXP_TIME_ timestamp, 
+LOCK_OWNER_ varchar(255), 
+EXCLUSIVE_ boolean, 
+EXECUTION_ID_ varchar(64), 
+PROCESS_INSTANCE_ID_ varchar(64), 
+PROCESS_DEF_ID_ varchar(64), 
+PROCESS_DEF_KEY_ varchar(64), 
+RETRIES_ integer, 
+EXCEPTION_STACK_ID_ varchar(64), 
+EXCEPTION_MSG_ varchar(4000), 
+DUEDATE_ timestamp, 
+REPEAT_ varchar(255), 
+HANDLER_TYPE_ varchar(255), 
+HANDLER_CFG_ varchar(4000), 
+DEPLOYMENT_ID_ varchar(64), 
+SUSPENSION_STATE_ integer, 
+JOB_DEF_ID_ varchar(64), 
+SEQUENCE_COUNTER_ integer, 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_RU_JOBDEF ( 
+ID_ varchar(64) NOT NULL, 
+REV_ integer, 
+PROC_DEF_ID_ varchar(64) NOT NULL, 
+PROC_DEF_KEY_ varchar(255) NOT NULL, 
+ACT_ID_ varchar(255) NOT NULL, 
+JOB_TYPE_ varchar(255) NOT NULL, 
+JOB_CONFIGURATION_ varchar(255), 
+SUSPENSION_STATE_ integer, 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_RU_JOBDEF ( 
+ID_ varchar(64) NOT NULL, 
+REV_ integer, 
+PROC_DEF_ID_ varchar(64) NOT NULL, 
+PROC_DEF_KEY_ varchar(255) NOT NULL, 
+ACT_ID_ varchar(255) NOT NULL, 
+JOB_TYPE_ varchar(255) NOT NULL, 
+JOB_CONFIGURATION_ varchar(255), 
+SUSPENSION_STATE_ integer, 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_RE_PROCDEF ( 
+ID_ varchar(64) NOT NULL, 
+REV_ integer, 
+CATEGORY_ varchar(255), 
+NAME_ varchar(255), 
+KEY_ varchar(255) NOT NULL, 
+VERSION_ integer NOT NULL, 
+DEPLOYMENT_ID_ varchar(64), 
+RESOURCE_NAME_ varchar(4000), 
+DGRM_RESOURCE_NAME_ varchar(4000), 
+HAS_START_FORM_KEY_ bit, 
+SUSPENSION_STATE_ integer, 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_RE_PROCDEF ( 
+ID_ varchar(64) NOT NULL, 
+REV_ integer, 
+CATEGORY_ varchar(255), 
+NAME_ varchar(255), 
+KEY_ varchar(255) NOT NULL, 
+VERSION_ integer NOT NULL, 
+DEPLOYMENT_ID_ varchar(64), 
+RESOURCE_NAME_ varchar(4000), 
+DGRM_RESOURCE_NAME_ varchar(4000), 
+HAS_START_FORM_KEY_ bit, 
+SUSPENSION_STATE_ integer, 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_RU_TASK ( 
+ID_ varchar(64), 
+REV_ integer, 
+EXECUTION_ID_ varchar(64), 
+PROC_INST_ID_ varchar(64), 
+PROC_DEF_ID_ varchar(64), 
+CASE_EXECUTION_ID_ varchar(64), 
+CASE_INST_ID_ varchar(64), 
+CASE_DEF_ID_ varchar(64), 
+NAME_ varchar(255), 
+PARENT_TASK_ID_ varchar(64), 
+DESCRIPTION_ varchar(4000), 
+TASK_DEF_KEY_ varchar(255), 
+OWNER_ varchar(255), 
+ASSIGNEE_ varchar(255), 
+DELEGATION_ varchar(64), 
+PRIORITY_ integer, 
+CREATE_TIME_ timestamp, 
+DUE_DATE_ timestamp, 
+FOLLOW_UP_DATE_ timestamp, 
+SUSPENSION_STATE_ integer, 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_RU_TASK ( 
+ID_ varchar(64), 
+REV_ integer, 
+EXECUTION_ID_ varchar(64), 
+PROC_INST_ID_ varchar(64), 
+PROC_DEF_ID_ varchar(64), 
+CASE_EXECUTION_ID_ varchar(64), 
+CASE_INST_ID_ varchar(64), 
+CASE_DEF_ID_ varchar(64), 
+NAME_ varchar(255), 
+PARENT_TASK_ID_ varchar(64), 
+DESCRIPTION_ varchar(4000), 
+TASK_DEF_KEY_ varchar(255), 
+OWNER_ varchar(255), 
+ASSIGNEE_ varchar(255), 
+DELEGATION_ varchar(64), 
+PRIORITY_ integer, 
+CREATE_TIME_ timestamp, 
+DUE_DATE_ timestamp, 
+FOLLOW_UP_DATE_ timestamp, 
+SUSPENSION_STATE_ integer, 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_RU_IDENTITYLINK ( 
+ID_ varchar(64), 
+REV_ integer, 
+GROUP_ID_ varchar(255), 
+TYPE_ varchar(255), 
+USER_ID_ varchar(255), 
+TASK_ID_ varchar(64), 
+PROC_DEF_ID_ varchar(64), 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_RU_IDENTITYLINK ( 
+ID_ varchar(64), 
+REV_ integer, 
+GROUP_ID_ varchar(255), 
+TYPE_ varchar(255), 
+USER_ID_ varchar(255), 
+TASK_ID_ varchar(64), 
+PROC_DEF_ID_ varchar(64), 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_RU_VARIABLE ( 
+ID_ varchar(64) not null, 
+REV_ integer, 
+TYPE_ varchar(255) not null, 
+NAME_ varchar(255) not null, 
+EXECUTION_ID_ varchar(64), 
+PROC_INST_ID_ varchar(64), 
+CASE_EXECUTION_ID_ varchar(64), 
+CASE_INST_ID_ varchar(64), 
+TASK_ID_ varchar(64), 
+BYTEARRAY_ID_ varchar(64), 
+DOUBLE_ double, 
+LONG_ bigint, 
+TEXT_ varchar(4000), 
+TEXT2_ varchar(4000), 
+VAR_SCOPE_ varchar(64) not null, 
+SEQUENCE_COUNTER_ integer, 
+IS_CONCURRENT_LOCAL_ bit, 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_RU_VARIABLE ( 
+ID_ varchar(64) not null, 
+REV_ integer, 
+TYPE_ varchar(255) not null, 
+NAME_ varchar(255) not null, 
+EXECUTION_ID_ varchar(64), 
+PROC_INST_ID_ varchar(64), 
+CASE_EXECUTION_ID_ varchar(64), 
+CASE_INST_ID_ varchar(64), 
+TASK_ID_ varchar(64), 
+BYTEARRAY_ID_ varchar(64), 
+DOUBLE_ double, 
+LONG_ bigint, 
+TEXT_ varchar(4000), 
+TEXT2_ varchar(4000), 
+VAR_SCOPE_ varchar(64) not null, 
+SEQUENCE_COUNTER_ integer, 
+IS_CONCURRENT_LOCAL_ bit, 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_RU_EVENT_SUBSCR ( 
+ID_ varchar(64) not null, 
+REV_ integer, 
+EVENT_TYPE_ varchar(255) not null, 
+EVENT_NAME_ varchar(255), 
+EXECUTION_ID_ varchar(64), 
+PROC_INST_ID_ varchar(64), 
+ACTIVITY_ID_ varchar(64), 
+CONFIGURATION_ varchar(255), 
+CREATED_ timestamp not null, 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_RU_EVENT_SUBSCR ( 
+ID_ varchar(64) not null, 
+REV_ integer, 
+EVENT_TYPE_ varchar(255) not null, 
+EVENT_NAME_ varchar(255), 
+EXECUTION_ID_ varchar(64), 
+PROC_INST_ID_ varchar(64), 
+ACTIVITY_ID_ varchar(64), 
+CONFIGURATION_ varchar(255), 
+CREATED_ timestamp not null, 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_RU_INCIDENT ( 
+ID_ varchar(64) not null, 
+REV_ integer not null, 
+INCIDENT_TIMESTAMP_ timestamp not null, 
+INCIDENT_MSG_ varchar(4000), 
+INCIDENT_TYPE_ varchar(255) not null, 
+EXECUTION_ID_ varchar(64), 
+ACTIVITY_ID_ varchar(255), 
+PROC_INST_ID_ varchar(64), 
+PROC_DEF_ID_ varchar(64), 
+CAUSE_INCIDENT_ID_ varchar(64), 
+ROOT_CAUSE_INCIDENT_ID_ varchar(64), 
+CONFIGURATION_ varchar(255), 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_RU_INCIDENT ( 
+ID_ varchar(64) not null, 
+REV_ integer not null, 
+INCIDENT_TIMESTAMP_ timestamp not null, 
+INCIDENT_MSG_ varchar(4000), 
+INCIDENT_TYPE_ varchar(255) not null, 
+EXECUTION_ID_ varchar(64), 
+ACTIVITY_ID_ varchar(255), 
+PROC_INST_ID_ varchar(64), 
+PROC_DEF_ID_ varchar(64), 
+CAUSE_INCIDENT_ID_ varchar(64), 
+ROOT_CAUSE_INCIDENT_ID_ varchar(64), 
+CONFIGURATION_ varchar(255), 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_RU_AUTHORIZATION ( 
+ID_ varchar(64) not null, 
+REV_ integer not null, 
+TYPE_ integer not null, 
+GROUP_ID_ varchar(255), 
+USER_ID_ varchar(255), 
+RESOURCE_TYPE_ integer not null, 
+RESOURCE_ID_ varchar(64), 
+PERMS_ integer, 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_RU_AUTHORIZATION ( 
+ID_ varchar(64) not null, 
+REV_ integer not null, 
+TYPE_ integer not null, 
+GROUP_ID_ varchar(255), 
+USER_ID_ varchar(255), 
+RESOURCE_TYPE_ integer not null, 
+RESOURCE_ID_ varchar(64), 
+PERMS_ integer, 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_RU_FILTER ( 
+ID_ varchar(64) not null, 
+REV_ integer not null, 
+RESOURCE_TYPE_ varchar(255) not null, 
+NAME_ varchar(255) not null, 
+OWNER_ varchar(255), 
+QUERY_ CLOB not null, 
+PROPERTIES_ CLOB, 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_RU_FILTER ( 
+ID_ varchar(64) not null, 
+REV_ integer not null, 
+RESOURCE_TYPE_ varchar(255) not null, 
+NAME_ varchar(255) not null, 
+OWNER_ varchar(255), 
+QUERY_ CLOB not null, 
+PROPERTIES_ CLOB, 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_RU_METER_LOG ( 
+ID_ varchar(64) not null, 
+NAME_ varchar(64) not null, 
+VALUE_ long, 
+TIMESTAMP_ timestamp not null, 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_RU_METER_LOG ( 
+ID_ varchar(64) not null, 
+NAME_ varchar(64) not null, 
+VALUE_ long, 
+TIMESTAMP_ timestamp not null, 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_HI_PROCINST ( 
+ID_ varchar(64) not null, 
+PROC_INST_ID_ varchar(64) not null, 
+BUSINESS_KEY_ varchar(255), 
+PROC_DEF_KEY_ varchar(255), 
+PROC_DEF_ID_ varchar(64) not null, 
+START_TIME_ timestamp not null, 
+END_TIME_ timestamp, 
+DURATION_ bigint, 
+START_USER_ID_ varchar(255), 
+START_ACT_ID_ varchar(255), 
+END_ACT_ID_ varchar(255), 
+SUPER_PROCESS_INSTANCE_ID_ varchar(64), 
+SUPER_CASE_INSTANCE_ID_ varchar(64), 
+CASE_INST_ID_ varchar(64), 
+DELETE_REASON_ varchar(4000), 
+primary key (ID_), 
+unique (PROC_INST_ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_HI_PROCINST ( 
+ID_ varchar(64) not null, 
+PROC_INST_ID_ varchar(64) not null, 
+BUSINESS_KEY_ varchar(255), 
+PROC_DEF_KEY_ varchar(255), 
+PROC_DEF_ID_ varchar(64) not null, 
+START_TIME_ timestamp not null, 
+END_TIME_ timestamp, 
+DURATION_ bigint, 
+START_USER_ID_ varchar(255), 
+START_ACT_ID_ varchar(255), 
+END_ACT_ID_ varchar(255), 
+SUPER_PROCESS_INSTANCE_ID_ varchar(64), 
+SUPER_CASE_INSTANCE_ID_ varchar(64), 
+CASE_INST_ID_ varchar(64), 
+DELETE_REASON_ varchar(4000), 
+primary key (ID_), 
+unique (PROC_INST_ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_HI_ACTINST ( 
+ID_ varchar(64) not null, 
+PARENT_ACT_INST_ID_ varchar(64), 
+PROC_DEF_KEY_ varchar(255), 
+PROC_DEF_ID_ varchar(64) not null, 
+PROC_INST_ID_ varchar(64) not null, 
+EXECUTION_ID_ varchar(64) not null, 
+ACT_ID_ varchar(255) not null, 
+TASK_ID_ varchar(64), 
+CALL_PROC_INST_ID_ varchar(64), 
+CALL_CASE_INST_ID_ varchar(64), 
+ACT_NAME_ varchar(255), 
+ACT_TYPE_ varchar(255) not null, 
+ASSIGNEE_ varchar(64), 
+START_TIME_ timestamp not null, 
+END_TIME_ timestamp, 
+DURATION_ bigint, 
+ACT_INST_STATE_ integer, 
+SEQUENCE_COUNTER_ integer, 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_HI_ACTINST ( 
+ID_ varchar(64) not null, 
+PARENT_ACT_INST_ID_ varchar(64), 
+PROC_DEF_KEY_ varchar(255), 
+PROC_DEF_ID_ varchar(64) not null, 
+PROC_INST_ID_ varchar(64) not null, 
+EXECUTION_ID_ varchar(64) not null, 
+ACT_ID_ varchar(255) not null, 
+TASK_ID_ varchar(64), 
+CALL_PROC_INST_ID_ varchar(64), 
+CALL_CASE_INST_ID_ varchar(64), 
+ACT_NAME_ varchar(255), 
+ACT_TYPE_ varchar(255) not null, 
+ASSIGNEE_ varchar(64), 
+START_TIME_ timestamp not null, 
+END_TIME_ timestamp, 
+DURATION_ bigint, 
+ACT_INST_STATE_ integer, 
+SEQUENCE_COUNTER_ integer, 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_HI_TASKINST ( 
+ID_ varchar(64) not null, 
+TASK_DEF_KEY_ varchar(255), 
+PROC_DEF_KEY_ varchar(255), 
+PROC_DEF_ID_ varchar(64), 
+PROC_INST_ID_ varchar(64), 
+EXECUTION_ID_ varchar(64), 
+CASE_DEF_KEY_ varchar(255), 
+CASE_DEF_ID_ varchar(64), 
+CASE_INST_ID_ varchar(64), 
+CASE_EXECUTION_ID_ varchar(64), 
+ACT_INST_ID_ varchar(64), 
+NAME_ varchar(255), 
+PARENT_TASK_ID_ varchar(64), 
+DESCRIPTION_ varchar(4000), 
+OWNER_ varchar(255), 
+ASSIGNEE_ varchar(255), 
+START_TIME_ timestamp not null, 
+END_TIME_ timestamp, 
+DURATION_ bigint, 
+DELETE_REASON_ varchar(4000), 
+PRIORITY_ integer, 
+DUE_DATE_ timestamp, 
+FOLLOW_UP_DATE_ timestamp, 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_HI_TASKINST ( 
+ID_ varchar(64) not null, 
+TASK_DEF_KEY_ varchar(255), 
+PROC_DEF_KEY_ varchar(255), 
+PROC_DEF_ID_ varchar(64), 
+PROC_INST_ID_ varchar(64), 
+EXECUTION_ID_ varchar(64), 
+CASE_DEF_KEY_ varchar(255), 
+CASE_DEF_ID_ varchar(64), 
+CASE_INST_ID_ varchar(64), 
+CASE_EXECUTION_ID_ varchar(64), 
+ACT_INST_ID_ varchar(64), 
+NAME_ varchar(255), 
+PARENT_TASK_ID_ varchar(64), 
+DESCRIPTION_ varchar(4000), 
+OWNER_ varchar(255), 
+ASSIGNEE_ varchar(255), 
+START_TIME_ timestamp not null, 
+END_TIME_ timestamp, 
+DURATION_ bigint, 
+DELETE_REASON_ varchar(4000), 
+PRIORITY_ integer, 
+DUE_DATE_ timestamp, 
+FOLLOW_UP_DATE_ timestamp, 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_HI_VARINST ( 
+ID_ varchar(64) not null, 
+PROC_DEF_KEY_ varchar(255), 
+PROC_DEF_ID_ varchar(64), 
+PROC_INST_ID_ varchar(64), 
+EXECUTION_ID_ varchar(64), 
+CASE_DEF_KEY_ varchar(255), 
+CASE_DEF_ID_ varchar(64), 
+CASE_INST_ID_ varchar(64), 
+CASE_EXECUTION_ID_ varchar(64), 
+TASK_ID_ varchar(64), 
+ACT_INST_ID_ varchar(64), 
+NAME_ varchar(255) not null, 
+VAR_TYPE_ varchar(100), 
+REV_ integer, 
+BYTEARRAY_ID_ varchar(64), 
+DOUBLE_ double, 
+LONG_ bigint, 
+TEXT_ varchar(4000), 
+TEXT2_ varchar(4000), 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_HI_VARINST ( 
+ID_ varchar(64) not null, 
+PROC_DEF_KEY_ varchar(255), 
+PROC_DEF_ID_ varchar(64), 
+PROC_INST_ID_ varchar(64), 
+EXECUTION_ID_ varchar(64), 
+CASE_DEF_KEY_ varchar(255), 
+CASE_DEF_ID_ varchar(64), 
+CASE_INST_ID_ varchar(64), 
+CASE_EXECUTION_ID_ varchar(64), 
+TASK_ID_ varchar(64), 
+ACT_INST_ID_ varchar(64), 
+NAME_ varchar(255) not null, 
+VAR_TYPE_ varchar(100), 
+REV_ integer, 
+BYTEARRAY_ID_ varchar(64), 
+DOUBLE_ double, 
+LONG_ bigint, 
+TEXT_ varchar(4000), 
+TEXT2_ varchar(4000), 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_HI_DETAIL ( 
+ID_ varchar(64) not null, 
+TYPE_ varchar(255) not null, 
+TIME_ timestamp not null, 
+NAME_ varchar(255) NOT null, 
+PROC_DEF_KEY_ varchar(255), 
+PROC_DEF_ID_ varchar(64), 
+PROC_INST_ID_ varchar(64), 
+EXECUTION_ID_ varchar(64), 
+CASE_DEF_KEY_ varchar(255), 
+CASE_DEF_ID_ varchar(64), 
+CASE_INST_ID_ varchar(64), 
+CASE_EXECUTION_ID_ varchar(64), 
+TASK_ID_ varchar(64), 
+ACT_INST_ID_ varchar(64), 
+VAR_INST_ID_ varchar(64), 
+VAR_TYPE_ varchar(255), 
+REV_ integer, 
+BYTEARRAY_ID_ varchar(64), 
+DOUBLE_ double, 
+LONG_ bigint, 
+TEXT_ varchar(4000), 
+TEXT2_ varchar(4000), 
+SEQUENCE_COUNTER_ integer, 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_HI_DETAIL ( 
+ID_ varchar(64) not null, 
+TYPE_ varchar(255) not null, 
+TIME_ timestamp not null, 
+NAME_ varchar(255) NOT null, 
+PROC_DEF_KEY_ varchar(255), 
+PROC_DEF_ID_ varchar(64), 
+PROC_INST_ID_ varchar(64), 
+EXECUTION_ID_ varchar(64), 
+CASE_DEF_KEY_ varchar(255), 
+CASE_DEF_ID_ varchar(64), 
+CASE_INST_ID_ varchar(64), 
+CASE_EXECUTION_ID_ varchar(64), 
+TASK_ID_ varchar(64), 
+ACT_INST_ID_ varchar(64), 
+VAR_INST_ID_ varchar(64), 
+VAR_TYPE_ varchar(255), 
+REV_ integer, 
+BYTEARRAY_ID_ varchar(64), 
+DOUBLE_ double, 
+LONG_ bigint, 
+TEXT_ varchar(4000), 
+TEXT2_ varchar(4000), 
+SEQUENCE_COUNTER_ integer, 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_HI_COMMENT ( 
+ID_ varchar(64) not null, 
+TYPE_ varchar(255), 
+TIME_ timestamp not null, 
+USER_ID_ varchar(255), 
+TASK_ID_ varchar(64), 
+PROC_INST_ID_ varchar(64), 
+ACTION_ varchar(255), 
+MESSAGE_ varchar(4000), 
+FULL_MSG_ longvarbinary, 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_HI_COMMENT ( 
+ID_ varchar(64) not null, 
+TYPE_ varchar(255), 
+TIME_ timestamp not null, 
+USER_ID_ varchar(255), 
+TASK_ID_ varchar(64), 
+PROC_INST_ID_ varchar(64), 
+ACTION_ varchar(255), 
+MESSAGE_ varchar(4000), 
+FULL_MSG_ longvarbinary, 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_HI_ATTACHMENT ( 
+ID_ varchar(64) not null, 
+REV_ integer, 
+USER_ID_ varchar(255), 
+NAME_ varchar(255), 
+DESCRIPTION_ varchar(4000), 
+TYPE_ varchar(255), 
+TASK_ID_ varchar(64), 
+PROC_INST_ID_ varchar(64), 
+URL_ varchar(4000), 
+CONTENT_ID_ varchar(64), 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_HI_ATTACHMENT ( 
+ID_ varchar(64) not null, 
+REV_ integer, 
+USER_ID_ varchar(255), 
+NAME_ varchar(255), 
+DESCRIPTION_ varchar(4000), 
+TYPE_ varchar(255), 
+TASK_ID_ varchar(64), 
+PROC_INST_ID_ varchar(64), 
+URL_ varchar(4000), 
+CONTENT_ID_ varchar(64), 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_HI_OP_LOG ( 
+ID_ varchar(64) not null, 
+PROC_DEF_ID_ varchar(64), 
+PROC_DEF_KEY_ varchar(255), 
+PROC_INST_ID_ varchar(64), 
+EXECUTION_ID_ varchar(64), 
+CASE_DEF_ID_ varchar(64), 
+CASE_INST_ID_ varchar(64), 
+CASE_EXECUTION_ID_ varchar(64), 
+TASK_ID_ varchar(64), 
+JOB_ID_ varchar(64), 
+JOB_DEF_ID_ varchar(64), 
+USER_ID_ varchar(255), 
+TIMESTAMP_ timestamp not null, 
+OPERATION_TYPE_ varchar(64), 
+OPERATION_ID_ varchar(64), 
+ENTITY_TYPE_ varchar(30), 
+PROPERTY_ varchar(64), 
+ORG_VALUE_ varchar(4000), 
+NEW_VALUE_ varchar(4000), 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_HI_OP_LOG ( 
+ID_ varchar(64) not null, 
+PROC_DEF_ID_ varchar(64), 
+PROC_DEF_KEY_ varchar(255), 
+PROC_INST_ID_ varchar(64), 
+EXECUTION_ID_ varchar(64), 
+CASE_DEF_ID_ varchar(64), 
+CASE_INST_ID_ varchar(64), 
+CASE_EXECUTION_ID_ varchar(64), 
+TASK_ID_ varchar(64), 
+JOB_ID_ varchar(64), 
+JOB_DEF_ID_ varchar(64), 
+USER_ID_ varchar(255), 
+TIMESTAMP_ timestamp not null, 
+OPERATION_TYPE_ varchar(64), 
+OPERATION_ID_ varchar(64), 
+ENTITY_TYPE_ varchar(30), 
+PROPERTY_ varchar(64), 
+ORG_VALUE_ varchar(4000), 
+NEW_VALUE_ varchar(4000), 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_HI_INCIDENT ( 
+ID_ varchar(64) not null, 
+PROC_DEF_KEY_ varchar(255), 
+PROC_DEF_ID_ varchar(64), 
+PROC_INST_ID_ varchar(64), 
+EXECUTION_ID_ varchar(64), 
+CREATE_TIME_ timestamp not null, 
+END_TIME_ timestamp, 
+INCIDENT_MSG_ varchar(4000), 
+INCIDENT_TYPE_ varchar(255) not null, 
+ACTIVITY_ID_ varchar(255), 
+CAUSE_INCIDENT_ID_ varchar(64), 
+ROOT_CAUSE_INCIDENT_ID_ varchar(64), 
+CONFIGURATION_ varchar(255), 
+INCIDENT_STATE_ integer, 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_HI_INCIDENT ( 
+ID_ varchar(64) not null, 
+PROC_DEF_KEY_ varchar(255), 
+PROC_DEF_ID_ varchar(64), 
+PROC_INST_ID_ varchar(64), 
+EXECUTION_ID_ varchar(64), 
+CREATE_TIME_ timestamp not null, 
+END_TIME_ timestamp, 
+INCIDENT_MSG_ varchar(4000), 
+INCIDENT_TYPE_ varchar(255) not null, 
+ACTIVITY_ID_ varchar(255), 
+CAUSE_INCIDENT_ID_ varchar(64), 
+ROOT_CAUSE_INCIDENT_ID_ varchar(64), 
+CONFIGURATION_ varchar(255), 
+INCIDENT_STATE_ integer, 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_HI_JOB_LOG ( 
+ID_ varchar(64) not null, 
+TIMESTAMP_ timestamp not null, 
+JOB_ID_ varchar(64) not null, 
+JOB_DUEDATE_ timestamp, 
+JOB_RETRIES_ integer, 
+JOB_EXCEPTION_MSG_ varchar(4000), 
+JOB_EXCEPTION_STACK_ID_ varchar(64), 
+JOB_STATE_ integer, 
+JOB_DEF_ID_ varchar(64), 
+JOB_DEF_TYPE_ varchar(255), 
+JOB_DEF_CONFIGURATION_ varchar(255), 
+ACT_ID_ varchar(64), 
+EXECUTION_ID_ varchar(64), 
+PROCESS_INSTANCE_ID_ varchar(64), 
+PROCESS_DEF_ID_ varchar(64), 
+PROCESS_DEF_KEY_ varchar(255), 
+DEPLOYMENT_ID_ varchar(64), 
+SEQUENCE_COUNTER_ integer, 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_HI_JOB_LOG ( 
+ID_ varchar(64) not null, 
+TIMESTAMP_ timestamp not null, 
+JOB_ID_ varchar(64) not null, 
+JOB_DUEDATE_ timestamp, 
+JOB_RETRIES_ integer, 
+JOB_EXCEPTION_MSG_ varchar(4000), 
+JOB_EXCEPTION_STACK_ID_ varchar(64), 
+JOB_STATE_ integer, 
+JOB_DEF_ID_ varchar(64), 
+JOB_DEF_TYPE_ varchar(255), 
+JOB_DEF_CONFIGURATION_ varchar(255), 
+ACT_ID_ varchar(64), 
+EXECUTION_ID_ varchar(64), 
+PROCESS_INSTANCE_ID_ varchar(64), 
+PROCESS_DEF_ID_ varchar(64), 
+PROCESS_DEF_KEY_ varchar(255), 
+DEPLOYMENT_ID_ varchar(64), 
+SEQUENCE_COUNTER_ integer, 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_ID_GROUP ( 
+ID_ varchar(64), 
+REV_ integer, 
+NAME_ varchar(255), 
+TYPE_ varchar(255), 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_ID_GROUP ( 
+ID_ varchar(64), 
+REV_ integer, 
+NAME_ varchar(255), 
+TYPE_ varchar(255), 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_ID_MEMBERSHIP ( 
+USER_ID_ varchar(64), 
+GROUP_ID_ varchar(64), 
+primary key (USER_ID_, GROUP_ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_ID_MEMBERSHIP ( 
+USER_ID_ varchar(64), 
+GROUP_ID_ varchar(64), 
+primary key (USER_ID_, GROUP_ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_ID_USER ( 
+ID_ varchar(64), 
+REV_ integer, 
+FIRST_ varchar(255), 
+LAST_ varchar(255), 
+EMAIL_ varchar(255), 
+PWD_ varchar(255), 
+PICTURE_ID_ varchar(64), 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_ID_USER ( 
+ID_ varchar(64), 
+REV_ integer, 
+FIRST_ varchar(255), 
+LAST_ varchar(255), 
+EMAIL_ varchar(255), 
+PWD_ varchar(255), 
+PICTURE_ID_ varchar(64), 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_ID_INFO ( 
+ID_ varchar(64), 
+REV_ integer, 
+USER_ID_ varchar(64), 
+TYPE_ varchar(64), 
+KEY_ varchar(255), 
+VALUE_ varchar(255), 
+PASSWORD_ longvarbinary, 
+PARENT_ID_ varchar(255), 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_ID_INFO ( 
+ID_ varchar(64), 
+REV_ integer, 
+USER_ID_ varchar(64), 
+TYPE_ varchar(64), 
+KEY_ varchar(255), 
+VALUE_ varchar(255), 
+PASSWORD_ longvarbinary, 
+PARENT_ID_ varchar(255), 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_RE_CASE_DEF ( 
+ID_ varchar(64) NOT NULL, 
+REV_ integer, 
+CATEGORY_ varchar(255), 
+NAME_ varchar(255), 
+KEY_ varchar(255) NOT NULL, 
+VERSION_ integer NOT NULL, 
+DEPLOYMENT_ID_ varchar(64), 
+RESOURCE_NAME_ varchar(4000), 
+DGRM_RESOURCE_NAME_ varchar(4000), 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_RE_CASE_DEF ( 
+ID_ varchar(64) NOT NULL, 
+REV_ integer, 
+CATEGORY_ varchar(255), 
+NAME_ varchar(255), 
+KEY_ varchar(255) NOT NULL, 
+VERSION_ integer NOT NULL, 
+DEPLOYMENT_ID_ varchar(64), 
+RESOURCE_NAME_ varchar(4000), 
+DGRM_RESOURCE_NAME_ varchar(4000), 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_RU_CASE_EXECUTION ( 
+ID_ varchar(64) NOT NULL, 
+REV_ integer, 
+CASE_INST_ID_ varchar(64), 
+SUPER_CASE_EXEC_ varchar(64), 
+SUPER_EXEC_ varchar(64), 
+BUSINESS_KEY_ varchar(255), 
+PARENT_ID_ varchar(64), 
+CASE_DEF_ID_ varchar(64), 
+ACT_ID_ varchar(255), 
+PREV_STATE_ integer, 
+CURRENT_STATE_ integer, 
+REQUIRED_ bit, 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_RU_CASE_EXECUTION ( 
+ID_ varchar(64) NOT NULL, 
+REV_ integer, 
+CASE_INST_ID_ varchar(64), 
+SUPER_CASE_EXEC_ varchar(64), 
+SUPER_EXEC_ varchar(64), 
+BUSINESS_KEY_ varchar(255), 
+PARENT_ID_ varchar(64), 
+CASE_DEF_ID_ varchar(64), 
+ACT_ID_ varchar(255), 
+PREV_STATE_ integer, 
+CURRENT_STATE_ integer, 
+REQUIRED_ bit, 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_RU_CASE_SENTRY_PART ( 
+ID_ varchar(64) NOT NULL, 
+REV_ integer, 
+CASE_INST_ID_ varchar(64), 
+CASE_EXEC_ID_ varchar(64), 
+SENTRY_ID_ varchar(255), 
+TYPE_ varchar(255), 
+SOURCE_CASE_EXEC_ID_ varchar(64), 
+STANDARD_EVENT_ varchar(255), 
+SATISFIED_ bit, 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_RU_CASE_SENTRY_PART ( 
+ID_ varchar(64) NOT NULL, 
+REV_ integer, 
+CASE_INST_ID_ varchar(64), 
+CASE_EXEC_ID_ varchar(64), 
+SENTRY_ID_ varchar(255), 
+TYPE_ varchar(255), 
+SOURCE_CASE_EXEC_ID_ varchar(64), 
+STANDARD_EVENT_ varchar(255), 
+SATISFIED_ bit, 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_HI_CASEINST ( 
+ID_ varchar(64) not null, 
+CASE_INST_ID_ varchar(64) not null, 
+BUSINESS_KEY_ varchar(255), 
+CASE_DEF_ID_ varchar(64) not null, 
+CREATE_TIME_ timestamp not null, 
+CLOSE_TIME_ timestamp, 
+DURATION_ bigint, 
+STATE_ integer, 
+CREATE_USER_ID_ varchar(255), 
+SUPER_CASE_INSTANCE_ID_ varchar(64), 
+SUPER_PROCESS_INSTANCE_ID_ varchar(64), 
+primary key (ID_), 
+unique (CASE_INST_ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_HI_CASEINST ( 
+ID_ varchar(64) not null, 
+CASE_INST_ID_ varchar(64) not null, 
+BUSINESS_KEY_ varchar(255), 
+CASE_DEF_ID_ varchar(64) not null, 
+CREATE_TIME_ timestamp not null, 
+CLOSE_TIME_ timestamp, 
+DURATION_ bigint, 
+STATE_ integer, 
+CREATE_USER_ID_ varchar(255), 
+SUPER_CASE_INSTANCE_ID_ varchar(64), 
+SUPER_PROCESS_INSTANCE_ID_ varchar(64), 
+primary key (ID_), 
+unique (CASE_INST_ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_HI_CASEACTINST ( 
+ID_ varchar(64) not null, 
+PARENT_ACT_INST_ID_ varchar(64), 
+CASE_DEF_ID_ varchar(64) not null, 
+CASE_INST_ID_ varchar(64) not null, 
+CASE_ACT_ID_ varchar(255) not null, 
+TASK_ID_ varchar(64), 
+CALL_PROC_INST_ID_ varchar(64), 
+CALL_CASE_INST_ID_ varchar(64), 
+CASE_ACT_NAME_ varchar(255), 
+CASE_ACT_TYPE_ varchar(255), 
+CREATE_TIME_ timestamp not null, 
+END_TIME_ timestamp, 
+DURATION_ bigint, 
+STATE_ integer, 
+REQUIRED_ bit, 
+primary key (ID_) 
+)
+2017-02-19 11:06:01 INFO  DbEventTriggerHandler:64 - Db evento:create table ACT_HI_CASEACTINST ( 
+ID_ varchar(64) not null, 
+PARENT_ACT_INST_ID_ varchar(64), 
+CASE_DEF_ID_ varchar(64) not null, 
+CASE_INST_ID_ varchar(64) not null, 
+CASE_ACT_ID_ varchar(255) not null, 
+TASK_ID_ varchar(64), 
+CALL_PROC_INST_ID_ varchar(64), 
+CALL_CASE_INST_ID_ varchar(64), 
+CASE_ACT_NAME_ varchar(255), 
+CASE_ACT_TYPE_ varchar(255), 
+CREATE_TIME_ timestamp not null, 
+END_TIME_ timestamp, 
+DURATION_ bigint, 
+STATE_ integer, 
+REQUIRED_ bit, 
+primary key (ID_) 
+)

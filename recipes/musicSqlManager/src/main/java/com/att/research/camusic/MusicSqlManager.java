@@ -28,6 +28,15 @@ public class MusicSqlManager {
 	private static MusicConnector mCon = null;
 	final static Logger logger = Logger.getLogger(MusicSqlManager.class);
 	private static boolean isUpdateInProgress=false;
+	private static boolean configLoaded = false;
+	
+	public MusicSqlManager(){
+		if(configLoaded == false){
+			logger.info("Starting music-sql-manager with db listener info and mvcc=true checked only for msqm.");	
+			ConfigDetails.populate();
+			configLoaded = true;
+		}
+	}
 	
 	public synchronized static void setIsUpdateInProgress(boolean value){
 		isUpdateInProgress = value;
@@ -285,7 +294,7 @@ public class MusicSqlManager {
 	/**This method gets a connection to Music
 	 * @return
 	 */
-	private   Session getMusicSession(){	
+	public Session getMusicSession(){	
 		//create cassa session
 		if(musicSession == null){
 			logger.info("New Music session created");
@@ -326,6 +335,7 @@ public class MusicSqlManager {
 	public  void executeSQLWrite(String query) throws SQLException{
 			logger.info("Executing SQL write:"+ query);
 			Connection con = getDbConnection();
+			con.setAutoCommit(false);
 			Statement stmt = con.createStatement();
 			stmt.execute(query);
 			stmt.close();
@@ -341,8 +351,10 @@ public class MusicSqlManager {
 		java.sql.ResultSet rs = null;
 		try {
 			Connection con = getDbConnection();
+			con.setAutoCommit(false);
 			Statement stmt = con.createStatement();
 			rs = stmt.executeQuery(query);
+			con.commit();
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -353,16 +365,16 @@ public class MusicSqlManager {
 	/**This method gets a connection to the sql database
 	 * @return
 	 */
-    private static Connection getDbConnection() {
+    public Connection getDbConnection() {
     	if(dbConnection == null){
 			logger.info("New db connection created");
 	        try {
-	            Class.forName(ConfigDetails.DB_DRIVER);
+	            Class.forName(ConfigDetails.dbDriver);
 	        } catch (ClassNotFoundException e) {
 	        	logger.info(e.getMessage());
 	        }
 	        try {
-	            dbConnection = DriverManager.getConnection(ConfigDetails.DB_CONNECTION, ConfigDetails.DB_USER, ConfigDetails.DB_PASSWORD);
+	            dbConnection = DriverManager.getConnection(ConfigDetails.dbConnection, ConfigDetails.dbUser, ConfigDetails.dbPassword);
 	            return dbConnection;
 	        } catch (SQLException e) {
 	        	logger.info(e.getMessage());
@@ -380,33 +392,21 @@ public class MusicSqlManager {
 		}
     	mCon.close();
     }
+    
 	public static void main(String[] args) throws Exception {
-		logger.info("Starting music-sql-manager..");
-		Statement stmt = MusicSqlManager.getDbConnection().createStatement();
-		stmt.execute("CREATE TABLE TEST_MANY_KEYS(id int, name varchar(255), primary key (id,name))");
-		
-		stmt.execute("CREATE TABLE TEST_NO_KEYS(id int, name varchar(255))");
+		MusicSqlManager handle = new MusicSqlManager();
+		Statement stmt = handle.getDbConnection().createStatement();
+ 		java.sql.ResultSet rs;
 
-		stmt.execute("CREATE TABLE PERSON(ID_ varchar(255), name varchar(255), primary key (ID_))");
-	
-		stmt.execute("INSERT INTO PERSON(ID_, name) VALUES('1', 'Anju')");
-		stmt.execute("INSERT INTO PERSON(ID_, name) VALUES('2', 'Sonia')");
-		stmt.execute("INSERT INTO PERSON(ID_, name) VALUES('3', 'Asha')");
-
-		java.sql.ResultSet rs = stmt.executeQuery("select * from PERSON");
-
-		while (rs.next()) {
-			logger.info("ID_ " + rs.getInt("ID_") + " Name " + rs.getString("name"));
-		}
-		
-		
-		stmt.execute("DROP TABLE PERSON");
-		
 		while(true){
-			rs = stmt.executeQuery("Select * from INFORMATION_SCHEMA.TABLES where TABLE_TYPE='PUBLIC'");
+			rs = stmt.executeQuery("SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA='PUBLIC' ");
+			String publicTables="";
 			while (rs.next()) {
-				logger.info(rs.getString("TABLE_NAME"));
+				publicTables = publicTables +"|"+rs.getString("TABLE_NAME");
 			}
+			logger.info("Public Tables:"+publicTables);
+			Thread.sleep(2000);
+
 		}
 	}
 }

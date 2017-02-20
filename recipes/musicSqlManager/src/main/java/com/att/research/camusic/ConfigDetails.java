@@ -1,16 +1,75 @@
 package com.att.research.camusic;
 
-public class ConfigDetails {
-	static final String myId="0";
-	static final String[] allReplicaIds = {"0"};
-    static final String DB_DRIVER = "org.h2.Driver";
-   // static final String DB_CONNECTION = "jdbc:h2:~/data/test;AUTO_SERVER=TRUE;DATABASE_EVENT_LISTENER="+DbEventTriggerHandler.class.getName();
-    static final String DB_CONNECTION = "jdbc:h2:~/data/test;AUTO_SERVER=TRUE";
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Properties;
 
-    static final String DB_USER = "";
-    static final String DB_PASSWORD = "";
-	static final String musicAddress="localhost";
-	static final String triggerClassName = DbOperationTriggerHandler.class.getName();
-	static final String primaryKeyName="ID_";//todo: get it automatically..
+import org.apache.log4j.Logger;
+
+public class ConfigDetails {
+	static  String myId;
+	static  String[] allReplicaIds;
+    static  String dbDriver = "org.h2.Driver";
+    static  String dbConnection;
+    static  String dbUser;
+    static  String dbPassword;
+	static  String musicAddress;
+	static  String triggerClassName = DbOperationTriggerHandler.class.getName();
+	static  String primaryKeyName="ID_";//todo: get it automatically..
+	final static Logger logger = Logger.getLogger(ConfigDetails.class);
+
+	public static void main(String[] args){
+		populate();
+	}
+	public static void populate(){
+		Properties prop = new Properties();
+		InputStream input = null;
+
+		try {
+
+			input = new FileInputStream("config.properties");
+
+			// load a properties file
+			prop.load(input);
+
+			// get the property values
+			myId = prop.getProperty("myId");
+			logger.info("myId="+myId);
+			
+			allReplicaIds = prop.get("allReplicaIds").toString().split("#");
+			String allReps ="";
+			for(int i=0; i < allReplicaIds.length;++i)
+				allReps = allReps + allReplicaIds[i]+" ";
+			
+			logger.info("allReplicaIds="+allReps);
+
+			String DB_URL = prop.getProperty("dbUrl");
+		    dbConnection = DB_URL+";AUTO_SERVER=TRUE;DATABASE_EVENT_LISTENER="+DbEventTriggerHandler.class.getName();
+			logger.info("dbConnection URL="+dbConnection);
+
+		    dbUser =  prop.getProperty("dbUser");
+			logger.info("db user name="+dbUser);
+
+		    dbPassword =  prop.getProperty("dbPassword");
+			logger.info("db password="+dbUser);
+
+		    musicAddress=prop.getProperty("musicAddress");
+			logger.info("music address="+musicAddress);
+
+		} catch (IOException ex) {
+			ex.printStackTrace();
+		} finally {
+			if (input != null) {
+				try {
+					input.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+
+		
+	}
 
 }

@@ -7,5 +7,4 @@ dbUrl=jdbc:h2:~/data/test
 #set the username and password for the db
 dbUser=
 dbPassword=
-#the ip address of any music node that can be accessed by this node
 musicAddress=localhost

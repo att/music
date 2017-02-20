@@ -21,16 +21,16 @@
 ========================================================
 Installation and Usage Guide for music sql manager recipe
 ========================================================
-
-
-Instructions
-============
 1. Install Cassandra on your cluster
+
 2. Import the pom.xml into a maven project in an editor of your choice (like Eclipse)
+
 3. Generate a jar file, say mdbc.jar corresponding to the configuration of the file
 MusicSqlManager.java with all the required libraries
+
 4. Configure the config.properties and the log4j.properties and place it in the same folder as the
 jar 
+
 5. Run the jar using java -jar mdbc.jar and you should see the log4j printouts for a basic test case
 in which we create tables, insert, update, delete and select rows from it and finally a constant loop
 that prints out all the public tables in this database. 

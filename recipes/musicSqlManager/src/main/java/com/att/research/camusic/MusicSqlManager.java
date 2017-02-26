@@ -335,11 +335,12 @@ public class MusicSqlManager {
 	public  void executeSQLWrite(String query) throws SQLException{
 			logger.info("Executing SQL write:"+ query);
 			Connection con = getDbConnection();
-			con.setAutoCommit(false);
+			//con.setAutoCommit(false);
 			Statement stmt = con.createStatement();
 			stmt.execute(query);
 			stmt.close();
-			con.commit();
+		//	con.commit();
+			logger.info("Executed SQL write:"+ query);
 	}
 	
 	/**
@@ -395,7 +396,8 @@ public class MusicSqlManager {
     
 	public static void main(String[] args) throws Exception {
 		MusicSqlManager handle = new MusicSqlManager();
-		
+		java.sql.ResultSet dbRs;
+/*		
     	handle.executeSQLWrite("CREATE TABLE TEST_NO_KEYS (id int, name varchar(255))");
     	
 
@@ -409,7 +411,7 @@ public class MusicSqlManager {
     	handle.executeSQLWrite("DELETE FROM PERSON WHERE ID_='1'");
 
 
- 		java.sql.ResultSet dbRs = handle.executeSQLRead("select * from PERSON");
+ 		dbRs = handle.executeSQLRead("select * from PERSON");
 
 		while (dbRs.next()) {
 			logger.info("ID_ " + dbRs.getInt("ID_") + " Name " + dbRs.getString("name"));
@@ -418,7 +420,7 @@ public class MusicSqlManager {
 		handle.executeSQLWrite("DROP table PERSON");
 		handle.executeSQLWrite("DROP table TEST_NO_KEYS");
 		
-
+*/
 		while(true){
 			dbRs = handle.executeSQLRead("SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA='PUBLIC' ");
 			String publicTables="";

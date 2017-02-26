@@ -459,15 +459,9 @@ public class VotingApp {
 		return null;
 	}
 	public static void main(String[] args) {
-	//	String[] musicIps = {"54.242.188.225","54.86.171.247","54.85.91.163"};
 		
-		String[] musicIps = {"135.197.226.49","135.197.226.68"};
-		
-	//	String[] musicIps = {"135.197.226.113"};
-
+		String[] musicIps = {"localhost"};
 	
-	//	String[] musicIps = {"135.197.226.83","135.197.226.84","135.197.226.85"};
-
 		long start = System.currentTimeMillis();
 			for(int i =0; i < 5;++i){
 				VotingApp vHandle = new VotingApp(musicIps);

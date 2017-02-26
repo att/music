@@ -292,8 +292,7 @@ public class MusicDataStore {
 		String newTest = test.replace("-", "_");
 		System.out.println(newTest);
 		System.exit(0);
-		String remoteIp = "135.197.226.68";
-	//	String remoteIp = "135.197.226.98";
+		String remoteIp = "localhost";
 		
 		MusicDataStore client =null;
 		client = new MusicDataStore(remoteIp);

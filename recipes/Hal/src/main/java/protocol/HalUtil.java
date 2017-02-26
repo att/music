@@ -39,8 +39,8 @@ import musicinterface.RestMusicFunctions;
 public class HalUtil {
 	public static String zkHostAddress = "localhost";
 	public static String cassaHostAddress = "localhost";
-	public static String bigSiteMusicNode = "135.197.226.98";
-	public static String agaveMusicNode = "135.207.223.43";
+	//public static String bigSiteMusicNode = "localhost";
+	//public static String agaveMusicNode = "localhost";
 	
 	private static String getMusicNodeIp(){
 		return "localhost";
@@ -51,7 +51,7 @@ public class HalUtil {
 		return serverAddress;
 */	}
 	
-	public static String toggle(String serverAddress){
+/*	public static String toggle(String serverAddress){
 		if(serverAddress.equals(agaveMusicNode)){
 			System.out.println("Agave is down...connect to Big Site");
 			serverAddress = bigSiteMusicNode;
@@ -60,7 +60,7 @@ public class HalUtil {
 			serverAddress = agaveMusicNode;
 		}
 		return serverAddress;
-	}
+	}*/
 	
 	public static String getMusicNodeURL(){
 			return "http://"+HalUtil.getMusicNodeIp()+":8080/MUSIC/rest";

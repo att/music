@@ -39,6 +39,7 @@ public class MusicUtil {
 	public static final boolean debug = true;
 	public static final String version = "1.0.0";
 	public static final String msg = "-First version of Music on the public git-";
+	public static final String musicRestIp = "localhost";
 	
 /*	public static String getMyPublicIp(){
 		String myIp = null;

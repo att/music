@@ -38,7 +38,7 @@ import com.sun.jersey.api.json.JSONConfiguration;
 
 public class MusicRestTestClient {
 	Client clientHandle;
-	String url="http://135.197.226.135:8080/MUSIC/rest/core/";
+	String url="http://"+MusicUtil.musicRestIp+":8080/MUSIC/rest/core/";
 	public Client getClientHandle(){
 		if(clientHandle == null){
 			ClientConfig clientConfig = new DefaultClientConfig();

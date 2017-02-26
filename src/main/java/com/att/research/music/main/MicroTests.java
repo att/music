@@ -37,7 +37,7 @@ import com.sun.jersey.api.json.JSONConfiguration;
 
 public class MicroTests {
 	final String keyspaceName="shankarks";
-	final String  musicurl = "http://135.197.226.98:8080/MUSIC/rest/formal";
+	final String  musicurl = "http://"+MusicUtil.musicRestIp+":8080/MUSIC/rest/formal";
 	final String userForGets = "shankarUserForGets";
 	public MicroTests(){
 		bootStrap();

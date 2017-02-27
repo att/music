@@ -7,6 +7,7 @@ import java.sql.Timestamp;
 import java.util.ArrayList;
 
 import org.apache.log4j.Logger;
+import org.h2.tools.Server;
 
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Session;
@@ -32,7 +33,7 @@ public class MusicSqlManager {
 	
 	public MusicSqlManager(){
 		if(configLoaded == false){
-			logger.info("Starting music-sql-manager with db listener info and mvcc=true checked only for msqm.");	
+			logger.info("Starting music-sql-manager with db listener info...");	
 			ConfigDetails.populate();
 			configLoaded = true;
 		}
@@ -421,12 +422,16 @@ public class MusicSqlManager {
 		handle.executeSQLWrite("DROP table TEST_NO_KEYS");
 		
 */
+
+		
+		handle.executeSQLWrite("CREATE TABLE PERSON_TEST (ID_ varchar(255), name varchar(255), primary key (ID_))");
+//		handle.initializeDbAndMusicForTable("PERSON_TEST");
 		while(true){
-			dbRs = handle.executeSQLRead("SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA='PUBLIC' ");
+		//	dbRs = handle.executeSQLRead("SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA='PUBLIC' ");
 			String publicTables="";
-			while (dbRs.next()) {
-				publicTables = publicTables +"|"+dbRs.getString("TABLE_NAME");
-			}
+	//		while (dbRs.next()) {
+		//		publicTables = publicTables +"|"+dbRs.getString("TABLE_NAME");
+			//}
 			logger.info("Public Tables:"+publicTables);
 			Thread.sleep(2000);
 		}

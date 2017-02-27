@@ -62,8 +62,8 @@ import com.datastax.driver.core.querybuilder.Select;
  *
  * @author Robert Eby
  */
-public class MusicClient {
-    private static final Logger LOG = LoggerFactory.getLogger(MusicClient.class);
+public class MusicDirectClient {
+    private static final Logger LOG = LoggerFactory.getLogger(MusicDirectClient.class);
 
     private final String[] music_hosts;	// array of hosts in the music cluster
 	private Cluster cluster;			// MUSIC Cassandra cluster
@@ -74,7 +74,7 @@ public class MusicClient {
 	/**
 	 * Create a MUSIC client that talks to MUSIC on localhost.
 	 */
-	public MusicClient() {
+	public MusicDirectClient() {
 		this("127.0.0.1");
 	}
 	/**
@@ -82,7 +82,7 @@ public class MusicClient {
 	 * is a comma-separated list of IP addresses for remote instances of Cassandra/ZooKeeper.
 	 * @param hosts the list of hostnames
 	 */
-	public MusicClient(String hosts) {
+	public MusicDirectClient(String hosts) {
 		music_hosts = hosts.split(",");
 		if (cluster == null) {
 			LOG.debug("Initializing MUSIC Client with endpoints "+hosts);

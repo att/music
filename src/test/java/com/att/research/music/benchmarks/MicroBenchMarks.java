@@ -20,14 +20,16 @@ stated inside of the file.
  ---------------------------------------------------------------------------
 
  */
-package com.att.research.music.main;
+package com.att.research.music.benchmarks;
 import java.util.HashMap;
 import java.util.Map;
 
 import javax.ws.rs.core.MediaType;
+
 import com.att.research.music.datastore.jsonobjects.JsonInsert;
 import com.att.research.music.datastore.jsonobjects.JsonKeySpace;
 import com.att.research.music.datastore.jsonobjects.JsonTable;
+import com.att.research.music.main.MusicUtil;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
@@ -35,11 +37,11 @@ import com.sun.jersey.api.client.config.ClientConfig;
 import com.sun.jersey.api.client.config.DefaultClientConfig;
 import com.sun.jersey.api.json.JSONConfiguration;
 
-public class MicroTests {
+public class MicroBenchMarks {
 	final String keyspaceName="shankarks";
 	final String  musicurl = "http://"+MusicUtil.musicRestIp+":8080/MUSIC/rest/formal";
 	final String userForGets = "shankarUserForGets";
-	public MicroTests(){
+	public MicroBenchMarks(){
 		bootStrap();
 	}
 	

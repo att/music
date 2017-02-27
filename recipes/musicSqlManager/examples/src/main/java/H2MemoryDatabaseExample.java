@@ -30,17 +30,17 @@ public class H2MemoryDatabaseExample {
         
         try {
             connection.setAutoCommit(false);
-    		stmt.execute("CREATE TABLE PERSON_TEST (ID_ varchar(255), name varchar(255), primary key (ID_))");
-    	
- /*   		stmt.execute("INSERT INTO PERSON(ID_, name) VALUES('1', 'Anju')");
-    		stmt.execute("INSERT INTO PERSON(ID_, name) VALUES('2', 'Sonia')");
-    		stmt.execute("INSERT INTO PERSON(ID_, name) VALUES('3', 'Asha')");
+    		stmt.execute("CREATE TABLE PERSON_TEST(ID_ varchar(255), name varchar(255), primary key (ID_))");
 
-     		java.sql.ResultSet rs = stmt.executeQuery("select * from PERSON");
+            stmt.execute("INSERT INTO PERSON_TEST(ID_, name) VALUES('1', 'Anju')");
+    		stmt.execute("INSERT INTO PERSON_TEST (ID_, name) VALUES('2', 'Sonia')");
+    		stmt.execute("INSERT INTO PERSON_TEST (ID_, name) VALUES('3', 'Asha')");
+
+     		java.sql.ResultSet rs = stmt.executeQuery("select * from PERSON_TEST");
 
     		while (rs.next()) {
     			System.out.println("ID_ " + rs.getInt("ID_") + " Name " + rs.getString("name"));
-    		}*/
+    		}
             connection.commit();
         } catch (SQLException e) {
             System.out.println("Exception Message " + e.getLocalizedMessage());

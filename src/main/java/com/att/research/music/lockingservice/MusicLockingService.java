@@ -33,7 +33,6 @@ import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.Watcher.Event.KeeperState;
 import org.apache.zookeeper.ZooKeeper;
 
-import com.att.research.music.main.MusicLockState;
 import com.att.research.music.main.MusicUtil;
 public class MusicLockingService implements Watcher {
 

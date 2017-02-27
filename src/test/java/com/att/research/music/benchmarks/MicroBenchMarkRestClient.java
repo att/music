@@ -20,16 +20,18 @@ stated inside of the file.
  ---------------------------------------------------------------------------
 
  */
-package com.att.research.music.main;
+package com.att.research.music.benchmarks;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 
+import com.att.research.music.main.MusicUtil;
+
 
 @Path("/tests")
-public class RestMusicTests {
+public class MicroBenchMarkRestClient {
 	static double version = 9.7;
 	
 	@GET
@@ -38,7 +40,7 @@ public class RestMusicTests {
 	public String runTests() {
 		String testType = MusicUtil.getTestType();
 		String candidateName = "shankar"+System.currentTimeMillis();
-		MicroTests msHandle = new MicroTests();
+		MicroBenchMarks msHandle = new MicroBenchMarks();
 		switch (testType) {
         case "musicPut":  return msHandle.musicPutAndUpdate(candidateName);
         

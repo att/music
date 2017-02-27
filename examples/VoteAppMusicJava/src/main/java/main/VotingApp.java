@@ -116,13 +116,14 @@ public class VotingApp {
 	}
 	private void checkMusicVersion(){
 		Client client = Client.create();
+		System.out.println(musicHandle.getMusicNodeURL()+"/version");
 
 		WebResource webResource = client
 				.resource(musicHandle.getMusicNodeURL()+"/version");
 
 		ClientResponse response = webResource.accept("text/plain")
 				.get(ClientResponse.class);
-
+		
 		if (response.getStatus() != 200) {
 			throw new RuntimeException("Failed : HTTP error code : "
 					+ response.getStatus());
@@ -460,8 +461,8 @@ public class VotingApp {
 	}
 	public static void main(String[] args) {
 		
-		String[] musicIps = {"localhost"};
-	
+		String[] musicIps = {"135.197.226.113","135.197.226.49","135.197.226.68"};
+
 		long start = System.currentTimeMillis();
 			for(int i =0; i < 5;++i){
 				VotingApp vHandle = new VotingApp(musicIps);

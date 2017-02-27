@@ -20,13 +20,17 @@ stated inside of the file.
  ---------------------------------------------------------------------------
 
  */
-package com.att.research.music.datastore.jsonobjects;
+package com.att.research.music.client;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
+import java.util.Random;
 
 import javax.ws.rs.core.MediaType;
 
+import com.att.research.music.datastore.jsonobjects.JsonDelete;
+import com.att.research.music.datastore.jsonobjects.JsonInsert;
+import com.att.research.music.datastore.jsonobjects.JsonKeySpace;
+import com.att.research.music.datastore.jsonobjects.JsonTable;
 import com.att.research.music.main.MusicUtil;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
@@ -35,22 +39,38 @@ import com.sun.jersey.api.client.config.ClientConfig;
 import com.sun.jersey.api.client.config.DefaultClientConfig;
 import com.sun.jersey.api.json.JSONConfiguration;
 
-public class RestMusicFunctions {
-
-	private String musicUrl;
-	
-	public RestMusicFunctions(String musicNodeIp){
-		musicUrl = "http://"+musicNodeIp+":8080/MUSIC/rest/formal";
+public class MusicRestClient {
+	String[] musicNodes; 
+	public MusicRestClient(String[] musicNodes){
+		this.musicNodes = musicNodes;
+	}
+		
+	public MusicRestClient(String oneMusicNode){
+		musicNodes = new String[1];
+		this.musicNodes[0] = oneMusicNode;
 	}
 	
-	public void createKeyspaceEventual(String keyspaceName){
+	public String getMusicNodeURL(){
+		String musicurl = "http://"+getMusicNodeIp()+":8080/MUSIC/rest";
+		System.out.println(musicurl);
+		return musicurl;
+	}
+
+	private String getMusicNodeIp(){
+		Random r = new Random();
+		int index = r.nextInt(musicNodes.length);	
+		return musicNodes[index];
+	}
+
+	public void createKeyspace(String keyspaceName){
+		System.out.println(keyspaceName);
 		Map<String,Object> replicationInfo = new HashMap<String, Object>();
 		replicationInfo.put("class", "SimpleStrategy");
 		replicationInfo.put("replication_factor", 1);
-		String durabilityOfWrites="true";
+		String durabilityOfWrites="false";
 		Map<String,String> consistencyInfo= new HashMap<String, String>();
 		consistencyInfo.put("type", "eventual");
-		JsonKeySpace jsonKp = new JsonKeySpace();
+		com.att.research.music.datastore.jsonobjects.JsonKeySpace jsonKp = new JsonKeySpace();
 		jsonKp.setConsistencyInfo(consistencyInfo);
 		jsonKp.setDurabilityOfWrites(durabilityOfWrites);
 		jsonKp.setReplicationInfo(replicationInfo);
@@ -63,7 +83,7 @@ public class RestMusicFunctions {
 		Client client = Client.create(clientConfig);
 
 		WebResource webResource = client
-				.resource(musicUrl+"/keyspaces/"+keyspaceName);
+				.resource(getMusicNodeURL()+"/keyspaces/"+keyspaceName);
 
 		ClientResponse response = webResource.accept("application/json")
 				.type("application/json").post(ClientResponse.class, jsonKp);
@@ -73,7 +93,7 @@ public class RestMusicFunctions {
 
 	}
 
-	public void createTableEventual(String keyspaceName, String tableName, Map<String,String> fields){
+	public void createStringMapTable(String keyspaceName, String tableName,Map<String,String> fields){
 		Map<String,String> consistencyInfo= new HashMap<String, String>();
 		consistencyInfo.put("type", "eventual");
 
@@ -87,9 +107,9 @@ public class RestMusicFunctions {
 				JSONConfiguration.FEATURE_POJO_MAPPING, Boolean.TRUE);
 
 		Client client = Client.create(clientConfig);
-
+		String url = getMusicNodeURL()+"/keyspaces/"+keyspaceName+"/tables/"+tableName;
 		WebResource webResource = client
-				.resource(musicUrl+"/keyspaces/"+keyspaceName+"/tables/"+tableName);
+				.resource(url);
 
 		ClientResponse response = webResource.accept("application/json")
 				.type("application/json").post(ClientResponse.class, jtab);
@@ -98,66 +118,12 @@ public class RestMusicFunctions {
 			throw new RuntimeException("Failed : HTTP error code : "+ response.getStatus());
 
 	}
-
-	public void insertIntoTableEventual(String keyspaceName, String tableName, Map<String,Object> values){
-		Map<String,String> consistencyInfo= new HashMap<String, String>();
-		consistencyInfo.put("type", "eventual");
-
-		JsonInsert jIns = new JsonInsert();
-		jIns.setValues(values);
-		jIns.setConsistencyInfo(consistencyInfo);
-		ClientConfig clientConfig = new DefaultClientConfig();
-
-		clientConfig.getFeatures().put(
-				JSONConfiguration.FEATURE_POJO_MAPPING, Boolean.TRUE);
-
-		Client client = Client.create(clientConfig);
-
-		WebResource webResource = client
-				.resource(musicUrl+"/keyspaces/"+keyspaceName+"/tables/"+tableName+"/rows");
-
-		ClientResponse response = webResource.accept("application/json")
-				.type("application/json").post(ClientResponse.class, jIns);
-
-		if (response.getStatus() < 200 || response.getStatus() > 299) 
-			throw new RuntimeException("Failed : HTTP error code : "+ response.getStatus());
-
-
-	}
-	
-	public  void updateTableEventual(String keyspaceName, String tableName, String keyName, String keyValue, Map<String,Object> values){
-
-		Map<String,String> consistencyInfo= new HashMap<String, String>();
-		consistencyInfo.put("type", "eventual");
-
-		JsonInsert jIns = new JsonInsert();
-		jIns.setValues(values);
-		jIns.setConsistencyInfo(consistencyInfo);
-		ClientConfig clientConfig = new DefaultClientConfig();
-
-		clientConfig.getFeatures().put(
-				JSONConfiguration.FEATURE_POJO_MAPPING, Boolean.TRUE);
-
-		Client client = Client.create(clientConfig);
-
-		WebResource webResource = client
-				.resource(musicUrl+"/keyspaces/"+keyspaceName+"/tables/"+tableName+"/rows?"+keyName+"="+keyValue);
-
-		ClientResponse response = webResource.accept("application/json")
-				.type("application/json").put(ClientResponse.class, jIns);
-
-		if (response.getStatus() < 200 || response.getStatus() > 299) 
-			throw new RuntimeException("Failed : HTTP error code : "+ response.getStatus());
-		
-	}
-
-	public String getMusicId(){
-		
+	public void checkMusicVersion(){
 		Client client = Client.create();
 
 		WebResource webResource = client
-				.resource(musicUrl+"/nodeId");
-		if(MusicUtil.debug)System.out.println("the url sent to get the id:"+musicUrl+"/nodeId");
+				.resource(getMusicNodeURL()+"/version");
+
 		ClientResponse response = webResource.accept("text/plain")
 				.get(ClientResponse.class);
 
@@ -167,70 +133,102 @@ public class RestMusicFunctions {
 		}
 
 		String output = response.getEntity(String.class);
-		return output;
+
+	//	System.out.println("Output from Server .... \n");
+		System.out.println(output);
+
 	}
-	
-	public Map<String, String> getMusicDigest(String key){
+
+	public  void createRow(String keyspaceName, String tableName,Map<String, Object> values){
+		Map<String,String> consistencyInfo= new HashMap<String, String>();
+		consistencyInfo.put("type", "eventual");
+
+		JsonInsert jIns = new JsonInsert();
+		jIns.setValues(values);
+		jIns.setConsistencyInfo(consistencyInfo);
 		ClientConfig clientConfig = new DefaultClientConfig();
 
 		clientConfig.getFeatures().put(
 				JSONConfiguration.FEATURE_POJO_MAPPING, Boolean.TRUE);
 
 		Client client = Client.create(clientConfig);
-		
-		String restQuery = musicUrl+"/digest/"+key;
-		System.out.println(restQuery);
-		WebResource webResource = client
-				.resource(restQuery);
 
-		ClientResponse response = webResource.accept("application/json").get(ClientResponse.class);
+		String url =getMusicNodeURL()+"/keyspaces/"+keyspaceName+"/tables/"+tableName+"/rows";
+		WebResource webResource = client
+				.resource(url);
+
+		ClientResponse response = webResource.accept("application/json")
+				.type("application/json").post(ClientResponse.class, jIns);
 
 		if (response.getStatus() < 200 || response.getStatus() > 299) 
-			throw new RuntimeException("Failed : HTTP error code : "+ response.getStatus());
-		
-		Map<String,String> output = response.getEntity(Map.class);
-		return output;
+			throw new RuntimeException("Failed : HTTP error code : "+ response.getStatus()+"url:"+url+"values:"+values);
+
+
 	}
 	
-	public   Map<String,Object> readSpecificRow(String keyspaceName, String tableName,String keyName, String keyValue){
+	private void basicUpdateRow(String keyspaceName, String tableName, String primaryKeyName, String primaryKeyValue, Map<String, Object> values, Map<String,String> consistencyInfo){
+		JsonInsert jIns = new JsonInsert();
+		jIns.setValues(values);
+		jIns.setConsistencyInfo(consistencyInfo);
 		ClientConfig clientConfig = new DefaultClientConfig();
 
 		clientConfig.getFeatures().put(
 				JSONConfiguration.FEATURE_POJO_MAPPING, Boolean.TRUE);
 
 		Client client = Client.create(clientConfig);
-		
-		String restQuery = musicUrl+"/keyspaces/"+keyspaceName+"/tables/"+tableName+"/rows?"+keyName+"="+keyValue;
-		System.out.println(restQuery);
+		String url =getMusicNodeURL()+"/keyspaces/"+keyspaceName+"/tables/"+tableName+"/rows?"+primaryKeyName+"="+primaryKeyValue;
 		WebResource webResource = client
-				.resource(restQuery);
+				.resource(url);
 
-		ClientResponse response = webResource.accept("application/json").get(ClientResponse.class);
+		ClientResponse response = webResource.accept("application/json")
+				.type("application/json").put(ClientResponse.class, jIns);
 
 		if (response.getStatus() < 200 || response.getStatus() > 299) 
-			throw new RuntimeException("Failed : HTTP error code : "+ response.getStatus());
-		
-		Map<String,Object> output = response.getEntity(Map.class);
-		
-		Map<String, Object> rowMap=null;
-		for (Map.Entry<String, Object> entry : output.entrySet()){
-			rowMap = (Map<String, Object>)entry.getValue();
-			break;
-		}
+			throw new RuntimeException("Failed : HTTP error code : "+ response.getStatus()+"url:"+url+" values:"+values);
 
-		return rowMap;	
 	}
-	
-	public   Map<String,Object> readAllRows(String keyspaceName, String tableName){
+
+	public  void updateEntry(String keyspaceName, String tableName, String primaryKeyName, String primaryKeyValue, Map<String, Object> values){
+		Map<String,String> consistencyInfo= new HashMap<String, String>();
+		consistencyInfo.put("type", "eventual");
+		basicUpdateRow(keyspaceName, tableName, primaryKeyName, primaryKeyValue, values, consistencyInfo);
+	}
+
+	public  void deleteEntry(String keyspaceName, String tableName, String primaryKeyName, String primaryKeyValue){
+		Map<String,String> consistencyInfo= new HashMap<String, String>();
+		consistencyInfo.put("type", "eventual");
+
+		JsonDelete jDel = new JsonDelete();
+		jDel.setConsistencyInfo(consistencyInfo);
 		ClientConfig clientConfig = new DefaultClientConfig();
 
 		clientConfig.getFeatures().put(
 				JSONConfiguration.FEATURE_POJO_MAPPING, Boolean.TRUE);
 
 		Client client = Client.create(clientConfig);
-		
+		String url =getMusicNodeURL()+"/keyspaces/"+keyspaceName+"/tables/"+tableName+"/rows?"+primaryKeyName+"="+primaryKeyValue;
+		//System.out.println(url);
 		WebResource webResource = client
-				.resource(musicUrl+"/keyspaces/"+keyspaceName+"/tables/"+tableName+"/rows");
+				.resource(url);
+
+		ClientResponse response = webResource.accept("application/json")
+				.type("application/json").delete(ClientResponse.class, jDel);
+
+		if (response.getStatus() < 200 || response.getStatus() > 299) 
+			throw new RuntimeException("Failed : HTTP error code : "+ response.getStatus()+"url:"+url);
+
+	}
+
+	public  Map<String,Object> readRow(String keyspaceName, String tableName, String primaryKeyName, String primaryKeyValue){
+		ClientConfig clientConfig = new DefaultClientConfig();
+
+		clientConfig.getFeatures().put(
+				JSONConfiguration.FEATURE_POJO_MAPPING, Boolean.TRUE);
+
+		Client client = Client.create(clientConfig);
+		String url =getMusicNodeURL()+"/keyspaces/"+keyspaceName+"/tables/"+tableName+"/rows?"+primaryKeyName+"="+primaryKeyValue;
+		WebResource webResource = client
+				.resource(url);
 
 		ClientResponse response = webResource.accept("application/json").get(ClientResponse.class);
 
@@ -241,31 +239,27 @@ public class RestMusicFunctions {
 		return output;	
 	}
 
-	public  void dropTable(String keyspaceName, String tableName){
-		Map<String,String> consistencyInfo= new HashMap<String, String>();
-		consistencyInfo.put("type", "eventual");
-
-		JsonTable jsonTb = new JsonTable();
-		jsonTb.setConsistencyInfo(consistencyInfo);
-
+	public  Map<String,Object> readAllRows(String keyspaceName, String tableName){
 		ClientConfig clientConfig = new DefaultClientConfig();
 
 		clientConfig.getFeatures().put(
 				JSONConfiguration.FEATURE_POJO_MAPPING, Boolean.TRUE);
 
 		Client client = Client.create(clientConfig);
+		String url =getMusicNodeURL()+"/keyspaces/"+keyspaceName+"/tables/"+tableName+"/rows";		
+		WebResource webResource = client.resource(url);
 
-		WebResource webResource = client
-				.resource(musicUrl+"/keyspaces/"+keyspaceName+"/tables/"+tableName);
-
-		ClientResponse response = webResource.type("application/json")
-				.delete(ClientResponse.class, jsonTb);
+		ClientResponse response = webResource.accept("application/json").get(ClientResponse.class);
 
 		if (response.getStatus() < 200 || response.getStatus() > 299) 
 			throw new RuntimeException("Failed : HTTP error code : "+ response.getStatus());
+		
+		Map<String,Object> output = response.getEntity(Map.class);
+		return output;	
 	}
-
-	public  void dropKeySpace(String keyspaceName){
+	
+	
+	public void dropKeySpace(String keyspaceName){
 		Map<String,String> consistencyInfo= new HashMap<String, String>();
 		consistencyInfo.put("type", "eventual");
 
@@ -280,7 +274,7 @@ public class RestMusicFunctions {
 		Client client = Client.create(clientConfig);
 
 		WebResource webResource = client
-				.resource(musicUrl+"/keyspaces/"+keyspaceName);
+				.resource(getMusicNodeURL()+"/keyspaces/"+keyspaceName);
 
 		ClientResponse response = webResource.type("application/json")
 				.delete(ClientResponse.class, jsonKp);
@@ -288,28 +282,29 @@ public class RestMusicFunctions {
 		if (response.getStatus() < 200 || response.getStatus() > 299) 
 			throw new RuntimeException("Failed : HTTP error code : "+ response.getStatus());
 	}
-	
-	public  String createLockRef(String lockName){
+
+	public  String createLock(String primaryKeyValue){
 		Client client = Client.create();
-		WebResource webResource = client.resource(musicUrl+"/locks/create/"+lockName);
+		String msg =getMusicNodeURL()+"/locks/create/"+primaryKeyValue;
+		WebResource webResource = client.resource(msg);
 
 		WebResource.Builder wb = webResource.accept(MediaType.TEXT_PLAIN);
 
 		ClientResponse response = wb.post(ClientResponse.class);
 
 		if (response.getStatus() != 200) {
-			throw new RuntimeException("Failed : HTTP error code : "
-					+ response.getStatus());
+			throw new RuntimeException("Failed : HTTP error code : "+ response.getStatus()+"url:"+msg);
 		}
 
 		String output = response.getEntity(String.class);
 
 		return output;
 	}
-	
-	public   boolean acquireLock(String lockId){
+
+	public  boolean acquireLock(String lockId){
 		Client client = Client.create();
-		WebResource webResource = client.resource(musicUrl+"/locks/acquire/"+lockId);
+		String msg =getMusicNodeURL()+"/locks/acquire/"+lockId;
+		WebResource webResource = client.resource(msg);
 
 
 		WebResource.Builder wb = webResource.accept(MediaType.TEXT_PLAIN);
@@ -317,40 +312,17 @@ public class RestMusicFunctions {
 		ClientResponse response = wb.get(ClientResponse.class);
 
 		if (response.getStatus() != 200) {
-			throw new RuntimeException("Failed : HTTP error code : "
-					+ response.getStatus());
+			throw new RuntimeException("Failed : HTTP error code : "+ response.getStatus()+"url:"+msg);
 		}
 
 		String output = response.getEntity(String.class);
 		Boolean status = Boolean.parseBoolean(output);
-	//	System.out.println("Server response .... \n");
-	//	System.out.println(output);
 		return status;
 	}
 
-	public   String whoIsLockHolder(String lockName){
+	public  void releaseLock(String lockId){
 		Client client = Client.create();
-		WebResource webResource = client.resource(musicUrl+"/locks/enquire/"+lockName);
-
-
-		WebResource.Builder wb = webResource.accept(MediaType.TEXT_PLAIN);
-
-		ClientResponse response = wb.get(ClientResponse.class);
-
-		if (response.getStatus() != 200) {
-			throw new RuntimeException("Failed : HTTP error code : "
-					+ response.getStatus());
-		}
-
-		String output = response.getEntity(String.class);
-	//	System.out.println("Server response .... \n");
-	//	System.out.println(output);
-		return output;
-	}
-
-	public   void unlock(String lockId){
-		Client client = Client.create();
-		WebResource webResource = client.resource(musicUrl+"/locks/release/"+lockId);
+		WebResource webResource = client.resource(getMusicNodeURL()+"/locks/release/"+lockId);
 
 		ClientResponse response = webResource.delete(ClientResponse.class);
 
@@ -360,10 +332,65 @@ public class RestMusicFunctions {
 					+ response.getStatus());
 		}
 	}
-	
-	
 
+	
+	public  void updateRowAtomically(String keyspaceName, String tableName, String primaryKeyName, String primaryKeyValue, Map<String, Object> values){
+		/*create lock for the candidate. The music API dictates that
+		 * the lock name must be of the form keyspacename.tableName.primaryKeyName
+		 * */
+		//System.out.println("trying to acquire lock!");
+
+		String lockName = keyspaceName+"."+tableName+"."+primaryKeyValue;
+		String lockId = createLock(lockName);
+		while(acquireLock(lockId) != true);
+		
+		//System.out.println("acquired lock!");
+
+		Map<String,String> consistencyInfo= new HashMap<String, String>();
+		consistencyInfo.put("type", "atomic");
+		consistencyInfo.put("lockId", lockId);
+
+		basicUpdateRow(keyspaceName, tableName, primaryKeyName, primaryKeyValue, values, consistencyInfo);
+
+		//release lock now that the operation is done
+		releaseLock(lockId);
+
+	}
+	
+	public String getMusicId(){
+		
+		Client client = Client.create();
+
+		WebResource webResource = client
+				.resource(getMusicNodeURL()+"/nodeId");
+		if(MusicUtil.debug)System.out.println("the url sent to get the id:"+getMusicNodeURL()+"/nodeId");
+		ClientResponse response = webResource.accept("text/plain")
+				.get(ClientResponse.class);
+
+		if (response.getStatus() != 200) {
+			throw new RuntimeException("Failed : HTTP error code : "
+					+ response.getStatus());
+		}
+
+		String output = response.getEntity(String.class);
+		return output;
+	}
+
+	public  void deleteRowAtomically(String keyspaceName, String tableName, String primaryKeyName, String primaryKeyValue, Map<String, Object> values){
+		
+	}
+
+	public void deleteLock(String lockName){
+		Client client = Client.create();
+		WebResource webResource = client.resource(getMusicNodeURL()+"/locks/delete/"+lockName);
+
+		ClientResponse response = webResource.delete(ClientResponse.class);
+
+
+		if (response.getStatus() != 204) {
+			throw new RuntimeException("Failed : HTTP error code : "
+					+ response.getStatus());
+		}
+	}
 }
-
-
-
+			

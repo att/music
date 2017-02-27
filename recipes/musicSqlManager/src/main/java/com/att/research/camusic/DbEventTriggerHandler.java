@@ -62,6 +62,7 @@ public class DbEventTriggerHandler implements DatabaseEventListener{
 		String third = st.nextToken();
 		if(first.equalsIgnoreCase("create") && second.equalsIgnoreCase("table")){
 			String tableName = third;
+			logger.info("the db event:"+arg0+"|"+arg1+"|"+arg2+"|"+arg3);
 			try {
 				logger.info("In set progress, the table name:"+tableName);
 				ResultSet rs = new MusicSqlManager().executeSQLRead("SELECT * FROM INFORMATION_SCHEMA.TABLES where TABLE_NAME= '"+tableName+"'");
@@ -96,7 +97,7 @@ public class DbEventTriggerHandler implements DatabaseEventListener{
 			if((primaryKeys.size() == 1) && (primaryKeys.get(0).equals("ID_"))){
 				logger.info("-----------------------------------------------------");
 				logger.info("Table "+tableName+" created, primary keys:"+primaryKeys);
-				new MusicSqlManager().initializeDbAndMusicForTable(tableName);
+			//	new MusicSqlManager().initializeDbAndMusicForTable(tableName);
 			}
 			else
 				logger.info("Table creation event, table "+tableName+" ignored since it does not have supported primary keys :"+primaryKeys);

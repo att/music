@@ -24,15 +24,14 @@ package com.att.research.music.main;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.StringTokenizer;
 
+import com.att.research.music.client.MusicRestClient;
 import com.att.research.music.datastore.MusicDataStore;
-import com.att.research.music.datastore.jsonobjects.RestMusicFunctions;
+import com.att.research.music.lockingservice.MusicLockState;
 import com.att.research.music.lockingservice.MusicLockingService;
-import com.att.research.music.lockingservice.ZkStatelessLockService;
 import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
@@ -95,7 +94,7 @@ public class MusicCore {
 		if(MusicUtil.debug) System.out.println("Node ips:"+allNodeIps);
 		for (String musicNodeIp : allNodeIps) {
 			if(MusicUtil.debug) System.out.println("----------Trying to obtain id from "+ musicNodeIp+"-----");
-			RestMusicFunctions restHandle = new RestMusicFunctions(musicNodeIp);
+			MusicRestClient restHandle = new MusicRestClient(musicNodeIp);
 			String nodeId = restHandle.getMusicId();
 			//populate the nodeId in the node Id table
 			if(MusicUtil.debug) System.out.println("----------Obtained id from "+ musicNodeIp+"-----");

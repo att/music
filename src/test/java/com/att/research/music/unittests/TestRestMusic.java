@@ -20,12 +20,14 @@ stated inside of the file.
  ---------------------------------------------------------------------------
 
  */
-package main;
+package com.att.research.music.unittests;
 
 import java.util.HashMap;
 import java.util.Map;
 
-public class TestMusicRestClient {
+import com.att.research.music.client.MusicRestClient;
+
+public class TestRestMusic {
 
 	public static void main(String[] args){
 		String[] musicNodes = {"localhost"};

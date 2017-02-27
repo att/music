@@ -20,7 +20,7 @@ stated inside of the file.
  ---------------------------------------------------------------------------
 
  */
-package com.att.research.music.main;
+package com.att.research.music.lockingservice;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;

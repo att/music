@@ -31,6 +31,6 @@ data-stores like Cassandra  and Mongo-DB that forego ACID semantics for weaker c
 properties are gaining in popularity because of their scalability and strong support for multi-site
 deployments. In this work, we bridge this gap by a design in which applications write locally (or
 within a datacenter) to a SQL cluster which is backed up by a multi-site MUSIC deployment which
-captures every read and write that goes through the SQL database through database triggers. By doing
-so, applications are guaranteed transactional semantics withing a site while they can chose between
+captures every read and write that goes through the SQL database. By doing
+so, applications are guaranteed transactional semantics within a site while they can chose between
 eventually consistent and strongly consistent semantics across sites. 

@@ -33,5 +33,6 @@ Instructions
 3. Download Zookeeper 3.4.6 from and follow these `instructions <http://cassandra.apache.org/download/>`__ pertaining to the standalone operation. By the end of this you should have Zookeeper working.
 4. Download the latest Apache Tomcat and follow these `instructions <http://tecadmin.net/install-tomcat-9-on-ubuntu/>`__ (this is for version 9).  Build the music war file and place within the webapps folder of the tomcat installation.
 5. Download the client app for Music from `here
-<https://github.com/att/music/tree/master/tests/musicTest.jar>`__, and run the jar file. If there
+<https://github.com/att/music/tree/master/tests/musicTest.jar>`__, and run the jar file
+musicTest.jar with localhost as parameter. If there
 are no errors and all the tests pass, then you have MUSIC working. 

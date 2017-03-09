@@ -58,7 +58,7 @@ public class ConfigDetails {
 			logger.info("allReplicaIds="+allReps);
 
 			String DB_URL = prop.getProperty("dbUrl");
-			dbConnection = DB_URL+";AUTO_SERVER=TRUE;MVCC=true;DATABASE_EVENT_LISTENER="+DbEventTriggerHandler.class.getName()+"o";
+			dbConnection = DB_URL+";AUTO_SERVER=TRUE;MVCC=true;DATABASE_EVENT_LISTENER="+DbEventTriggerHandler.class.getName();
 		//	 dbConnection = DB_URL+";MULTI_THREADED=true;AUTO_SERVER=TRUE";
 			logger.info("dbConnection URL="+dbConnection);
 

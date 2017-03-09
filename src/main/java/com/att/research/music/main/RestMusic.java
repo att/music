@@ -40,6 +40,8 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.UriInfo;
 
+import org.apache.log4j.Logger;
+
 import com.att.research.music.datastore.jsonobjects.JsonDelete;
 import com.att.research.music.datastore.jsonobjects.JsonInsert;
 import com.att.research.music.datastore.jsonobjects.JsonKeySpace;
@@ -52,10 +54,13 @@ import com.datastax.driver.core.TableMetadata;
 
 @Path("/")
 public class RestMusic {
+	final static Logger logger = Logger.getLogger(RestMusic.class);
+
 	@GET
 	@Path("/version")
 	@Produces(MediaType.TEXT_PLAIN)
 	public String version() {
+		logger.info("testing log4j");
 		return "MUSIC version:"+MusicUtil.version+MusicUtil.msg;
 	}
 
@@ -99,7 +104,6 @@ public class RestMusic {
 	@Path("/locks/create/{lockname}")
 	@Produces(MediaType.TEXT_PLAIN)	
 	public String createLockReference(@PathParam("lockname") String lockName){
-		if(MusicUtil.debug) System.out.println("in formal rest music create lock reference..");
 		return MusicCore.createLockReference(lockName);
 	}
 
@@ -159,9 +163,8 @@ public class RestMusic {
 		if(kspObject.getDurabilityOfWrites() != null)
 			query = query +" AND durable_writes = " + kspObject.getDurabilityOfWrites() ;
 		query = query + ";";
-		if(MusicUtil.debug) System.out.println(query);
 		long end = System.currentTimeMillis();
-		if(MusicUtil.debug) System.out.println("Time taken for setting up query in create keyspace:"+ (end-start));
+		logger.debug("Time taken for setting up query in create keyspace:"+ (end-start));
 		MusicCore.generalPut(query, consistency);
 	}
 
@@ -173,7 +176,6 @@ public class RestMusic {
 		String consistency = "eventual";//for now this needs only eventual consistency
 		
 		String query ="DROP KEYSPACE "+ keyspaceName+";"; 
-		if(MusicUtil.debug) System.out.println(query);
 		MusicCore.generalPut(query, consistency);
 	}
 	
@@ -204,7 +206,6 @@ public class RestMusic {
 			counter = counter +1;
 		}	
 		
-//		if(MusicUtil.debug) System.out.println("fields:"+fieldsString);
 		
 		//information about the name-value style properties 
 		Map<String,Object> propertiesMap = tableObj.getProperties();
@@ -216,10 +217,8 @@ public class RestMusic {
 				Object ot = entry.getValue();
 				String value = ot+"";
 				if(ot instanceof String){
-					if(MusicUtil.debug) System.out.println("string:"+ ot);
 					value = "'"+value+"'";
 				}else if(ot instanceof Map){
-					if(MusicUtil.debug) System.out.println("map:"+ ot);
 					Map<String,Object> otMap = (Map<String,Object>)ot;
 					value = "{"+MusicCore.jsonMaptoSqlString(otMap, ",")+"}";
 				}
@@ -236,7 +235,6 @@ public class RestMusic {
 			query = query + " WITH "+ propertiesString;
 		
 		query = query +";";
-		if(MusicUtil.debug) System.out.println(query);
 		MusicCore.generalPut(query, consistency);
 	}
 
@@ -256,10 +254,8 @@ public class RestMusic {
 		for (Map.Entry<String, Object> entry : valuesMap.entrySet()){
 			fieldsString = fieldsString+""+entry.getKey();
 			Object valueObj = entry.getValue();	
-			System.out.println("---"+primaryKeyName+" "+entry.getKey()+" "+entry.getValue());
 			if(primaryKeyName.equals(entry.getKey())){
 				primaryKey= entry.getValue()+"";
-				System.out.println("primary key is:"+ primaryKey);
 			}
 				
 			DataType colType = tableInfo.getColumn(entry.getKey()).getType();
@@ -281,22 +277,18 @@ public class RestMusic {
 		String timestamp = insObj.getTimestamp();
 		
 		if((ttl != null) && (timestamp != null)){
-			if(MusicUtil.debug) System.out.println("both there");
 			query = query + " USING TTL "+ ttl +" AND TIMESTAMP "+ timestamp;
 		}
 		
 		if((ttl != null) && (timestamp == null)){
-			if(MusicUtil.debug) System.out.println("ONLY TTL there");
 			query = query + " USING TTL "+ ttl;
 		}
 
 		if((ttl == null) && (timestamp != null)){
-			if(MusicUtil.debug) System.out.println("ONLY timestamp there");
 			query = query + " USING TIMESTAMP "+ timestamp;
 		}
 		
 		query = query +";";
-		if(MusicUtil.debug) System.out.println(query);
 
 		String consistency = insObj.getConsistencyInfo().get("type");
 		if(consistency.equalsIgnoreCase("eventual"))
@@ -317,7 +309,6 @@ public class RestMusic {
 		Map<String,Object> valuesMap =  insObj.getValues();
 		TableMetadata tableInfo = MusicCore.returnColumnMetadata(keyspace, tablename);
 		long end = System.currentTimeMillis();
-		if(MusicUtil.debug) System.out.println("In update, Time taken for getting column meta data:"+(end-start));
 		String vectorTs = "'"+Thread.currentThread().getId()+System.currentTimeMillis()+"'";
 		String fieldValueString="vector_ts="+vectorTs+",";
 		int counter =0;
@@ -355,17 +346,14 @@ public class RestMusic {
 		String timestamp = insObj.getTimestamp();
 		
 		if((ttl != null) && (timestamp != null)){
-			if(MusicUtil.debug) System.out.println("both there");
 			query = query + " USING TTL "+ ttl +" AND TIMESTAMP "+ timestamp;
 		}
 		
 		if((ttl != null) && (timestamp == null)){
-			if(MusicUtil.debug) System.out.println("ONLY TTL there");
 			query = query + " USING TTL "+ ttl;
 		}
 
 		if((ttl == null) && (timestamp != null)){
-			if(MusicUtil.debug) System.out.println("ONLY timestamp there");
 			query = query + " USING TIMESTAMP "+ timestamp;
 		}
 		query = query + " SET "+fieldValueString+" WHERE "+rowSpec+";";
@@ -418,19 +406,16 @@ public class RestMusic {
 		String query ="";
 
 		if((columnList != null) && (!rowSpec.isEmpty())){
-			if(MusicUtil.debug) System.out.println("both there");
 			query =  "DELETE "+columnString+" FROM "+keyspace+"."+tablename+ " WHERE "+ rowSpec+";"; 
 		}
 
 		if((columnList == null) && (!rowSpec.isEmpty())){
-			if(MusicUtil.debug) System.out.println("columns not there");
 			query =  "DELETE FROM "+keyspace+"."+tablename+ " WHERE "+ rowSpec+";"; 
 		}
 
 		if((columnList != null) && (rowSpec.isEmpty())){
 			query =  "DELETE "+columnString+" FROM "+keyspace+"."+tablename+ ";"; 
 		}
-		if(MusicUtil.debug) System.out.println(query);
 
 		boolean operationResult = false;
 
@@ -450,7 +435,6 @@ public class RestMusic {
 		//	String consistency = kspObject.getConsistencyInfo().get("type");
 		String consistency = "eventual";//for now this needs only eventual consistency
 		String query ="DROP TABLE IF EXISTS "+ keyspace+"."+tablename+";"; 
-		if(MusicUtil.debug) System.out.println(query);
 		MusicCore.generalPut(query, consistency);
 	}
 
@@ -473,7 +457,6 @@ public class RestMusic {
 			counter = counter +1;
 		}
 		String query =  "SELECT *  FROM "+keyspace+"."+tablename+ " WHERE "+rowSpec+";"; 
-		if(MusicUtil.debug) System.out.println(query);
 		ResultSet results = MusicCore.get(query);
 		return MusicCore.marshallResults(results);
 	} 
@@ -481,10 +464,9 @@ public class RestMusic {
 	private Map<String, HashMap<String, Object>> selectAll(String keyspace, String tablename){
 		long start = System.currentTimeMillis();
 		String query =  "SELECT *  FROM "+keyspace+"."+tablename+ ";"; 
-		if(MusicUtil.debug) System.out.println(query);
 		ResultSet results = MusicCore.get(query);
 		long end = System.currentTimeMillis();
-		if(MusicUtil.debug) System.out.println("Time taken for the select all:"+(end-start));
+		logger.debug("Time taken for the select all:"+(end-start));
 		return MusicCore.marshallResults(results);
 	}
 
@@ -529,13 +511,6 @@ public class RestMusic {
 			return selectSpecific(keyspace,tablename,info);
 	} 
 
-	@DELETE
-	@Path("/executeTestQuery")
-	@Consumes(MediaType.APPLICATION_JSON)
-	public void executeTestQuery(HashMap<String, String> query){ 
-		if(MusicUtil.debug) System.out.println(query);
-	}
-
 	//pure zk calls...
 	@POST
 	@Path("/purezk/{name}")
@@ -568,7 +543,6 @@ public class RestMusic {
 		Map<String,Object> valuesMap =  insObj.getValues();
 		TableMetadata tableInfo = MusicCore.returnColumnMetadata(keyspace, tablename);
 		long end = System.currentTimeMillis();
-		if(MusicUtil.debug) System.out.println("In update, Time taken for getting column meta data:"+(end-start));
 		String vectorTs = "'"+Thread.currentThread().getId()+System.currentTimeMillis()+"'";
 		String fieldValueString="";
 		int counter =0;
@@ -606,21 +580,17 @@ public class RestMusic {
 		String timestamp = insObj.getTimestamp();
 		
 		if((ttl != null) && (timestamp != null)){
-			if(MusicUtil.debug) System.out.println("both there");
 			query = query + " USING TTL "+ ttl +" AND TIMESTAMP "+ timestamp;
 		}
 		
 		if((ttl != null) && (timestamp == null)){
-			if(MusicUtil.debug) System.out.println("ONLY TTL there");
 			query = query + " USING TTL "+ ttl;
 		}
 
 		if((ttl == null) && (timestamp != null)){
-			if(MusicUtil.debug) System.out.println("ONLY timestamp there");
 			query = query + " USING TIMESTAMP "+ timestamp;
 		}
 		query = query + " SET "+fieldValueString+" WHERE "+rowSpec+";";
-		if(MusicUtil.debug) System.out.println(query);
 		
 		String consistency = insObj.getConsistencyInfo().get("type");
 		MusicCore.generalPut(query, consistency);
@@ -630,7 +600,7 @@ public class RestMusic {
 	@Path("purecassa/keyspaces/{keyspace}/tables/{tablename}/rows/quorumget")
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)	
-	public Map<String, HashMap<String, Object>> prureCassaCriticalGet(@PathParam("keyspace") String keyspace, @PathParam("tablename") String tablename, @Context UriInfo info){		
+	public Map<String, HashMap<String, Object>> pureCassaCriticalGet(@PathParam("keyspace") String keyspace, @PathParam("tablename") String tablename, @Context UriInfo info){		
 			String rowSpec="";
 			int counter =0;
 			TableMetadata tableInfo = MusicCore.returnColumnMetadata(keyspace, tablename);
@@ -654,54 +624,5 @@ public class RestMusic {
 			return MusicCore.marshallResults(results);
 	}
 
-/*	private String extractConsistencyInfo(String key, Map<String, String> consistencyInfo) throws Exception{
-		String consistency="";
-		if(consistencyInfo.get("type").equalsIgnoreCase("atomic")){
-			String lockId = consistencyInfo.get("lockId");
-			
-			String lockName = lockId.substring(lockId.indexOf("$") + 1);
-			lockName = lockName.substring(0, lockName.indexOf("$"));
-			
-			//first ensure that the lock name is correct before seeing if it has access
-			if(!lockName.equalsIgnoreCase(key))
-				throw new Exception("THIS LOCK IS NOT FOR THE KEY: "+ key);
-
-			String lockStatus =  getLockingServiceHandle().lock(lockId)+"";
-			if(lockStatus.equalsIgnoreCase("false"))
-					throw new Exception("YOU DO NOT HAVE THE LOCK");
-			consistency = "atomic";
-		}else if(consistencyInfo.get("type").equalsIgnoreCase("eventual"))
-			consistency = "eventual";
-		else
-			throw new Exception("Consistency type "+consistency+ " unknown!!");
-
-		return consistency;
-	}
-*/	
-/*	private String parseValuesBasedOnColumnType(String keyspace, String table, Map<String, Object> valuesMap){
-		TableMetadata tableInfo = getDSHandle().returnColumnMetadata(keyspace, table);
-		String fieldsString="(";
-		String valueString ="(";
-		int counter =0;
-		for (Map.Entry<String, Object> entry : valuesMap.entrySet()){
-			fieldsString = fieldsString+""+entry.getKey();
-			Object valueObj = entry.getValue();	
-			DataType colType = tableInfo.getColumn(entry.getKey()).getType();
-			valueString = valueString + convertToSqlDataType(colType,valueObj);		
-			if(counter==valuesMap.size()-1){
-				fieldsString = fieldsString+")";
-				valueString = valueString+")";
-			}
-			else{ 
-				fieldsString = fieldsString+",";
-				valueString = valueString+",";
-			}
-			counter = counter +1;
-		}
-		if(MusicUtil.debug) System.out.println(fieldsString);
-		if(MusicUtil.debug) System.out.println(valueString);
-		return "";
-	}
-*/	
 }
 

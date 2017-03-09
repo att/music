@@ -139,25 +139,4 @@ public class MusicLockingService implements Watcher {
 		zkLockHandle.close();
 	}
 
-	public static void main(String[] args) throws Exception {
-		String lockName = "/achristmkllas";
-		MusicLockingService ml = new MusicLockingService();
-		ml.deleteLock(lockName);
-
-
-		System.out.println("lockname:"+lockName);	
-			
-		String lockId1 = ml.createLockId(lockName);
-		System.out.println("lockId1 "+ lockId1);
-        System.out.println(ml.isMyTurn(lockId1));
-        
-		String lockId2 = ml.createLockId(lockName);
-		System.out.println("lockId2 "+lockId2);
-		System.out.println("check "+ml.isMyTurn("$bank$x-94608776321630264-0000000000"));
-		System.out.println(ml.isMyTurn(lockId2));
-
-		//zkClient.unlock(lockId1);
-		//System.out.println(ml.lock(lockId2));
-		//zkClient.unlock(lockId2);
- 	}
 }

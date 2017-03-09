@@ -63,7 +63,6 @@ public class ZkStatelessLockService extends ProtocolSupport{
 	public void close(){
 		try {
 			zookeeper.close();
-			System.out.println(zookeeper.getState());
 		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -73,7 +72,6 @@ public class ZkStatelessLockService extends ProtocolSupport{
 		try {
 			retryOperation(new ZooKeeperOperation() {
 				public boolean execute() throws KeeperException, InterruptedException {
-					System.out.println("In execute, lockName:"+lockName+" data:"+data);
 					zookeeper.getSessionId();
 				    zookeeper.setData("/"+lockName, data, -1);
 					return true;
@@ -100,7 +98,6 @@ public class ZkStatelessLockService extends ProtocolSupport{
 	}
 
 	public boolean checkIfLockExists(String lockName){
-		System.out.println(lockName);
 		boolean result = false; 
 		try {
 			Stat stat = zookeeper.exists(lockName, false);

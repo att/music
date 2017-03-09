@@ -163,7 +163,6 @@ class ProtocolSupport {
                     if (stat != null) {
                         return true;
                     }
-                    System.out.println("here...");
                     zookeeper.create(path, data, acl, flags);
                     return true;
                 }

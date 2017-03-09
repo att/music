@@ -28,6 +28,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.StringTokenizer;
 
+import org.apache.log4j.Logger;
+
 import com.att.research.music.client.MusicRestClient;
 import com.att.research.music.datastore.MusicDataStore;
 import com.att.research.music.lockingservice.MusicLockState;
@@ -42,77 +44,75 @@ public class MusicCore {
 
 	static  MusicLockingService  mLockHandle = null;
 	static  MusicDataStore   mDstoreHandle = null;
+	final static Logger logger = Logger.getLogger(MusicCore.class);
 
 	public static MusicLockingService getLockingServiceHandle(){
-		if(MusicUtil.debug) System.out.println("Trying to acquire locking service handle..");
+		logger.debug("Acquiring lock store handle");
 		long start = System.currentTimeMillis();
 		if(mLockHandle == null){
 			mLockHandle = new MusicLockingService();
 		}
 		long end = System.currentTimeMillis();
-		if(MusicUtil.debug) System.out.println("Time taken to get zookeeper handle:"+ (end-start));
+		logger.debug("Time taken to acquire lock store handle:"+(end-start));
 		return mLockHandle;
 	}
 
 	public static MusicDataStore getDSHandle(String remoteIp){
-		if(MusicUtil.debug) System.out.println("Trying to acquire ds handle..");
+		logger.debug("Acquiring data store handle");
 		long start = System.currentTimeMillis();
 		if(mDstoreHandle == null){
 			mDstoreHandle = new MusicDataStore(remoteIp);
 		}
 		long end = System.currentTimeMillis();
-		if(MusicUtil.debug) System.out.println("Time taken to get cassandra handle:"+ (end-start));
+		logger.debug("Time taken to acquire data store handle:"+(end-start));
 		return mDstoreHandle;
 	}                                                                            
 
 	public static MusicDataStore getDSHandle(){
-		if(MusicUtil.debug) System.out.println("Trying to acquire ds handle..");
+		logger.debug("Acquiring data store handle");
 		long start = System.currentTimeMillis();
 		if(mDstoreHandle == null){
 			mDstoreHandle = new MusicDataStore();
 		}
 		long end = System.currentTimeMillis();
-		if(MusicUtil.debug) System.out.println("Time taken to get cassandra handle:"+ (end-start));
+		logger.debug("Time taken to acquire data store handle:"+(end-start));
 		return mDstoreHandle;
 	}        
 	
 	public static void initializeNode(){
-		//create keyspace for internal music details like node ids and ev put status
+		logger.info("Initializing MUSIC node");
+		/*this cannot be done in a startup routing since this depends on 
+		 * obtaining the node ids from others via rest
+		 */
 		String keyspaceName = MusicUtil.musicInternalKeySpaceName;
 		
 		String ksQuery ="CREATE KEYSPACE  IF NOT EXISTS "+ keyspaceName +" WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 3 };";
-		if(MusicUtil.debug) System.out.println("create ksp query:"+ ksQuery);
 		generalPut(ksQuery, "eventual");
 
 		//create table to track nodeIds;
 		String tabQuery = "CREATE TABLE IF NOT EXISTS "+keyspaceName+"."+MusicUtil.nodeIdsTable+" (public_ip text PRIMARY KEY,nodeId text);"; 
-		if(MusicUtil.debug) System.out.println("create table query:"+ tabQuery);
 		generalPut(tabQuery, "eventual");
 
 
 		ArrayList<String> allNodeIps = getDSHandle().getAllNodePublicIps();
-		if(MusicUtil.debug) System.out.println("Node ips:"+allNodeIps);
+		logger.info("Initializing music internals, node ips:"+allNodeIps);
 		for (String musicNodeIp : allNodeIps) {
-			if(MusicUtil.debug) System.out.println("----------Trying to obtain id from "+ musicNodeIp+"-----");
 			MusicRestClient restHandle = new MusicRestClient(musicNodeIp);
 			String nodeId = restHandle.getMusicId();
 			//populate the nodeId in the node Id table
-			if(MusicUtil.debug) System.out.println("----------Obtained id from "+ musicNodeIp+"-----");
 			String insertQuery = "INSERT into "+keyspaceName+"."+MusicUtil.nodeIdsTable+" (public_ip,nodeId) values('"+musicNodeIp+"','"+nodeId+"')";
 			generalPut(insertQuery, "eventual");
 
 			//create table to track eventual puts
 			tabQuery = "CREATE TABLE IF NOT EXISTS "+keyspaceName+"."+MusicUtil.evPutsTable+nodeId+" (key text PRIMARY KEY, status text);"; 
-			if(MusicUtil.debug) System.out.println("create table query:"+ tabQuery);
 			generalPut(tabQuery, "eventual");
 		}
 	}
 
 
 	public static  String createLockReference(String lockName){
-		if(MusicUtil.debug) System.out.println("In music core create lock reference..");
+		logger.info("Creating lock reference for lock name:"+lockName);
 		String lockId = getLockingServiceHandle().createLockId("/"+lockName);
-	//	getLockingServiceHandle().close();
 		return lockId;
 	}
 
@@ -135,7 +135,7 @@ public class MusicCore {
 		mls = getLockingServiceHandle().getLockState(lockName);
 		return mls;
 	}catch (NullPointerException e) {
-		if(MusicUtil.debug) System.out.println("No lock object exists as of now..");
+		logger.debug("No lock object exists as of now..");
 	}
 		return null;
 	}
@@ -144,10 +144,9 @@ public class MusicCore {
 		/* first check if I am on top. Since ids are not reusable there is no need to check lockStatus
 		 * If the status is unlocked, then the above
 		call will automatically return false.*/
-		if(MusicUtil.debug) System.out.println("In acquire lock....");
 		Boolean result = getLockingServiceHandle().isMyTurn(lockId);	
 		if(result == false){
-			if(MusicUtil.debug) System.out.println("In acquire lock: Not your turn, someone else has the lock");
+			logger.info("In acquire lock: Not your turn, someone else has the lock");
 			return false;
 		}
 		
@@ -155,7 +154,7 @@ public class MusicCore {
 		//this is for backward compatibility where locks could also be acquired on just
 		//keyspaces or tables.
 		if(isTableOrKeySpaceLock(key) == true){
-			if(MusicUtil.debug) System.out.println("In acquire lock: A table or keyspace lock is no longer relevant, so returning true");
+			logger.info("In acquire lock: A table or keyspace lock is no longer relevant, so returning true");
 			return false; 
 		}
 		
@@ -164,35 +163,34 @@ public class MusicCore {
 		try{
 			String currentLockHolder = getMusicLockState(key).getLockHolder();
 			if(lockId.equals(currentLockHolder)){
-				if(MusicUtil.debug) System.out.println("In acquire lock: You already have the lock!");
+				logger.info("In acquire lock: You already have the lock!");
 				return true;
 			}
 		}catch (NullPointerException e) {
-			if(MusicUtil.debug) System.out.println("No lock object exists as of now..");
+			logger.debug("In acquire lock:No lock object exists as of now..");
 		}
 		
 		//change status to "being locked". This state transition is necessary to ensure syncing before granting the lock
 		String lockHolder = null;
 		MusicLockState mls = new MusicLockState(MusicLockState.LockStatus.BEING_LOCKED, lockHolder);
 		getLockingServiceHandle().setLockState(key, mls);
-		if(MusicUtil.debug) System.out.println("In acquire lock: Set lock state to being_locked");
+		logger.debug("In acquire lock: Set lock state to being_locked");
 		
 		mls = new MusicLockState(MusicLockState.LockStatus.LOCKED, lockHolder);
 		getLockingServiceHandle().setLockState(key, mls);
-		if(MusicUtil.debug) System.out.println("In acquire lock: Set lock state to locked");
+		logger.debug("In acquire lock: Set lock state to locked");
 
 		//ensure that there are no eventual puts pending and that all replicas of key
 		//have the same value
 		syncAllReplicas(key);
-		if(MusicUtil.debug) System.out.println("In acquire lock: synced all replicas");
+		logger.debug("In acquire lock: synced all replicas");
 
 
 		//change status to locked
 		lockHolder = lockId;
 		mls = new MusicLockState(MusicLockState.LockStatus.LOCKED, lockHolder);
 		getLockingServiceHandle().setLockState(key, mls);
-		if(MusicUtil.debug) System.out.println("In acquire lock: Set lock state to locked and assigned current lock ref "+ lockId+" as holder");
-//		getLockingServiceHandle().close();
+		logger.info("In acquire lock: Set lock state to locked and assigned current lock ref "+ lockId+" as holder");
 		return result;
 	}
 
@@ -209,7 +207,7 @@ public class MusicCore {
 		wait till all the eventual puts are done at the other music nodes (with timeout)
 		and wait till all values are the same at the music nodes*/
 		ArrayList<String> listOfNodePublicIps = getDSHandle().getAllNodePublicIps();
-		if(MusicUtil.debug) System.out.print("--- public Ips of nodes:---"+listOfNodePublicIps);
+		logger.debug("In sync all replicas:public Ips of nodes:"+listOfNodePublicIps);
 		boolean synced = false;
 		int backOffFactor = 0; 
 		long backOffTime = 50;
@@ -221,15 +219,16 @@ public class MusicCore {
 			boolean mismatch = false;
 			for (int i=1; i < listOfNodePublicIps.size();i++){ 
 				MusicDigest mg;
+				String remoteNodePublicIp="";
 				try {
-					String remoteNodePublicIp = listOfNodePublicIps.get(i);
+					remoteNodePublicIp = listOfNodePublicIps.get(i);
 					mg = getDigest(remoteNodePublicIp,key);
 					if(mg == null){
-						if(MusicUtil.debug) System.out.println("There is no digest, move on");
+						logger.debug("In sync all replicas:There is no digest from "+remoteNodePublicIp+", move on");
 						continue;
 					}
 				} catch (NoHostAvailableException e) {
-					if(MusicUtil.debug) System.out.println("Node not responding correctly...");
+					logger.debug("In sync all replicas: Node "+remoteNodePublicIp+" not responding correctly...");
 					continue;//if the host is dead we do not care about his value
 				}
 				if(mg.getEvPutStatus().equals("inprogress")){	
@@ -249,7 +248,7 @@ public class MusicCore {
 	public static  MusicDigest getDigest(String publicIp,String key){
 		long startTime = System.currentTimeMillis();
 		String nodeId = getNodeId(publicIp);
-		if(MusicUtil.debug)System.out.println("-----------Trying to obtain message digest from node "+nodeId+" with IP:"+publicIp+"---------");
+		logger.debug("In getDigest:Trying to obtain message digest from node "+nodeId+" with IP:"+publicIp);
 		String[] splitString = key.split("\\.");
 		String keyspaceName = splitString[0];
 		String tableName = splitString[1];
@@ -283,7 +282,7 @@ public class MusicCore {
 			evPutStatus = "";
 		MusicDigest mg = new MusicDigest(evPutStatus,vectorTs);	
 		long timeTaken = System.currentTimeMillis()-startTime;
-		if(MusicUtil.debug)System.out.println("---------Obtained message digest from node "+nodeId+" with IP:"+publicIp+" "+mg+" in "+timeTaken+" ms--------");
+		logger.debug("In getDigest:Obtained message digest from node "+nodeId+" with IP:"+publicIp+" "+mg+" in "+timeTaken+" ms");
 
 		return mg;
 	}
@@ -293,11 +292,11 @@ public class MusicCore {
 			MusicLockState mls;
 			mls = getLockingServiceHandle().getLockState(lockName);
 			if(mls.getLockStatus().equals(MusicLockState.LockStatus.UNLOCKED) == false){
-				if(MusicUtil.debug) System.out.println("The key is locked");
+				logger.debug("In isKeyUnLocked:The key with lock name "+lockName+" is locked");
 				return false;//someone else is holding the lock to the key
 			}
 		} catch (NullPointerException e) {
-			if(MusicUtil.debug) System.out.println("No lock has been created for this, so go ahead with the eventual put..");
+			logger.debug("In isKeyUnLocked:No lock has been created for this, so go ahead with the eventual put..");
 		}
 		return true;
 	}
@@ -316,7 +315,7 @@ public class MusicCore {
 		if(isKeyUnLocked(lockName) == false){
 			result = false;
 		}else{
-			if(MusicUtil.debug) System.out.println("The key is un-locked, CAN perform eventual puts..");
+			logger.debug("In eventual put: The key is un-locked, can perform eventual puts..");
 			//do actual write 
 			getDSHandle().executePutQuery(query, "eventual");
 			result = true;
@@ -379,7 +378,6 @@ public class MusicCore {
 	
 	public static  String whoseTurnIsIt(String lockName){
 		String currentHolder = getLockingServiceHandle().whoseTurnIsIt("/"+lockName)+"";
-//		getLockingServiceHandle().close();
 		return currentHolder;
 	}
 
@@ -388,38 +386,34 @@ public class MusicCore {
 		String lockName = st.nextToken("$");
 		return lockName;
 	}
+	
 	public static  void  unLock(String lockId){
-		if(MusicUtil.debug) System.out.println("In the Formal release, lock id is:"+lockId);
 		getLockingServiceHandle().unlockAndDeleteId(lockId);
 		MusicLockState mls;
 		String lockName = getLockNameFromId(lockId);
 		String nextInLine = whoseTurnIsIt(lockName);
-		if(MusicUtil.debug) System.out.println("In the Formal release, next in line lock id is:"+nextInLine);
 		if(!nextInLine.equals("")){
-			if(MusicUtil.debug) System.out.println("In the Formal release, since someone is in line, give him the lock");
 			mls = new MusicLockState(MusicLockState.LockStatus.LOCKED, nextInLine);
+			logger.info("In unlock: lock released for "+lockId+" and given to "+nextInLine);
 		}
 		else{
 			//change status to unlocked
-			if(MusicUtil.debug) System.out.println("In the Formal release, no one in line");
 			mls = new MusicLockState(MusicLockState.LockStatus.UNLOCKED, null);
+			logger.info("In unlock: lock released for "+lockId+" and no one else waiting i line");
 		}
 		getLockingServiceHandle().setLockState(lockName, mls);
-//		getLockingServiceHandle().close();
 	}
 
 	public static  void deleteLock(String lockName){
+		logger.info("Deleting lock for "+lockName);
 		getLockingServiceHandle().deleteLock("/"+lockName);
-	//	getLockingServiceHandle().close();
 	}
 
 	//this is mainly for some  functions like keyspace creation etc which does not
 	//really need the bells and whistles of Music locking. 
 	public static  void generalPut(String query, String consistency){
-		if(MusicUtil.debug) System.out.println("In music core, executing general put queery:"+query);
 		try {
 			getDSHandle().executePutQuery(query,consistency);
-		//	getDSHandle(MusicUtil.myCassaHost).close();
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -468,7 +462,6 @@ public class MusicCore {
 				sqlString = sqlString+lineDelimiter;
 			counter = counter +1;
 		}	
-		//if(MusicUtil.debug) System.out.println(sqlString);
 		return sqlString;	
 	}
 	
@@ -483,34 +476,4 @@ public class MusicCore {
 	public static byte[] pureZkRead(String nodeName){
 		return getLockingServiceHandle().getzkLockHandle().getNodeData(nodeName);
 	}
-
-	public static void main(String[] args){
-		
-	//	MusicCore.getLocalDigest("testks.employees.bharath");
-		
-		
-/*		String nodeId ="1";
-		String publicIp = "135.197.226.99";
-		String key = "testks.employees.bharath";
-		if(MusicUtil.debug) System.out.println("hi");
-		
-		MusicCore.getDigest(nodeId, publicIp, key);
-*//*		RestMusicFunctions restHandle = new RestMusicFunctions(publicIp);
-
-		Map<String,Object> dataRow = restHandle.readSpecificRow("testks", "employees", "emp_name","bharath");
-		
-		String metaKeyspaceName = MusicUtil.musicInternalKeySpaceName;
-		String metaTableName = "EvPutStatusAt"+nodeId;
-
-		Map<String,Object> evPutStatusRow = restHandle.readSpecificRow(metaKeyspaceName, metaTableName, "key", key);
-
-		if(MusicUtil.debug) System.out.println(dataRow);
-		if(MusicUtil.debug) System.out.println(evPutStatusRow);
-		*/
-		
-
-		
-	}
-
-
 }

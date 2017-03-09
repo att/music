@@ -424,7 +424,7 @@ public class MusicSqlManager {
 */
 
 		
-		handle.executeSQLWrite("CREATE TABLE PERSON_TEST (ID_ varchar(255), name varchar(255), primary key (ID_))");
+	//	handle.executeSQLWrite("CREATE TABLE PERSON_TEST (ID_ varchar(255), name varchar(255), primary key (ID_))");
 //		handle.initializeDbAndMusicForTable("PERSON_TEST");
 		while(true){
 		//	dbRs = handle.executeSQLRead("SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA='PUBLIC' ");

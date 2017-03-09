@@ -52,7 +52,6 @@ public class MusicRestClient {
 	
 	public String getMusicNodeURL(){
 		String musicurl = "http://"+getMusicNodeIp()+":8080/MUSIC/rest";
-		System.out.println(musicurl);
 		return musicurl;
 	}
 
@@ -63,7 +62,6 @@ public class MusicRestClient {
 	}
 
 	public void createKeyspace(String keyspaceName){
-		System.out.println(keyspaceName);
 		Map<String,Object> replicationInfo = new HashMap<String, Object>();
 		replicationInfo.put("class", "SimpleStrategy");
 		replicationInfo.put("replication_factor", 1);
@@ -133,10 +131,6 @@ public class MusicRestClient {
 		}
 
 		String output = response.getEntity(String.class);
-
-	//	System.out.println("Output from Server .... \n");
-		System.out.println(output);
-
 	}
 
 	public  void createRow(String keyspaceName, String tableName,Map<String, Object> values){
@@ -207,7 +201,6 @@ public class MusicRestClient {
 
 		Client client = Client.create(clientConfig);
 		String url =getMusicNodeURL()+"/keyspaces/"+keyspaceName+"/tables/"+tableName+"/rows?"+primaryKeyName+"="+primaryKeyValue;
-		//System.out.println(url);
 		WebResource webResource = client
 				.resource(url);
 
@@ -338,13 +331,11 @@ public class MusicRestClient {
 		/*create lock for the candidate. The music API dictates that
 		 * the lock name must be of the form keyspacename.tableName.primaryKeyName
 		 * */
-		//System.out.println("trying to acquire lock!");
 
 		String lockName = keyspaceName+"."+tableName+"."+primaryKeyValue;
 		String lockId = createLock(lockName);
 		while(acquireLock(lockId) != true);
 		
-		//System.out.println("acquired lock!");
 
 		Map<String,String> consistencyInfo= new HashMap<String, String>();
 		consistencyInfo.put("type", "atomic");
@@ -363,7 +354,6 @@ public class MusicRestClient {
 
 		WebResource webResource = client
 				.resource(getMusicNodeURL()+"/nodeId");
-		if(MusicUtil.debug)System.out.println("the url sent to get the id:"+getMusicNodeURL()+"/nodeId");
 		ClientResponse response = webResource.accept("text/plain")
 				.get(ClientResponse.class);
 

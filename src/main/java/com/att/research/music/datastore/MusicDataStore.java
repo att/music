@@ -22,18 +22,17 @@ stated inside of the file.
  */
 package com.att.research.music.datastore;
 
-import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
-import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
-import com.att.research.music.main.MusicUtil;
+import org.apache.log4j.Logger;
+
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.ColumnDefinitions;
 import com.datastax.driver.core.ConsistencyLevel;
@@ -53,13 +52,13 @@ import com.datastax.driver.core.exceptions.NoHostAvailableException;
 public class MusicDataStore {
 	private Session session;
 	private Cluster cluster;
+	final static Logger logger = Logger.getLogger(MusicDataStore.class);
+
 	public MusicDataStore(){
-		System.out.println("Connecting to cass cluster..");
 		connectToCassaCluster();
 	}
 
 	public MusicDataStore(String remoteIp){
-		System.out.println("Connecting to cass cluster at "+remoteIp);
 		connectToCassaCluster(remoteIp);
 	}
 
@@ -85,24 +84,21 @@ public class MusicDataStore {
 	private void connectToCassaCluster(){
 		Iterator<String> it = getAllPossibleLocalIps().iterator();
 		String address= "localhost";
-		System.out.println("Iterating through possible ips.."+getAllPossibleLocalIps());
+		logger.debug("Connecting to cassa cluster: Iterating through possible ips:"+getAllPossibleLocalIps());
 		while(it.hasNext()){
 			try {
 				cluster = Cluster.builder().withPort(9042).addContactPoint(address).build();
 				//cluster.getConfiguration().getSocketOptions().setReadTimeoutMillis(Integer.MAX_VALUE);
 				Metadata metadata = cluster.getMetadata();
-				System.out.println("Connected to "+address+"!");
-				System.out.printf("Connected to cluster: %s\n", 
-						metadata.getClusterName());
-				for ( Host host : metadata.getAllHosts() ) {
+				logger.debug("Connected to cassa cluster "+metadata.getClusterName()+" at "+address);
+/*				for ( Host host : metadata.getAllHosts() ) {
 					System.out.printf("Datacenter: %s; Host broadcast: %s; Rack: %s\n",
 							host.getDatacenter(), host.getBroadcastAddress(), host.getRack());
 							
-				}
+				}*/
 				session = cluster.connect();
 				break;
 			} catch (NoHostAvailableException e) {
-				System.out.println("Cant find host:"+ address);
 				address= it.next();
 			} 
 		}
@@ -119,31 +115,29 @@ public class MusicDataStore {
 	
 	private void connectToCassaCluster(String address){	
 		cluster = Cluster.builder().withPort(9042).addContactPoint(address).build();
-		//cluster.getConfiguration().getSocketOptions().setReadTimeoutMillis(Integer.MAX_VALUE);
 		Metadata metadata = cluster.getMetadata();
-		System.out.printf("Connected to cluster: %s\n", 
-				metadata.getClusterName());
-		for ( Host host : metadata.getAllHosts() ) {
+		logger.debug("Connected to cassa cluster "+metadata.getClusterName()+" at "+address);
+/*		for ( Host host : metadata.getAllHosts() ) {
 			System.out.printf("Datacenter: %s; Host broadcast: %s; Rack: %s\n",
 					host.getDatacenter(), host.getBroadcastAddress(), host.getRack());
-		}
+		}*/
 		session = cluster.connect();
 	}
 
 	public ResultSet executeGetQuery(String query){
-		System.out.println("Executing normal get query:"+query);
+		logger.info("Executing normal get query:"+query);
 		long start = System.currentTimeMillis();
 		Statement statement = new SimpleStatement(query);
 		statement.setConsistencyLevel(ConsistencyLevel.ONE);
 		ResultSet results = session.execute(statement);
 		long end = System.currentTimeMillis();
-		System.out.println("time taken for actual get in cassandra:"+(end-start));
+		logger.debug("Time taken for actual get in cassandra:"+(end-start));
 		return results;	
 	}
 
 	public ResultSet executeCriticalGetQuery(String query){
 		Statement statement = new SimpleStatement(query);
-		System.out.println("Executing critical get query:"+query);
+		logger.info("Executing critical get query:"+query);
 		statement.setConsistencyLevel(ConsistencyLevel.QUORUM);
 		ResultSet results = session.execute(statement);
 		return results;	
@@ -162,83 +156,20 @@ public class MusicDataStore {
 	}
 
 	public void executePutQuery(String query, String consistency){
-		if(MusicUtil.debug) System.out.println("in data store handle, executing put:"+query);
+		logger.debug("in data store handle, executing put:"+query);
 		long start = System.currentTimeMillis();
 		Statement statement = new SimpleStatement(query);
 		if(consistency.equalsIgnoreCase("atomic")){
-			System.out.println("Executing critical put query");
+			logger.info("Executing critical put query:"+query);
 			statement.setConsistencyLevel(ConsistencyLevel.QUORUM);
 		}
 		else if (consistency.equalsIgnoreCase("eventual")){
-			System.out.println("Executing simple put query");
+			logger.info("Executing normal put query:"+query);
 			statement.setConsistencyLevel(ConsistencyLevel.ONE);
 		}
 		session.execute(statement); 
 		long end = System.currentTimeMillis();
-		System.out.println("time taken for actual put in cassandra:"+(end-start));
-	}
-
-	public void createSchema() { 
-		Statement statement = new SimpleStatement("CREATE KEYSPACE IF NOT EXISTS bharath WITH replication " + 
-				"= {'class':'SimpleStrategy', 'replication_factor':1};");
-		statement.setConsistencyLevel(ConsistencyLevel.ALL);
-		session.execute(statement);
-
-		//session.execute("CREATE KEYSPACE IF NOT EXISTS bharath WITH replication " + 
-		//      "= {'class':'SimpleStrategy', 'replication_factor':1};");
-
-		session.execute(
-				"CREATE TABLE IF NOT EXISTS bharath.songs (" +
-						"id uuid PRIMARY KEY," + 
-						"title text," + 
-						"album text," + 
-						"artist text," + 
-						"tags set<text>," + 
-						"data blob" + 
-				");");
-		session.execute(
-				"CREATE TABLE IF NOT EXISTS bharath.playlists (" +
-						"id uuid," +
-						"title text," +
-						"album text, " + 
-						"artist text," +
-						"song_id uuid," +
-						"PRIMARY KEY (id, title, album, artist)" +
-				");");
-
-	}
-
-	public void loadData() { 
-		session.execute(
-				"INSERT INTO bharath.songs (id, title, album, artist, tags) " +
-						"VALUES (" +
-						"756716f7-2e54-4715-9f00-91dcbea6cf50," +
-						"'La Petite Tonkinoise'," +
-						"'Bye out Blackbird'," +
-						"'Joséphine Baaaker'," +
-						"{'jazz', '2013'})" +
-				";");
-		session.execute(
-				"INSERT INTO bharath.playlists (id, song_id, title, album, artist) " +
-						"VALUES (" +
-						"2cc9ccb7-6221-4ccb-8387-f22b6a1b354d," +
-						"756716f7-2e54-4715-9f00-91dcbea6cf50," +
-						"'La Petite Tonkinoise'," +
-						"'Bye out Blackbird'," +
-						"'Joséphine Baaaker'" +
-				");");
-	}
-
-	public void querySchema(){
-		ResultSet results = session.execute("SELECT * FROM bharath.playlists " +
-				"WHERE id = 2cc9ccb7-6221-4ccb-8387-f22b6a1b354d;");
-		System.out.println(String.format("%-30s\t%-20s\t%-20s\n%s", "title", "album", "artist",
-				"-------------------------------+-----------------------+--------------------"));
-		for (Row row : results) {
-			System.out.println(String.format("%-30s\t%-20s\t%-20s", row.getString("title"),
-					row.getString("album"),  row.getString("artist")));
-		}
-		System.out.println();
+		logger.debug("Time taken for actual put in cassandra:"+(end-start));
 	}
 
 	public Object readRow(Row row, String name, DataType colType){	
@@ -273,7 +204,6 @@ public class MusicDataStore {
 			ColumnDefinitions colInfo = row.getColumnDefinitions();
 			HashMap<String,Object> resultOutput = new HashMap<String, Object>();
 			for (Definition definition : colInfo) {
-				//	System.out.println("column name:"+ definition.getName());
 				if(!definition.getName().equals("vector_ts"))
 					resultOutput.put(definition.getName(), readRow(row, definition.getName(), definition.getType()));
 			}
@@ -283,21 +213,4 @@ public class MusicDataStore {
 		return resultMap;
 	}
 
-//	public void close() {
-//		session.close();
-//		cluster.close();
-//	}
-	public static void main(String[] args) {
-		String test = "bharath-music-0";
-		String newTest = test.replace("-", "_");
-		System.out.println(newTest);
-		System.exit(0);
-		String remoteIp = "localhost";
-		
-		MusicDataStore client =null;
-		client = new MusicDataStore(remoteIp);
-		client.createSchema();
-		client.loadData();
-		client.querySchema();
-	}
 }

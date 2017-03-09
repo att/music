@@ -38,98 +38,23 @@ public class MusicUtil {
 	public static final String evPutsTable = "evPutTracker_";
 	public static final boolean debug = true;
 	public static final String version = "1.0.0";
-	public static final String msg = "-First version of Music on the public git-";
+	public static final String msg = "-First version of Music on the public git with log4j-";
 	public static final String musicRestIp = "localhost";
 	
-/*	public static String getMyPublicIp(){
-		String myIp = null;
-		try {
-			Scanner fileScanner = new Scanner(new File(confLocation));
-			fileScanner.next();//ignore id line
-			String line = fileScanner.next();
-			String[] idArray = line.split(":");
-			myIp = idArray[1];
-			fileScanner.close();
-		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-
-		return myIp;	
-		String agaveMusicNode = "135.207.223.43";
-		String bigSiteMusicNode = "135.197.226.98";
-		if((System.currentTimeMillis() %2)==0)
-			return agaveMusicNode;
-		else 
-			return bigSiteMusicNode;
-	}
-	
-	public static String getMusicNodeURL(){
-		return "http://"+MusicUtil.getMyPublicIp()+":8080/MUSIC/rest";
-	}
-*/	
 	public static String getMyId(){
 		InetAddress IP;
 		String hostName="";
 		try {
 			IP = Inet4Address.getLocalHost();
-			hostName = IP.getHostName();
+			hostName = 	IP.getHostAddress();
 		} catch (UnknownHostException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
-		return hostName.replace("-", "_");
-
+		hostName = hostName.replace("-", "_");
+		hostName = hostName.replace(".", "_");
+		return hostName;
 	}
-	
-
-/*	public static ArrayList<String> getOtherMusicPublicIps(){
-		ArrayList<String> listOfNodeIps = new ArrayList<String>();
-		try {
-			Scanner fileScanner = new Scanner(new File(confLocation));
-			fileScanner.next();//ignore the id line
-			fileScanner.next();//ignore the my public ip line			
-			fileScanner.next();//ignore the node ids line
-
-			String nodeIpsline = fileScanner.next();
-			String myIp = getMyPublicIp();
-			String[] nodeIps = nodeIpsline.split(":");
-			for(int i=1; i < nodeIps.length;i++){
-				String otherIp = nodeIps[i];
-				if(otherIp.equals(myIp) == false)
-					listOfNodeIps.add(otherIp);
-			}
-			fileScanner.close();
-		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		return listOfNodeIps;
-	}
-	
-	public static ArrayList<String> getOtherMusicNodeIds(){
-		ArrayList<String> listOfNodeIds = new ArrayList<String>();
-		try {
-			Scanner fileScanner = new Scanner(new File(confLocation));
-			fileScanner.next();//ignore the my id line
-			fileScanner.next();//ignore the my public ip line
-
-			String nodeIpsline = fileScanner.next();
-			String[] nodeIds = nodeIpsline.split(":");
-			String myId = getMyId();
-			for(int i=1; i < nodeIds.length;i++){
-				String otherId = nodeIds[i];
-				if(otherId.equals(myId)==false)
-					listOfNodeIds.add(otherId);
-			}
-			fileScanner.close();
-		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		return listOfNodeIds;
-	}
-*/
 	public static String getTestType(){
 		String testType = "";
 		try {
@@ -152,9 +77,4 @@ public class MusicUtil {
 			e.printStackTrace();
 		}	
 	}
-	
-	public static void main(String[] args){
-		System.out.println(MusicUtil.getMyId());
-	}
-	
 }

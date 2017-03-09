@@ -55,7 +55,7 @@ public class DbOperationTriggerHandler implements org.h2.api.Trigger{
 			musicHandle.deleteFromEntityTableInMusic(tableName,rowKey);		
 			return;
 		}else{//this is an update
-			if(MusicSqlManager.getIsUpdateInProgress())//to avoid cycylical updates
+			if(MusicSqlManager.getIsUpdateInProgress())//to avoid cyclical updates
 				MusicSqlManager.setIsUpdateInProgress(false);
 			else{
 				logger.info("-----------------------------------------------------");

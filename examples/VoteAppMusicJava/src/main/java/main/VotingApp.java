@@ -461,10 +461,10 @@ public class VotingApp {
 	}
 	public static void main(String[] args) {
 		
-		String[] musicIps = {"135.197.226.113","135.197.226.49","135.197.226.68"};
-
+		//String[] musicIps = {"135.197.226.113","135.197.226.49","135.197.226.68"};
+		String[] musicIps = {"localhost"};
 		long start = System.currentTimeMillis();
-			for(int i =0; i < 5;++i){
+			for(int i =0; i < 4;++i){
 				VotingApp vHandle = new VotingApp(musicIps);
 				vHandle.overAllTests();
 

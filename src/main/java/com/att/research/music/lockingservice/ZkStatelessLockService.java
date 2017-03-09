@@ -87,7 +87,9 @@ public class ZkStatelessLockService extends ProtocolSupport{
 	
 	public byte[] getNodeData(final String lockName){
 		try {
-		    return zookeeper.getData("/"+lockName, false,null);
+			if(zookeeper.exists("/"+lockName, null) != null)
+				return zookeeper.getData("/"+lockName, false,null);
+			else return null;
 
 		} catch (KeeperException e) {
 			LOG.warn("Caught: " + e, e);

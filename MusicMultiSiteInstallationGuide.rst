@@ -149,7 +149,7 @@ Testing the client app
 ======================
 
 Download the client app for Music from `here
-<https://github.com/att/music/tree/master/examples/VoteAppMusicJava>`__, then use a java editor to
+<https://github.com/att/music/tree/master/tests/musicTest.jar>`__, then use a java editor to
 import the maven project, VoteAppForMUSIC. In the file VotingApp.java, change the musicIps to point
 to your music ips and run the file.  The expected output
 should be pretty easy to understand just by looking at the file VotingApp.java.

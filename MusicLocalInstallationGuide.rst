@@ -32,6 +32,6 @@ Instructions
 2. Download apache cassandra 3.0 and follow these `instructions <http://cassandra.apache.org/doc/latest/getting_started/installing.html>`__ till and including Step 4. By the end of this you should have Cassandra working.
 3. Download Zookeeper 3.4.6 from and follow these `instructions <http://cassandra.apache.org/download/>`__ pertaining to the standalone operation. By the end of this you should have Zookeeper working.
 4. Download the latest Apache Tomcat and follow these `instructions <http://tecadmin.net/install-tomcat-9-on-ubuntu/>`__ (this is for version 9).  Build the music war file and place within the webapps folder of the tomcat installation.
-5. Download the client app for Music from `here <https://github.com/att/music/tree/master/examples/VoteAppMusicJava>`__, then use a java editor to import the maven project, VoteAppForMUSIC, and then run the file VotingApp.  The expected output should be pretty easy to understand just by looking at the file VotingApp.java.
-
-
+5. Download the client app for Music from `here
+<https://github.com/att/music/tree/master/tests/musicTest.jar>`__, and run the jar file. If there
+are no errors and all the tests pass, then you have MUSIC working. 

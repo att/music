@@ -49,8 +49,6 @@ public class VotingApp {
 	}
 	
 	public void createVotingKeyspace(){
-		//randomize the name so that people dont step on each other
-	//	keyspaceName = "VotingApp"+ System.currentTimeMillis()/100;
 		keyspaceName = "VotingAppPerformanceFix";
 		System.out.println(keyspaceName);
 		Map<String,Object> replicationInfo = new HashMap<String, Object>();
@@ -459,13 +457,10 @@ public class VotingApp {
 		}
 		return null;
 	}
-	public static void main(String[] args) {
-		
-		//String[] musicIps = {"135.197.226.113","135.197.226.49","135.197.226.68"};
-		String[] musicIps = {"localhost"};
+	public static void main(String[] args) {	
 		long start = System.currentTimeMillis();
-			for(int i =0; i < 4;++i){
-				VotingApp vHandle = new VotingApp(musicIps);
+			for(int i =0; i < 2;++i){
+				VotingApp vHandle = new VotingApp(args);
 				vHandle.overAllTests();
 
 				System.out.println("=====================================");

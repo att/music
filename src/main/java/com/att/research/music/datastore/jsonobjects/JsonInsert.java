@@ -30,12 +30,29 @@ import java.io.Serializable;
 import java.util.Map;
 
 public class JsonInsert implements Serializable {
-	
+	public String getKeyspaceName() {
+		return keyspaceName;
+	}
+
+	public void setKeyspaceName(String keyspaceName) {
+		this.keyspaceName = keyspaceName;
+	}
+
+	public String getTableName() {
+		return tableName;
+	}
+
+	public void setTableName(String tableName) {
+		this.tableName = tableName;
+	}
+	private String keyspaceName;
+	private String tableName;
     private Map<String,Object> values;
     String ttl, timestamp;
 	private Map<String,Object> row_specification;
     private Map<String,String> consistencyInfo;
 
+    
 	public Map<String, String> getConsistencyInfo() {
 		return consistencyInfo;
 	}

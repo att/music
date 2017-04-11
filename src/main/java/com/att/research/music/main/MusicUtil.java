@@ -38,7 +38,7 @@ public class MusicUtil {
 	public static final String evPutsTable = "evPutTracker_";
 	public static final boolean debug = true;
 	public static final String version = "1.0.0";
-	public static final String msg = "-First version of Music on the public git with log4j-";
+	public static final String msg = "-First version of MUSIC on the public git with log4j and jersey muted-";
 	public static final String musicRestIp = "localhost";
 	
 	public static String getMyId(){

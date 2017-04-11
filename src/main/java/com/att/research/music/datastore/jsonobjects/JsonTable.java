@@ -24,7 +24,10 @@ package com.att.research.music.datastore.jsonobjects;
 import java.util.Map;
 
 public class JsonTable {
-    private Map<String,String> fields;
+	private String keyspaceName;
+	private String tableName;
+
+	private Map<String,String> fields;
 	private Map<String, Object> properties; 
     private String clusteringOrder;
     private Map<String,String> consistencyInfo;
@@ -61,5 +64,18 @@ public class JsonTable {
 	public void setClusteringOrder(String clusteringOrder) {
 		this.clusteringOrder = clusteringOrder;
 	}
+	public String getKeyspaceName() {
+		return keyspaceName;
+	}
 
+	public void setKeyspaceName(String keyspaceName) {
+		this.keyspaceName = keyspaceName;
+	}
+    public String getTableName() {
+		return tableName;
+	}
+
+	public void setTableName(String tableName) {
+		this.tableName = tableName;
+	}
 }

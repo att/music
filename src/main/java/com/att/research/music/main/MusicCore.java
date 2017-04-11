@@ -32,6 +32,7 @@ import org.apache.log4j.Logger;
 
 import com.att.research.music.client.MusicRestClient;
 import com.att.research.music.datastore.MusicDataStore;
+import com.att.research.music.datastore.jsonobjects.JsonKeySpace;
 import com.att.research.music.lockingservice.MusicLockState;
 import com.att.research.music.lockingservice.MusicLockingService;
 import com.datastax.driver.core.DataType;
@@ -301,6 +302,9 @@ public class MusicCore {
 		return true;
 	}
 	
+	public boolean createKeyspace(String keyspaceName, JsonKeySpace kspObject) throws Exception {
+		return true;
+	}
 	public static  boolean eventualPut(String keyspaceName, String tableName, String primaryKey, String query){
 		//do a cassandra write one on the meta table with status as in-progress
 		String metaKeyspaceName = MusicUtil.musicInternalKeySpaceName;

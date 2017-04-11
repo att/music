@@ -26,7 +26,8 @@ import java.util.Map;
 
 
 public class JsonKeySpace {
-    private Map<String,Object> replicationInfo;
+	private String keyspaceName;
+	private Map<String,Object> replicationInfo;
 	private String durabilityOfWrites;
     private Map<String,String> consistencyInfo;
 
@@ -52,6 +53,14 @@ public class JsonKeySpace {
 	public void setDurabilityOfWrites(String durabilityOfWrites) {
 		this.durabilityOfWrites = durabilityOfWrites;
 	}
+    public String getKeyspaceName() {
+		return keyspaceName;
+	}
+
+	public void setKeyspaceName(String keyspaceName) {
+		this.keyspaceName = keyspaceName;
+	}
+
 		
 	
 

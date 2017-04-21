@@ -33,12 +33,12 @@ import java.util.Scanner;
 public class MusicUtil {
 	public static String myZkHost = "localhost";
 	public static String myCassaHost = "localhost";
+	public static String defaultMusicIp = "localhost";
 	public static final String musicInternalKeySpaceName = "MusicInternalKeySpace";
 	public static final String nodeIdsTable ="nodeIds";
 	public static final String evPutsTable = "evPutTracker_";
 	public static final boolean debug = true;
-	public static final String version = "1.0.0";
-	public static final String msg = "-First version of MUSIC on the public git with log4j and jersey muted-";
+	public static final String version = "1.0.1";
 	public static final String musicRestIp = "localhost";
 	
 	public static String getMyId(){
@@ -46,7 +46,7 @@ public class MusicUtil {
 		String hostName="";
 		try {
 			IP = Inet4Address.getLocalHost();
-			hostName = 	IP.getHostAddress();
+			hostName = 	IP.getHostName();
 		} catch (UnknownHostException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();

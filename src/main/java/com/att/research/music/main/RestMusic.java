@@ -60,8 +60,8 @@ public class RestMusic {
 	@Path("/version")
 	@Produces(MediaType.TEXT_PLAIN)
 	public String version() {
-		logger.info("testing log4j");
-		return "MUSIC version:"+MusicUtil.version+MusicUtil.msg;
+		logger.info("Replying to request for MUSIC version with:"+MusicUtil.version);
+		return "MUSIC:"+MusicUtil.version;
 	}
 
 	@GET
@@ -94,7 +94,9 @@ public class RestMusic {
 	@Path("/nodeId")
 	@Produces(MediaType.TEXT_PLAIN)
 	public String getMyId() {
-		return MusicUtil.getMyId();
+		String nodeId = MusicUtil.getMyId();
+		logger.info("Replying to request for node id with:"+nodeId);
+		return nodeId;
 	}
 
 

@@ -262,7 +262,7 @@ public class MusicCore {
 		String queryToGetVectorTS =  "SELECT vector_ts FROM "+keyspaceName+"."+tableName+ " WHERE "+primKeyFieldName+"='"+primaryKey+"';";
 
 		ResultSet results =null;
-		results = getDSHandle(publicIp).executeGetQuery(queryToGetVectorTS);
+		results = getDSHandle(publicIp).executeEventualGet(queryToGetVectorTS);
 
 		String vectorTs=null;
 		for (Row row : results) {
@@ -274,7 +274,7 @@ public class MusicCore {
 		String metaKeyspaceName = MusicUtil.musicInternalKeySpaceName;
 		String metaTableName = MusicUtil.evPutsTable+MusicUtil.getMyId();
 		String queryToGetEvPutStatus =  "SELECT status FROM "+metaKeyspaceName+"."+metaTableName+ " WHERE key"+"='"+key+"';";
-		results = getDSHandle(publicIp).executeGetQuery(queryToGetEvPutStatus);
+		results = getDSHandle(publicIp).executeEventualGet(queryToGetEvPutStatus);
 		String evPutStatus =null;
 		for (Row row : results) {
 			evPutStatus = row.getString("status");
@@ -312,7 +312,7 @@ public class MusicCore {
 		String metaKey = "'"+keyspaceName+"."+tableName+"."+primaryKey+"'";
 
 		String queryToUpdateEvPut =  "Insert into "+metaKeyspaceName+"."+evPutTrackerTable+"  (key,status) values ("+metaKey+",'inprogress');";   
-		getDSHandle().executePutQuery(queryToUpdateEvPut, "eventual");
+		getDSHandle().executePut(queryToUpdateEvPut, "eventual");
 
 		boolean result; 
 		String lockName = keyspaceName+"."+tableName+"."+primaryKey;
@@ -321,13 +321,13 @@ public class MusicCore {
 		}else{
 			logger.debug("In eventual put: The key is un-locked, can perform eventual puts..");
 			//do actual write 
-			getDSHandle().executePutQuery(query, "eventual");
+			getDSHandle().executePut(query, "eventual");
 			result = true;
 		}
 
 		//clean up meta table
 		String queryToResetEvPutStatus =  "Delete from "+metaKeyspaceName+"."+evPutTrackerTable+" where key="+metaKey+";";   
-		getDSHandle().executePutQuery(queryToResetEvPutStatus, "eventual");
+		getDSHandle().executePut(queryToResetEvPutStatus, "eventual");
 		return result;
 	}
 
@@ -336,7 +336,7 @@ public class MusicCore {
 			MusicLockState mls = getLockingServiceHandle().getLockState(keyspaceName+"."+tableName+"."+primaryKey);
 			if(mls.getLockHolder().equals(lockId)){
 				String consistency = "atomic";
-				getDSHandle().executePutQuery(query,consistency);
+				getDSHandle().executePut(query,consistency);
 				return true; 
 			}
 			else 
@@ -353,7 +353,7 @@ public class MusicCore {
 		try {
 			MusicLockState mls = getLockingServiceHandle().getLockState(keyspaceName+"."+tableName+"."+primaryKey);
 			if(mls.getLockHolder().equals(lockId)){
-				results = getDSHandle().executeCriticalGetQuery(query);
+				results = getDSHandle().executeCriticalGet(query);
 //				getDSHandle(MusicUtil.myCassaHost).close();
 			}else
 				throw new Exception("YOU DO NOT HAVE THE LOCK");
@@ -365,12 +365,12 @@ public class MusicCore {
 	}
 
 	public static  ResultSet get(String query){
-		ResultSet results = getDSHandle().executeGetQuery(query);
+		ResultSet results = getDSHandle().executeEventualGet(query);
 		return results;
 	}
 	
 	public static  ResultSet quorumGet(String query){
-		ResultSet results = getDSHandle().executeCriticalGetQuery(query);
+		ResultSet results = getDSHandle().executeCriticalGet(query);
 		return results;
 
 	}
@@ -417,7 +417,7 @@ public class MusicCore {
 	//really need the bells and whistles of Music locking. 
 	public static  void generalPut(String query, String consistency){
 		try {
-			getDSHandle().executePutQuery(query,consistency);
+			getDSHandle().executePut(query,consistency);
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

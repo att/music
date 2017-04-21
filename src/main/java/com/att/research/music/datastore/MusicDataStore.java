@@ -124,7 +124,7 @@ public class MusicDataStore {
 		session = cluster.connect();
 	}
 
-	public ResultSet executeGetQuery(String query){
+	public ResultSet executeEventualGet(String query){
 		logger.info("Executing normal get query:"+query);
 		long start = System.currentTimeMillis();
 		Statement statement = new SimpleStatement(query);
@@ -135,7 +135,7 @@ public class MusicDataStore {
 		return results;	
 	}
 
-	public ResultSet executeCriticalGetQuery(String query){
+	public ResultSet executeCriticalGet(String query){
 		Statement statement = new SimpleStatement(query);
 		logger.info("Executing critical get query:"+query);
 		statement.setConsistencyLevel(ConsistencyLevel.QUORUM);
@@ -155,7 +155,7 @@ public class MusicDataStore {
 		return ks.getTable(tableName);
 	}
 
-	public void executePutQuery(String query, String consistency){
+	public void executePut(String query, String consistency){
 		logger.debug("in data store handle, executing put:"+query);
 		long start = System.currentTimeMillis();
 		Statement statement = new SimpleStatement(query);

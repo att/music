@@ -14,7 +14,7 @@ public class TestDataStore {
 		String query = "CREATE KEYSPACE IF NOT EXISTS bharath WITH replication = "
 				+ "{'class':'SimpleStrategy', 'replication_factor':1};";
 		
-		client.executePutQuery(query, "eventual");
+		client.executePut(query, "eventual");
 		
 		query = "CREATE TABLE IF NOT EXISTS bharath.songs (" +
 				"id uuid PRIMARY KEY," + 
@@ -24,7 +24,7 @@ public class TestDataStore {
 				"tags set<text>," + 
 				"data blob" + 
 		");";
-		client.executePutQuery(query, "eventual");
+		client.executePut(query, "eventual");
 		
 		query = "CREATE TABLE IF NOT EXISTS bharath.playlists (" +
 				"id uuid," +
@@ -35,7 +35,7 @@ public class TestDataStore {
 				"PRIMARY KEY (id, title, album, artist)" +
 		");";
 		
-		client.executePutQuery(query, "eventual");
+		client.executePut(query, "eventual");
 		
 		query = "INSERT INTO bharath.songs (id, title, album, artist, tags) " +
 						"VALUES (" +
@@ -46,7 +46,7 @@ public class TestDataStore {
 						"{'jazz', '2013'})" +
 				";";
 		
-		client.executePutQuery(query, "eventual");
+		client.executePut(query, "eventual");
 
 		query = "INSERT INTO bharath.playlists (id, song_id, title, album, artist) " +
 						"VALUES (" +
@@ -57,9 +57,9 @@ public class TestDataStore {
 						"'Joséphine Baaaker'" +
 				");";
 
-		client.executePutQuery(query, "eventual");
+		client.executePut(query, "eventual");
 
-		ResultSet results = client.executeGetQuery("SELECT * FROM bharath.playlists " +
+		ResultSet results = client.executeEventualGet("SELECT * FROM bharath.playlists " +
 				"WHERE id = 2cc9ccb7-6221-4ccb-8387-f22b6a1b354d;");
 		
 		for (Row row : results) {

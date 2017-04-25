@@ -37,4 +37,5 @@ public class Log4JInitServlet extends HttpServlet {
 		}
 		super.init(config);
 	}
+	
 }

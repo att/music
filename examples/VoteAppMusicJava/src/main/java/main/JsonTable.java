@@ -26,7 +26,6 @@ import java.util.Map;
 public class JsonTable {
     private Map<String,String> fields;
 	private Map<String, Object> properties; 
-    private String clusteringOrder;
     private Map<String,String> consistencyInfo;
 
 
@@ -53,13 +52,4 @@ public class JsonTable {
 	public void setFields(Map<String, String> fields) {
 		this.fields = fields;
 	}
-
-	public String getClusteringOrder() {
-		return clusteringOrder;
-	}
-
-	public void setClusteringOrder(String clusteringOrder) {
-		this.clusteringOrder = clusteringOrder;
-	}
-
 }

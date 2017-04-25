@@ -29,7 +29,9 @@ public class JsonTable {
 
 	private Map<String,String> fields;
 	private Map<String, Object> properties; 
-    private String clusteringOrder;
+	private String primaryKey; 
+	private String sortingKey;
+    private String sortingOrder;
     private Map<String,String> consistencyInfo;
 
 
@@ -57,13 +59,6 @@ public class JsonTable {
 		this.fields = fields;
 	}
 
-	public String getClusteringOrder() {
-		return clusteringOrder;
-	}
-
-	public void setClusteringOrder(String clusteringOrder) {
-		this.clusteringOrder = clusteringOrder;
-	}
 	public String getKeyspaceName() {
 		return keyspaceName;
 	}
@@ -78,4 +73,28 @@ public class JsonTable {
 	public void setTableName(String tableName) {
 		this.tableName = tableName;
 	}
+	public String getSortingKey() {
+		return sortingKey;
+	}
+
+	public void setSortingKey(String sortingKey) {
+		this.sortingKey = sortingKey;
+	}
+
+	public String getSortingOrder() {
+		return sortingOrder;
+	}
+
+	public void setSortingOrder(String sortingOrder) {
+		this.sortingOrder = sortingOrder;
+	}
+	public String getPrimaryKey() {
+		return primaryKey;
+	}
+
+	public void setPrimaryKey(String primaryKey) {
+		this.primaryKey = primaryKey;
+	}
+
+
 }

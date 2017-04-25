@@ -97,6 +97,7 @@ public class MusicDataStore {
 							
 				}*/
 				session = cluster.connect();
+				
 				break;
 			} catch (NoHostAvailableException e) {
 				address= it.next();

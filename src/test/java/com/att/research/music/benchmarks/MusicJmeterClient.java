@@ -56,18 +56,27 @@ public class MusicJmeterClient{
 		Map<String,Object> firstRow = new HashMap<String,Object>();
 		firstRow.put("name", "bharath");
 		firstRow.put("salary", 4000);
-
-    	String query = "insert into shankarks.employees (name,salary) values('bharath',4000)";
-    	mc.generalPut(query, "eventual");
-
+		JsonInsert jins = new JsonInsert();
+		jins.setValues(firstRow);
+		jins.setConsistencyInfo(consistencyInfo);
+		mc.insertIntoTable("shankarks","employees",jins); 
 		
-		query = "insert into shankarks.employees (name,salary) values('shankar',8000)";
-    	mc.generalPut(query, "eventual");
+		Map<String,Object> secondRow = new HashMap<String,Object>();
+		secondRow.put("name", "shankar");
+		secondRow.put("salary", 8000);
+		jins.setValues(secondRow);
+		jins.setConsistencyInfo(consistencyInfo);
+		mc.insertIntoTable("shankarks","employees",jins); 
+
 		
 		mc.pureZkCreate("/shankarks");
 
     }
     
+    private void insertRow(Map<String, Object> values){
+    	MusicCoreNonStatic mc = getRandomMusicClient();
+
+    }
     public void cleanUp() throws Exception{
     	MusicCoreNonStatic mc = getRandomMusicClient();
     	mc.dropKeyspace("shankarks");

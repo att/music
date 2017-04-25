@@ -209,9 +209,16 @@ public class RestMusic {
 		}	
 		
 		
+		
 		//information about the name-value style properties 
 		Map<String,Object> propertiesMap = tableObj.getProperties();
 		String propertiesString="";
+/*		
+		if(tableObj.getSortingKey() != null){
+			propertiesString = propertiesString + " CLUSTERING ORDER BY ("+tableObj.getSortingKey()+ " "+ 
+						tableObj.getSortingOrder()+")";	
+		}
+*/
 		if(propertiesMap != null){
 			counter =0;
 			for (Map.Entry<String, Object> entry : propertiesMap.entrySet())
@@ -244,7 +251,7 @@ public class RestMusic {
 	@Path("/keyspaces/{keyspace}/tables/{tablename}/rows")
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
-	public void insertIntoTable(JsonInsert insObj, @PathParam("keyspace") String keyspace, @PathParam("tablename") String tablename, @Context UriInfo info) throws Exception{
+	public void insertIntoTable(JsonInsert insObj, @PathParam("keyspace") String keyspace, @PathParam("tablename") String tablename) throws Exception{
 				Map<String,Object> valuesMap =  insObj.getValues();
 		TableMetadata tableInfo = MusicCore.returnColumnMetadata(keyspace, tablename);
 		String primaryKeyName = tableInfo.getPrimaryKey().get(0).getName();
@@ -440,7 +447,7 @@ public class RestMusic {
 		MusicCore.generalPut(query, consistency);
 	}
 
-	public Map<String, HashMap<String, Object>> selectSpecific(String keyspace,String tablename, UriInfo info){	
+	public Map<String, HashMap<String, Object>> selectSpecific(String keyspace,String tablename, UriInfo info, int limit){	
 		String rowSpec="";
 		int counter =0;
 		TableMetadata tableInfo = MusicCore.returnColumnMetadata(keyspace, tablename);
@@ -458,7 +465,14 @@ public class RestMusic {
 				rowSpec = rowSpec+" AND ";
 			counter = counter +1;
 		}
-		String query =  "SELECT *  FROM "+keyspace+"."+tablename+ " WHERE "+rowSpec+";"; 
+		
+		String query =  "SELECT *  FROM "+keyspace+"."+tablename+ " WHERE "+rowSpec; 
+		
+		if(limit != -1){
+			query = query + " LIMIT "+limit;
+		}
+		
+		query = query + ";";
 		ResultSet results = MusicCore.get(query);
 		return MusicCore.marshallResults(results);
 	} 
@@ -509,8 +523,10 @@ public class RestMusic {
 	public Map<String, HashMap<String, Object>> select(@PathParam("keyspace") String keyspace, @PathParam("tablename") String tablename, @Context UriInfo info){
 		if(info.getQueryParameters().isEmpty())//select all
 			return selectAll(keyspace, tablename);
-		else
-			return selectSpecific(keyspace,tablename,info);
+		else{
+			int limit =-1; //do not limit the number of results
+			return selectSpecific(keyspace,tablename,info,limit);
+		}
 	} 
 
 	//pure zk calls...
@@ -626,4 +642,58 @@ public class RestMusic {
 			return MusicCore.marshallResults(results);
 	}
 
+	//adding queue functionality
+	
+	@POST
+	@Path("/keyspaces/{keyspace}/priorityq/{qname}")
+	@Consumes(MediaType.APPLICATION_JSON)
+	public void createQ(JsonTable tableObj, @PathParam("keyspace") String keyspace, @PathParam("tablename") String tablename) throws Exception{ 
+		createTable(tableObj, keyspace, tablename);
+	}
+	
+	@POST
+	@Path("/keyspaces/{keyspace}/priorityq/{qname}/rows")
+	@Consumes(MediaType.APPLICATION_JSON)
+	@Produces(MediaType.APPLICATION_JSON)
+	public void insertIntoQ(JsonInsert insObj, @PathParam("keyspace") String keyspace, @PathParam("tablename") String tablename) throws Exception{
+		insertIntoTable(insObj, keyspace, tablename);
+	}
+
+	@PUT
+	@Path("/keyspaces/{keyspace}/priorityq/{qname}/rows")
+	@Consumes(MediaType.APPLICATION_JSON)
+	@Produces(MediaType.APPLICATION_JSON)
+	public boolean updateQ(JsonInsert insObj, @PathParam("keyspace") String keyspace, @PathParam("tablename") String tablename, @Context UriInfo info) throws Exception{
+		return updateTable(insObj, keyspace, tablename, info);
+	}
+
+	@DELETE
+	@Path("/keyspaces/{keyspace}/priorityq/{qname}/rows")
+	@Consumes(MediaType.APPLICATION_JSON)
+	@Produces(MediaType.APPLICATION_JSON)
+	public boolean deleteFromQ(JsonDelete delObj, @PathParam("keyspace") String keyspace, @PathParam("tablename") String tablename, @Context UriInfo info) throws Exception{ 
+		return deleteFromTable(delObj, keyspace, tablename, info);
+	}
+
+	@GET
+	@Path("/keyspaces/{keyspace}/priorityq/{qname}/peek")
+	@Produces(MediaType.APPLICATION_JSON)	
+	public Map<String, HashMap<String, Object>> peek(@PathParam("keyspace") String keyspace, @PathParam("tablename") String tablename, @Context UriInfo info){
+			int limit =1; //peek must return just the top row
+			return selectSpecific(keyspace,tablename,info,limit);
+	} 
+
+	@GET
+	@Path("/keyspaces/{keyspace}/priorityq/{qname}/filter")
+	@Produces(MediaType.APPLICATION_JSON)	
+	public Map<String, HashMap<String, Object>> filter(@PathParam("keyspace") String keyspace, @PathParam("tablename") String tablename, @Context UriInfo info){
+			int limit =-1; 
+			return selectSpecific(keyspace,tablename,info,limit);
+	} 
+
+	@DELETE
+	@Path("/keyspaces/{keyspace}/priorityq/{qname}")
+	public void dropQ(JsonTable tabObj,@PathParam("keyspace") String keyspace, @PathParam("tablename") String tablename) throws Exception{ 
+		dropTable(tabObj, keyspace, tablename);
+	}
 }

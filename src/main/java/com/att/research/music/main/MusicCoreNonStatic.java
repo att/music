@@ -135,12 +135,12 @@ public class MusicCoreNonStatic {
 
 	public  void createKeyspace(String keyspaceName, JsonKeySpace kspObject) throws Exception {
 		//first create music internal stuff by calling the initialization routine
-		MusicCore.initializeNode();
+		initializeNode();
 
 		String consistency = "eventual";//for now this needs only eventual consistency
 		long start = System.currentTimeMillis();
 		Map<String,Object> replicationInfo = kspObject.getReplicationInfo();
-		String repString = "{"+MusicCore.jsonMaptoSqlString(replicationInfo,",")+"}";
+		String repString = "{"+jsonMaptoSqlString(replicationInfo,",")+"}";
 		String query ="CREATE KEYSPACE IF NOT EXISTS "+ keyspaceName +" WITH replication = " + 
 				repString;
 		if(kspObject.getDurabilityOfWrites() != null)
@@ -192,6 +192,12 @@ public class MusicCoreNonStatic {
 		//information about the name-value style properties 
 		Map<String,Object> propertiesMap = tableObj.getProperties();
 		String propertiesString="";
+		
+		if(tableObj.getSortingKey() != null){
+			propertiesString = propertiesString + " CLUSTERING ORDER BY ("+tableObj.getSortingKey()+ " "+ 
+						tableObj.getSortingOrder()+")";	
+		}
+
 		if(propertiesMap != null){
 			counter =0;
 			for (Map.Entry<String, Object> entry : propertiesMap.entrySet())
@@ -202,7 +208,7 @@ public class MusicCoreNonStatic {
 					value = "'"+value+"'";
 				}else if(ot instanceof Map){
 					Map<String,Object> otMap = (Map<String,Object>)ot;
-					value = "{"+MusicCore.jsonMaptoSqlString(otMap, ",")+"}";
+					value = "{"+jsonMaptoSqlString(otMap, ",")+"}";
 				}
 				propertiesString = propertiesString+entry.getKey()+"="+ value+"";
 				if(counter!=propertiesMap.size()-1)
@@ -210,19 +216,21 @@ public class MusicCoreNonStatic {
 				counter = counter +1;
 			}	
 		}
+		
+
 
 		String query =  "CREATE TABLE IF NOT EXISTS "+keyspace+"."+tablename+" "+ fieldsString; 
 
-		if(propertiesMap != null)
+		if(propertiesString.equals("") == false)
 			query = query + " WITH "+ propertiesString;
 
 		query = query +";";
-		MusicCore.generalPut(query, consistency);
+		generalPut(query, consistency);
 	}
 
-	public void insertIntoTable(JsonInsert insObj, String keyspace, String tablename) throws Exception{
+	public void insertIntoTable(String keyspace, String tablename, JsonInsert insObj) throws Exception{
 		Map<String,Object> valuesMap =  insObj.getValues();
-		TableMetadata tableInfo = MusicCore.returnColumnMetadata(keyspace, tablename);
+		TableMetadata tableInfo = returnColumnMetadata(keyspace, tablename);
 		String primaryKeyName = tableInfo.getPrimaryKey().get(0).getName();
 		String fieldsString="(vector_ts,";
 		String vectorTs = "'"+Thread.currentThread().getId()+System.currentTimeMillis()+"'";
@@ -237,7 +245,7 @@ public class MusicCoreNonStatic {
 			}
 
 			DataType colType = tableInfo.getColumn(entry.getKey()).getType();
-			valueString = valueString + MusicCore.convertToSqlDataType(colType,valueObj);		
+			valueString = valueString + convertToSqlDataType(colType,valueObj);		
 			if(counter==valuesMap.size()-1){
 				fieldsString = fieldsString+")";
 				valueString = valueString+")";
@@ -270,24 +278,24 @@ public class MusicCoreNonStatic {
 
 		String consistency = insObj.getConsistencyInfo().get("type");
 		if(consistency.equalsIgnoreCase("eventual"))
-			MusicCore.eventualPut(keyspace,tablename,primaryKey, query);
+			eventualPut(keyspace,tablename,primaryKey, query);
 		else if(consistency.equalsIgnoreCase("atomic")){
 			String lockId = insObj.getConsistencyInfo().get("lockId");
-			MusicCore.criticalPut(keyspace,tablename,primaryKey, query, lockId);
+			criticalPut(keyspace,tablename,primaryKey, query, lockId);
 		}
 	}
 
 	public boolean updateTable(JsonInsert insObj,String keyspace, String tablename, @Context UriInfo info) throws Exception{
 		//obtain the field value pairs of the update
 		Map<String,Object> valuesMap =  insObj.getValues();
-		TableMetadata tableInfo = MusicCore.returnColumnMetadata(keyspace, tablename);
+		TableMetadata tableInfo = returnColumnMetadata(keyspace, tablename);
 		String vectorTs = "'"+Thread.currentThread().getId()+System.currentTimeMillis()+"'";
 		String fieldValueString="vector_ts="+vectorTs+",";
 		int counter =0;
 		for (Map.Entry<String, Object> entry : valuesMap.entrySet()){
 			Object valueObj = entry.getValue();	
 			DataType colType = tableInfo.getColumn(entry.getKey()).getType();
-			String valueString = MusicCore.convertToSqlDataType(colType,valueObj);	
+			String valueString = convertToSqlDataType(colType,valueObj);	
 			fieldValueString = fieldValueString+ entry.getKey()+"="+valueString;
 			if(counter!=valuesMap.size()-1)
 				fieldValueString = fieldValueString+",";
@@ -305,7 +313,7 @@ public class MusicCoreNonStatic {
 			List<String> valueList = entry.getValue();
 			String indValue = valueList.get(0);
 			DataType colType = tableInfo.getColumn(entry.getKey()).getType();
-			String formattedValue = MusicCore.convertToSqlDataType(colType,indValue);	
+			String formattedValue = convertToSqlDataType(colType,indValue);	
 			primaryKey = primaryKey + indValue;
 			rowSpec = rowSpec + keyName +"="+ formattedValue;
 			if(counter!=rowParams.size()-1)
@@ -334,10 +342,10 @@ public class MusicCoreNonStatic {
 
 		boolean operationResult = false;
 		if(consistency.equalsIgnoreCase("eventual"))
-			operationResult = MusicCore.eventualPut(keyspace,tablename,primaryKey, query);
+			operationResult = eventualPut(keyspace,tablename,primaryKey, query);
 		else if(consistency.equalsIgnoreCase("atomic")){
 			String lockId = insObj.getConsistencyInfo().get("lockId");
-			operationResult = MusicCore.criticalPut(keyspace,tablename,primaryKey, query, lockId);
+			operationResult = criticalPut(keyspace,tablename,primaryKey, query, lockId);
 		}
 		return operationResult; 	
 	}

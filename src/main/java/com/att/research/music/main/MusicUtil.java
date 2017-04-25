@@ -38,7 +38,7 @@ public class MusicUtil {
 	public static final String nodeIdsTable ="nodeIds";
 	public static final String evPutsTable = "evPutTracker_";
 	public static final boolean debug = true;
-	public static final String version = "1.0.1";
+	public static final String version = "1.0.2";
 	public static final String musicRestIp = "localhost";
 	
 	public static String getMyId(){
@@ -46,7 +46,7 @@ public class MusicUtil {
 		String hostName="";
 		try {
 			IP = Inet4Address.getLocalHost();
-			hostName = 	IP.getHostName();
+			hostName = 	IP.getHostName();	
 		} catch (UnknownHostException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();

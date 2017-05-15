@@ -331,7 +331,7 @@ public class HADaemon {
 	public static void main(String[] args){
 		String id = args[0];
 		ConfigReader.setConfigLocation(args[1]);
-		System.out.println("--Hal Daemon (version 7.0..testing in December--"+id+"---START---");
+		System.out.println("--Hal Daemon version "+HalUtil.version+"--replica id "+id+"---START---");
 		HADaemon hd = new HADaemon(id);
 		hd.startHAFlow();
 	}

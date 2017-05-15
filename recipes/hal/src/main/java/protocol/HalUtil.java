@@ -37,6 +37,7 @@ import musicinterface.RestMusicFunctions;
 
 
 public class HalUtil {
+	public static String version="1.0.0";
 	private static String getMusicNodeIp(){
 		return ConfigReader.getConfigAttribute("musicLocation");
 /*		String serverAddress;
@@ -81,16 +82,18 @@ public class HalUtil {
 		try {
 			ProcessBuilder pb = new ProcessBuilder(script);
 			final Process process = pb.start();
-			process.waitFor();
-			InputStream is = process.getInputStream();
-			InputStreamReader isr = new InputStreamReader(is);
-			BufferedReader br = new BufferedReader(isr);
-			String result = br.readLine();
-			if(result == null)
-				return false;
-			if(result.equals("Running"))
+			int exitCode = process.waitFor();
+			if(exitCode == 0)
 				return true;
 			else return false;
+
+	/*		InputStream is = process.getInputStream();
+			InputStreamReader isr = new InputStreamReader(is);
+			BufferedReader br = new BufferedReader(isr);
+			String result = br.readLine();*/
+/*			if(result.equals("Running"))
+				return true;
+			else return false;*/
 /*			String s;
 			ArrayList<String> opText = new ArrayList<String>();
 			  while ((s = br.readLine()) != null) {
@@ -115,6 +118,12 @@ public class HalUtil {
 			return valueMap;
 		}
 		return null;
+	}
+	
+	public static void main(String[] args){
+		ArrayList<String> script = new ArrayList<String>();
+		script.add("test.sh");
+		script.add("bhar");
 	}
 
 }

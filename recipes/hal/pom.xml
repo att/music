@@ -24,7 +24,7 @@ stated inside of the file.
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.research.att.com.Hal</groupId>
   <artifactId>Hal</artifactId>
-  <version>0.0.1-SNAPSHOT</version>
+  <version>1.0.0</version>
   
      	<repositories>
 		<repository>

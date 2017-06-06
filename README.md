@@ -25,25 +25,24 @@ standard Ubuntu installation, the location may differ for self installs).
 
 Look at /var/lib/tomcat7/webapps/MUSIC/WEB-INF/log4j.properties:
 
-   \# Root logger option
+```properties
+   # Root logger option
    log4j.rootLogger=INFO, stdout
 
-   \# Direct log messages to a log file
-
+   # Direct log messages to a log file
 	 log4j.appender.file=org.apache.log4j.RollingFileAppender
-
    log4j.appender.file.File=${catalina.home}/logs/music.log
-
    log4j.appender.file.MaxFileSize=10MB
    log4j.appender.file.MaxBackupIndex=10
    log4j.appender.file.layout=org.apache.log4j.PatternLayout
    log4j.appender.file.layout.ConversionPattern=%d{yyyy-MM-dd HH:mm:ss} %-5p %c{1}:%L - %m%n
 
-   \# Direct log messages to stdout
+   # Direct log messages to stdout
    log4j.appender.stdout=org.apache.log4j.ConsoleAppender
    log4j.appender.stdout.Target=System.out
    log4j.appender.stdout.layout=org.apache.log4j.PatternLayout
    log4j.appender.stdout.layout.ConversionPattern=%d{yyyy-MM-dd HH:mm:ss} %-5p %c{1}:%L - %m%n
+```
 
 Notice there are two log4j.appender sections. The first one directs log lines to a file. The second
 one directs log lines to stdout (which winds up in catalina.out).

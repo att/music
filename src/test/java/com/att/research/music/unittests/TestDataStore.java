@@ -1,5 +1,10 @@
 package com.att.research.music.unittests;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+
 import org.apache.log4j.Logger;
 
 import com.att.research.music.datastore.MusicDataStore;
@@ -9,8 +14,25 @@ import com.datastax.driver.core.Row;
 public class TestDataStore {
 	final static Logger logger = Logger.getLogger(TestDataStore.class);
 	public static void main(String[] args) {
-		MusicDataStore client = new MusicDataStore(args[0]);
-		
+		String fileLocation = args[0];
+		String dsList="";
+	      try {
+	            File f = new File(fileLocation);
+	            BufferedReader b = new BufferedReader(new FileReader(f));
+	            String readLine = "";
+	            while ((readLine = b.readLine()) != null) {
+	            	dsList = dsList + " "+ readLine;
+	            	System.out.println("ip:"+readLine);
+	    			MusicDataStore client = new MusicDataStore(readLine);
+	    			runTest(client);
+	            }
+	            b.close();
+	        } catch (IOException e) {
+	            e.printStackTrace();
+	        }	
+	}
+	
+	public static void runTest(MusicDataStore client){
 		String query = "CREATE KEYSPACE IF NOT EXISTS bharath WITH replication = "
 				+ "{'class':'SimpleStrategy', 'replication_factor':1};";
 		
@@ -63,9 +85,12 @@ public class TestDataStore {
 				"WHERE id = 2cc9ccb7-6221-4ccb-8387-f22b6a1b354d;");
 		
 		for (Row row : results) {
-			logger.info(row.getString("title")+" "+
+			System.out.println(row.getString("title")+" "+
 					row.getString("album")+" "+row.getString("artist"));
 		}
 	}
 
-}
+	}
+
+
+

@@ -22,6 +22,10 @@ stated inside of the file.
  */
 package com.att.research.music.main;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -42,6 +46,7 @@ import javax.ws.rs.core.UriInfo;
 
 import org.apache.log4j.Logger;
 
+import com.att.research.music.datastore.MusicDataStore;
 import com.att.research.music.datastore.jsonobjects.JsonDelete;
 import com.att.research.music.datastore.jsonobjects.JsonInsert;
 import com.att.research.music.datastore.jsonobjects.JsonKeySpace;
@@ -84,7 +89,8 @@ public class RestMusic {
 		MusicCore.getDSHandle();
 		MusicCore.getLockingServiceHandle();
 	}
-
+	
+	
 	@GET
 	@Path("/warmupermote/{ip}")
 	public void warmupRemote(@PathParam("ip") String remoteIp) {
@@ -265,10 +271,12 @@ public class RestMusic {
 			Object valueObj = entry.getValue();	
 			if(primaryKeyName.equals(entry.getKey())){
 				primaryKey= entry.getValue()+"";
+				primaryKey = primaryKey.replace("'", "''");
 			}
 				
 			DataType colType = tableInfo.getColumn(entry.getKey()).getType();
-			valueString = valueString + MusicCore.convertToSqlDataType(colType,valueObj);		
+			String formattedValue = MusicCore.convertToSqlDataType(colType, valueObj);
+			valueString = valueString + formattedValue;
 			if(counter==valuesMap.size()-1){
 				fieldsString = fieldsString+")";
 				valueString = valueString+")";
@@ -280,6 +288,7 @@ public class RestMusic {
 			counter = counter +1;
 		}
 		
+		System.out.println(valueString);
 		String query =  "INSERT INTO "+keyspace+"."+tablename+" "+ fieldsString+" VALUES "+ valueString;   
 		
 		String ttl = insObj.getTtl();

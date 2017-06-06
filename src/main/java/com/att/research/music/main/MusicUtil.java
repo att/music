@@ -38,7 +38,7 @@ public class MusicUtil {
 	public static final String nodeIdsTable ="nodeIds";
 	public static final String evPutsTable = "evPutTracker_";
 	public static final boolean debug = true;
-	public static final String version = "1.0.2";
+	public static final String version = "1.0.5";
 	public static final String musicRestIp = "localhost";
 	
 	public static String getMyId(){
@@ -53,6 +53,8 @@ public class MusicUtil {
 		}
 		hostName = hostName.replace("-", "_");
 		hostName = hostName.replace(".", "_");
+		if(hostName.length() > 20)
+			hostName = hostName.substring(0, 20);
 		return hostName;
 	}
 	public static String getTestType(){

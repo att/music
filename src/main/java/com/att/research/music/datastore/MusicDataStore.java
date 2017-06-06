@@ -22,6 +22,7 @@ stated inside of the file.
  */
 package com.att.research.music.datastore;
 
+import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
@@ -30,6 +31,7 @@ import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.UUID;
 
 import org.apache.log4j.Logger;
 
@@ -40,6 +42,7 @@ import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.Host;
 import com.datastax.driver.core.KeyspaceMetadata;
 import com.datastax.driver.core.Metadata;
+import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
@@ -212,6 +215,69 @@ public class MusicDataStore {
 			counter++;
 		}
 		return resultMap;
+	}
+
+
+	//new stuff...prepared statements
+	public static Object convertToActualDataType(DataType colType,Object valueObj) throws Exception{
+		String valueObjString = valueObj+"";
+		switch(colType.getName()){
+		case UUID: 
+			return UUID.fromString(valueObjString);
+		case VARINT: 
+			return BigInteger.valueOf(Long.parseLong(valueObjString));
+		case BIGINT: 
+			return Long.parseLong(valueObjString);
+		case INT: 
+			return Integer.parseInt(valueObjString);
+		case FLOAT: 
+			return Float.parseFloat(valueObjString);	
+		case DOUBLE: 
+			return Double.parseDouble(valueObjString);
+		case BOOLEAN: 
+			return Boolean.parseBoolean(valueObjString);
+		case MAP: 
+			return (Map<String,Object>)valueObj;
+		default:
+			return valueObjString;
+		}
+	}
+
+	public void preparedInsert(String keyspace, String table, String fields, String valueHolder, 
+			ArrayList<Object> values,String ttl, String timestamp,String consistency) throws Exception{
+		logger.debug("In prepared insert: fields string:"+fields+"values:"+valueHolder);
+		String insertQuery = "INSERT INTO "+keyspace+"."+table+" "+ fields+" values "+ valueHolder;
+		
+		if((ttl != null) && (timestamp != null)){
+			logger.debug("both there");
+			insertQuery = insertQuery + " USING TTL ? AND TIMESTAMP ?";
+			values.add(Integer.parseInt(ttl));
+			values.add(Long.parseLong(timestamp));
+		}
+		
+		if((ttl != null) && (timestamp == null)){
+			logger.debug("ONLY TTL there");
+			insertQuery = insertQuery + " USING TTL ?";
+			values.add(Integer.parseInt(ttl));
+		}
+
+		if((ttl == null) && (timestamp != null)){
+			logger.debug("ONLY timestamp there");
+			insertQuery = insertQuery + " USING TIMESTAMP ?";
+			values.add(Long.parseLong(timestamp));
+		}
+
+		logger.info("In preprared insert: the actual insert query:"+insertQuery+"; the values"+values);
+		PreparedStatement preparedInsert = session.prepare(insertQuery);
+		if(consistency.equalsIgnoreCase("atomic")){
+			logger.info("Executing critical put query");
+			preparedInsert.setConsistencyLevel(ConsistencyLevel.QUORUM);
+		}
+		else if (consistency.equalsIgnoreCase("eventual")){
+			logger.info("Executing simple put query");
+			preparedInsert.setConsistencyLevel(ConsistencyLevel.ONE);
+		}
+		session.execute(preparedInsert.bind(values.toArray()));
 	}
 
 }

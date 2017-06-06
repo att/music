@@ -22,11 +22,13 @@ stated inside of the file.
  */
 package com.att.research.music.main;
 
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.StringTokenizer;
+import java.util.UUID;
 
 import org.apache.log4j.Logger;
 
@@ -435,7 +437,9 @@ public class MusicCore {
 			value = valueObj+"";
 			break;
 		case TEXT:
-			value = "'"+valueObj+"'";
+			String valueString = valueObj+"";
+			valueString = valueString.replace("'", "''");
+			value = "'"+valueString+"'";
 			break;
 		case MAP:{
 			Map<String,Object> otMap = (Map<String,Object>)valueObj;
@@ -449,6 +453,30 @@ public class MusicCore {
 		return value;
 	}
 
+	public static Object convertToActualDataType(DataType colType,Object valueObj) throws Exception{
+		String valueObjString = valueObj+"";
+		switch(colType.getName()){
+		case UUID: 
+			return UUID.fromString(valueObjString);
+		case VARINT: 
+			return BigInteger.valueOf(Long.parseLong(valueObjString));
+		case BIGINT: 
+			return Long.parseLong(valueObjString);
+		case INT: 
+			return Integer.parseInt(valueObjString);
+		case FLOAT: 
+			return Float.parseFloat(valueObjString);	
+		case DOUBLE: 
+			return Double.parseDouble(valueObjString);
+		case BOOLEAN: 
+			return Boolean.parseBoolean(valueObjString);
+		case MAP: 
+			return (Map<String,Object>)valueObj;
+		default:
+			return valueObjString;
+		}
+	}
+
 	
 	//utility function to parse json map into sql like string
 	public static String jsonMaptoSqlString(Map<String, Object> jMap, String lineDelimiter){
@@ -459,7 +487,7 @@ public class MusicCore {
 			Object ot = entry.getValue();
 			String value = ot+"";
 			if(ot instanceof String){
-				value = "'"+value+"'";
+				value = "'"+value.replace("'", "''")+"'";
 			}
 			sqlString = sqlString+"'"+entry.getKey()+"':"+ value+"";
 			if(counter!=jMap.size()-1)

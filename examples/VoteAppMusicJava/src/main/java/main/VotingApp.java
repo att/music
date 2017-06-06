@@ -49,7 +49,7 @@ public class VotingApp {
 	}
 	
 	public void createVotingKeyspace(){
-		keyspaceName = "VotingAppPerformanceFix";
+		keyspaceName = "VotingAppForMusic";
 		System.out.println(keyspaceName);
 		Map<String,Object> replicationInfo = new HashMap<String, Object>();
 		replicationInfo.put("class", "SimpleStrategy");
@@ -170,7 +170,6 @@ public class VotingApp {
 		String msg = musicHandle.getMusicNodeURL()+"/locks/create/"+lockName;
 		WebResource webResource = client.resource(msg);
 		System.out.println(msg);
-
 		WebResource.Builder wb = webResource.accept(MediaType.TEXT_PLAIN);
 
 		ClientResponse response = wb.post(ClientResponse.class);
@@ -455,11 +454,11 @@ public class VotingApp {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		return null;
+		return null;	
 	}
 	public static void main(String[] args) {	
 		long start = System.currentTimeMillis();
-			for(int i =0; i < 4;++i){
+			for(int i =0; i < 2;++i){
 				VotingApp vHandle = new VotingApp(args);
 				vHandle.overAllTests();
 

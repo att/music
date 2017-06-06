@@ -31,7 +31,7 @@ public class JsonTable {
 	private Map<String, Object> properties; 
 	private String primaryKey; 
 	private String sortingKey;
-    private String sortingOrder;
+    private String clusteringOrder;
     private Map<String,String> consistencyInfo;
 
 
@@ -81,12 +81,12 @@ public class JsonTable {
 		this.sortingKey = sortingKey;
 	}
 
-	public String getSortingOrder() {
-		return sortingOrder;
+	public String getClusteringOrder() {
+		return clusteringOrder;
 	}
 
-	public void setSortingOrder(String sortingOrder) {
-		this.sortingOrder = sortingOrder;
+	public void setClusteringOrder(String clusteringOrder) {
+		this.clusteringOrder = clusteringOrder;
 	}
 	public String getPrimaryKey() {
 		return primaryKey;

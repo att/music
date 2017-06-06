@@ -195,7 +195,7 @@ public class MusicCoreNonStatic {
 		
 		if(tableObj.getSortingKey() != null){
 			propertiesString = propertiesString + " CLUSTERING ORDER BY ("+tableObj.getSortingKey()+ " "+ 
-						tableObj.getSortingOrder()+")";	
+						tableObj.getClusteringOrder()+")";	
 		}
 
 		if(propertiesMap != null){

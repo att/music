@@ -77,7 +77,7 @@ file's syntax will change significantly (new info will be sent at that time).
 ----------------------------
 
 The jersey package that MUSIC uses to parse REST calls prints out the entire header and json body by
-default. To mute it, please remove the following lines from the web.xml in the WEB_INF foler:
+default. To mute it, remove the following lines from the web.xml in the WEB_INF foler:
 
 ```xml
 <init-param>

@@ -25,7 +25,7 @@ standard Ubuntu installation, the location may differ for self installs).
 
 Look at /var/lib/tomcat7/webapps/MUSIC/WEB-INF/log4j.properties:
 
-   # Root logger option
+   \`# Root logger option
    log4j.rootLogger=INFO, stdout
 
    # Direct log messages to a log file

@@ -29,8 +29,11 @@ Look at /var/lib/tomcat7/webapps/MUSIC/WEB-INF/log4j.properties:
    log4j.rootLogger=INFO, stdout
 
    \# Direct log messages to a log file
+
 	 log4j.appender.file=org.apache.log4j.RollingFileAppender
+
    log4j.appender.file.File=${catalina.home}/logs/music.log
+
    log4j.appender.file.MaxFileSize=10MB
    log4j.appender.file.MaxBackupIndex=10
    log4j.appender.file.layout=org.apache.log4j.PatternLayout

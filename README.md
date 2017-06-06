@@ -16,8 +16,8 @@ distributed coordination on shared state, as and when required.
 
 This is the repository for MUSIC.  The pom.xml corresponds to the rest-based version of MUSIC. 
 
-# MUSIC Logging through log4j
------------------------------
+## MUSIC Logging through log4j
+------------------------------------------
 This section explains how MUSIC log4j properties can be used and modified to control logging. 
 
 Once MUSIC.war is installed, tomcat7 will unpack it into /var/lib/tomcat7/webapps/MUSIC (this is the

@@ -28,15 +28,15 @@ Look at /var/lib/tomcat7/webapps/MUSIC/WEB-INF/log4j.properties:
    \# Root logger option
    log4j.rootLogger=INFO, stdout
 
-   # Direct log messages to a log file
-   #log4j.appender.file=org.apache.log4j.RollingFileAppender
-   #log4j.appender.file.File=${catalina.home}/logs/music.log
-   #log4j.appender.file.MaxFileSize=10MB
-   #log4j.appender.file.MaxBackupIndex=10
-   #log4j.appender.file.layout=org.apache.log4j.PatternLayout
-   #og4j.appender.file.layout.ConversionPattern=%d{yyyy-MM-dd HH:mm:ss} %-5p %c{1}:%L - %m%n
+   \# Direct log messages to a log file
+   \#log4j.appender.file=org.apache.log4j.RollingFileAppender
+   \#log4j.appender.file.File=${catalina.home}/logs/music.log
+   \#log4j.appender.file.MaxFileSize=10MB
+   \#log4j.appender.file.MaxBackupIndex=10
+   \#log4j.appender.file.layout=org.apache.log4j.PatternLayout
+   \#log4j.appender.file.layout.ConversionPattern=%d{yyyy-MM-dd HH:mm:ss} %-5p %c{1}:%L - %m%n
 
-   # Direct log messages to stdout
+   \# Direct log messages to stdout
    log4j.appender.stdout=org.apache.log4j.ConsoleAppender
    log4j.appender.stdout.Target=System.out
    log4j.appender.stdout.layout=org.apache.log4j.PatternLayout
@@ -71,14 +71,15 @@ https://docs.oracle.com/cd/E29578_01/webhelp/cas_webcrawler/src/cwcg_config_log4
 MUSIC uses log4j 1.2.17 which is EOL. Music will be changing to 2.x, at which point this
 file's syntax will change significantly (new info will be sent at that time).
 
-# Muting MUSIC jersey output
+## Muting MUSIC jersey output
 ----------------------------
 
 The jersey package that MUSIC uses to parse REST calls prints out the entire header and json body by
 default. To mute it, please remove the following lines from the web.xml in the WEB_INF foler:
 
+```xml
 <init-param>
   <param-name>com.sun.jersey.spi.container.ContainerResponseFilters</param-name>
   <param-value>com.sun.jersey.api.container.filter.LoggingFilter</param-value>
 </init-param>
-
+```

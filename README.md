@@ -1,6 +1,5 @@
 
 # Multi-site Coordination for Replicated Services
--------------------------------------------------
 
 The complexity of replicated, multi-site
 distributed applications brings forth the need for rich distribution coordination patterns to manage
@@ -14,10 +13,142 @@ by presenting a MUlti-SIte Coordination service (MUSIC), that combines a strongl
 service with an eventually consistent state store to provide abstractions that enable rich
 distributed coordination on shared state, as and when required.
 
-This is the repository for MUSIC.  The pom.xml corresponds to the rest-based version of MUSIC. 
+[Local Installation](#local-install)
 
-## MUSIC Logging through log4j
-------------------------------------------
+[Multi-site Installation](#ms-install)
+
+[Logging](#ms-logging)
+
+
+
+
+<a name="local-install"> 
+
+## Local Installation 
+
+</a>
+
+### Prerequisites
+
+If you are using a VM make sure it has at least 8 GB of RAM (It may work with 4 GB, but with 2 GB it does give issues).
+
+### Instructions
+
+- Open /etc/hosts as sudo and enter the name of the vm alongside localhost in the line for 127.0.0.1.
+E.g. 127.0.0.1 localhost music-1. Some of the apt-get installation seem to require this. 
+- Ensure you have java jdk 8 or above working on your machine.
+- Download apache Apache Cassandra 3.2 and follow these instructions <http://cassandra.apache.org/doc/latest/getting_started/installing.html> till and including Step 4. By the end of this you should have Cassandra working.
+- Download Apache Zookeeper 3.4.6 from and follow these instructions <https://zookeeper.apache.org/doc/trunk/zookeeperStarted.html> pertaining to the standalone operation. By the end of this you should have Zookeeper working.
+- Download the latest Apache Tomcat and follow these instructions <http://tecadmin.net/install-tomcat-9-on-ubuntu/> (this is for version 9).  
+- Build the MUSIC war file and place within the webapps folder of the tomcat installation.
+- Download the client app for MUSIC from  <https://github.com/att/music/tree/master/tests/musicTest.jar>, and run the jar file
+musicTest.jar with localhost as parameter. If there
+are no errors and all the tests pass, then you have MUSIC working. 
+
+<a name ="ms-install">
+
+## Multi-site Installation 
+
+</a>
+
+- Follow the instructions for local MUSIC installation on all the machines/VMs/hosts (referred to as a node) on which you
+want MUSIC installed. However, Cassandra and Zookeeper needs to be configured to run as multi-node installations (instructions below) before running them. 
+
+- Cassandra: 
+
+	- In the cassandra.yaml file which is present in the cassa_install/conf 	directory in each node, set the following parameters:
+
+
+			cluster_name: ‘name of cluster’
+			num_tokens: 256
+			seed_provider:
+ 			class_name: org.apache.cassandra.locator.SimpleSeedProvider
+  			parameters:
+   			seeds:  "<public ip of first seed>, <public ip of second seed>, etc"
+			listen_address: private ip of VM 
+			broadcast_address: public ip of VM
+			endpoint_snitch: GossipingPropertyFileSnitch
+			rpc_address: <private ip> 
+			phi_convict_threshold: 12
+	
+
+		The last one was because of an error I was facing and its corresponding 		resolution as described here. Not very common. 
+
+	- In the cassandra-rackdc.properties file, assign data center and rack names 	as if required. 
+	- Once this is done on all three nodes, you can run cassandra on each of the nodes through the cassandra bin folder with this command:
+	
+			./cassandra
+	- In the cassandra bin folder, if you run 
+	
+			./nodetool status
+	 it will tell you the state of the cluster. 
+	- To access cassandra, one any of the nodes you can run
+
+			./cqlsh <private ip>
+		and then perform CQL queries. 
+		
+
+- Zookeeper: 
+	
+	- Once zookeeper has been installed on all the nodes, modify the  zk_install_location/conf/zoo.cfg on all the nodes with the following lines:
+		
+			tickTime=2000
+			dataDir=/var/zookeeper
+			clientPort=2181
+			initLimit=5
+			syncLimit=2
+			quorumListenOnAllIPs=true 
+			server.1=public IP of node 1:2888:3888
+			server.2=public IP of node 2:2888:3888
+			server.3=public IP of node 3:2888:3888
+
+
+	- Create the directory /var/zookeeper in all the machines and within that 	  create a file called myid that contains the id of the machine. The machine 	  running server.i will contain just the number i in
+	  the file myid. 
+	  
+	- Start each of the servers one by one from the zk_install_location/bin 	  folder using the command:
+	
+			sudo ./zkServer.sh start
+
+	- On each server check the file zookeeper.out in the  zk_install_location/	  bin to make sure all the machines are talking to each other and there are 	  no errors. Note that while the machines are yet to come up there maybe 	  error messages saying that connection has not yet been established. 	  Clearly, this is ok.
+
+	- If there are no errors, then from zk_install_location/bin simply run 
+	
+				./zkCli.sh 
+				
+	  to get command line access to zookeeper. 
+
+	- Run these commands on different machines to make sure the zk nodes are 		syncing. 
+
+			[zkshell] ls /
+			[zookeeper]
+       
+		Next, create a new znode by running 
+		
+			create /zk_test my_data. 
+		This creates a new znode and associates the string "my_data" with the 		node. You should see:
+		
+			[zkshell] create /zk_test my_data
+			Created /zk_test
+     
+		Issue another ls / command to see what the directory looks like:
+		
+			[zkshell] ls /
+			[zookeeper, zk_test]
+			
+- Download the latest Apache Tomcat and follow these instructions <http://tecadmin.net/install-tomcat-9-on-ubuntu/> (this is for version 9).  
+- Build the MUSIC war file and place within the webapps folder of the tomcat installation.
+- Download the client app for MUSIC from  <https://github.com/att/music/tree/master/tests/musicTest.jar>, and run the jar file
+musicTest.jar with any of the node public IPs as parameter. If there
+are no errors and all the tests pass, then you have MUSIC working. 
+
+<a name="ms-logging">
+
+## Logging
+
+</a>
+### log4j
+
 This section explains how MUSIC log4j properties can be used and modified to control logging. 
 
 Once MUSIC.war is installed, tomcat7 will unpack it into /var/lib/tomcat7/webapps/MUSIC (this is the
@@ -70,11 +201,10 @@ More info about log4j.properties:
 
 https://docs.oracle.com/cd/E29578_01/webhelp/cas_webcrawler/src/cwcg_config_log4j_file.html
 
-MUSIC uses log4j 1.2.17 which is EOL. Music will be changing to 2.x, at which point this
+MUSIC uses log4j 1.2.17 which is EOL. MUSIC will be changing to 2.x, at which point this
 file's syntax will change significantly (new info will be sent at that time).
 
-## Muting MUSIC jersey output
-----------------------------
+### Muting MUSIC jersey output
 
 The jersey package that MUSIC uses to parse REST calls prints out the entire header and json body by
 default. To mute it, remove the following lines from the web.xml in the WEB_INF foler:

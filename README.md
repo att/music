@@ -98,19 +98,19 @@ want MUSIC installed. However, Cassandra and Zookeeper needs to be configured to
 			initLimit=5
 			syncLimit=2
 			quorumListenOnAllIPs=true 
-			server.1=public IP of node 1:2888:3888
-			server.2=public IP of node 2:2888:3888
-			server.3=public IP of node 3:2888:3888
+			node.1=public IP of node 1:2888:3888
+			node.2=public IP of node 2:2888:3888
+			node.3=public IP of node 3:2888:3888
 
 
-	- Create the directory /var/zookeeper in all the machines and within that 	  create a file called myid that contains the id of the machine. The machine 	  running server.i will contain just the number i in
+	- Create the directory /var/zookeeper in all the machines and within that 	  create a file called myid that contains the id of the machine. The machine 	  running node.i will contain just the number i in
 	  the file myid. 
 	  
-	- Start each of the servers one by one from the zk_install_location/bin 	  folder using the command:
+	- Start each of the nodes one by one from the zk_install_location/bin 	  folder using the command:
 	
 			sudo ./zkServer.sh start
 
-	- On each server check the file zookeeper.out in the  zk_install_location/	  bin to make sure all the machines are talking to each other and there are 	  no errors. Note that while the machines are yet to come up there maybe 	  error messages saying that connection has not yet been established. 	  Clearly, this is ok.
+	- On each node check the file zookeeper.out in the  zk_install_location/	  bin to make sure all the machines are talking to each other and there are 	  no errors. Note that while the machines are yet to come up there maybe 	  error messages saying that connection has not yet been established. 	  Clearly, this is ok.
 
 	- If there are no errors, then from zk_install_location/bin simply run 
 	

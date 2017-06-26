@@ -48,4 +48,4 @@ Often we wish to deploy service replicas in an active-passive mode where there i
 
 		./restartHalIfDead.sh <node id>
 		
-	The hal protocol will not take over and start the service replicas in active-passive mode. The hal log can be found on each node i in the file hali.out. 
+	The hal protocol will now take over and start the service replicas in active-passive mode. The hal log can be found on each node i in the file hali.out. 

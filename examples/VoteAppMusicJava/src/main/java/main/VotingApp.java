@@ -458,7 +458,7 @@ public class VotingApp {
 	}
 	public static void main(String[] args) {	
 		long start = System.currentTimeMillis();
-			for(int i =0; i < 2;++i){
+			for(int i =0; i < 1;++i){
 				VotingApp vHandle = new VotingApp(args);
 				vHandle.overAllTests();
 

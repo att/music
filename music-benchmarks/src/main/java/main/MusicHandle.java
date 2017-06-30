@@ -28,7 +28,8 @@ public class MusicHandle {
 	}
 
 	private String getMusicNodeURL(){
-		return "http://"+getMusicNodeIp()+":8080/MUSIC/rest/";
+		String musicURL = "http://"+getMusicNodeIp()+":8080/MUSIC/rest";
+		return musicURL;
 	}
 
 	public void createKeyspaceEventual(String keyspaceName){
@@ -50,8 +51,9 @@ public class MusicHandle {
 
 		Client client = Client.create(clientConfig);
 
+		String queryURL =getMusicNodeURL()+"/keyspaces/"+keyspaceName; 
 		WebResource webResource = client
-				.resource(getMusicNodeURL()+"/keyspaces/"+keyspaceName);
+				.resource(queryURL);
 
 		ClientResponse response = webResource.accept("application/json")
 				.type("application/json").post(ClientResponse.class, jsonKp);

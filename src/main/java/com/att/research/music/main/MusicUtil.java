@@ -38,7 +38,7 @@ public class MusicUtil {
 	public static final String nodeIdsTable ="nodeIds";
 	public static final String evPutsTable = "evPutTracker_";
 	public static final boolean debug = true;
-	public static final String version = "1.0.5";
+	public static final String version = "1.0.6";
 	public static final String musicRestIp = "localhost";
 	
 	public static String getMyId(){

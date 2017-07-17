@@ -30,18 +30,26 @@ distributed coordination on shared state, as and when required.
 
 ### Prerequisites
 
-If you are using a VM make sure it has at least 8 GB of RAM (It may work with 4 GB, but with 2 GB it does give issues).
+If you are using a VM make sure it has at least 8 GB of RAM (It may work with 4 GB, but with 2 GB it
+does give issues).
 
 ### Instructions
 
-- Open /etc/hosts as sudo and enter the name of the vm alongside localhost in the line for 127.0.0.1.
+- Open /etc/hosts as sudo and enter the name of the vm alongside localhost in the line for
+  127.0.0.1.
 E.g. 127.0.0.1 localhost music-1. Some of the apt-get installation seem to require this. 
 - Ensure you have java jdk 8 or above working on your machine.
-- Download apache Apache Cassandra 3.2 and follow these instructions <http://cassandra.apache.org/doc/latest/getting_started/installing.html> till and including Step 4. By the end of this you should have Cassandra working.
-- Download Apache Zookeeper 3.4.6 from and follow these instructions <https://zookeeper.apache.org/doc/trunk/zookeeperStarted.html> pertaining to the standalone operation. By the end of this you should have Zookeeper working.
-- Download the latest Apache Tomcat and follow these instructions <http://tecadmin.net/install-tomcat-9-on-ubuntu/> (this is for version 9).  
+- Download apache Apache Cassandra 3.2 and follow these instructions
+  <http://cassandra.apache.org/doc/latest/getting_started/installing.html> till and including Step
+4. By the end of this you should have Cassandra working.
+- Download Apache Zookeeper 3.4.6 from and follow these instructions
+  <https://zookeeper.apache.org/doc/trunk/zookeeperStarted.html> pertaining to the standalone
+operation. By the end of this you should have Zookeeper working.
+- Download the latest Apache Tomcat and follow these instructions
+  <http://tecadmin.net/install-tomcat-9-on-ubuntu/> (this is for version 9).  
 - Build the MUSIC war file and place within the webapps folder of the tomcat installation.
-- Download the client app for MUSIC from  <https://github.com/att/music/tree/master/tests/musicTest.jar>, and run the jar file
+- Download the client app for MUSIC from
+  <https://github.com/att/music/tree/master/tests/musicTest.jar>, and run the jar file
 musicTest.jar with localhost as parameter. If there
 are no errors and all the tests pass, then you have MUSIC working. 
 
@@ -51,12 +59,15 @@ are no errors and all the tests pass, then you have MUSIC working.
 
 </a>
 
-- Follow the instructions for local MUSIC installation on all the machines/VMs/hosts (referred to as a node) on which you
-want MUSIC installed. However, Cassandra and Zookeeper needs to be configured to run as multi-node installations (instructions below) before running them. 
+- Follow the instructions for local MUSIC installation on all the machines/VMs/hosts (referred to as
+  a node) on which you
+want MUSIC installed. However, Cassandra and Zookeeper needs to be configured to run as multi-node
+installations (instructions below) before running them. 
 
 - Cassandra: 
 
-	- In the cassandra.yaml file which is present in the cassa_install/conf 	directory in each node, set the following parameters:
+	- In the cassandra.yaml file which is present in the cassa_install/conf 	directory in each node,
+	  set the following parameters:
 
 
 			cluster_name: ‘name of cluster’
@@ -72,10 +83,12 @@ want MUSIC installed. However, Cassandra and Zookeeper needs to be configured to
 			phi_convict_threshold: 12
 	
 
-		The last one was because of an error I was facing and its corresponding 		resolution as described here. Not very common. 
+		The last one was because of an error I was facing and its corresponding 		resolution as
+described here. Not very common. 
 
 	- In the cassandra-rackdc.properties file, assign data center and rack names 	as if required. 
-	- Once this is done on all three nodes, you can run cassandra on each of the nodes through the cassandra bin folder with this command:
+	- Once this is done on all three nodes, you can run cassandra on each of the nodes through the
+	  cassandra bin folder with this command:
 	
 			./cassandra
 	- In the cassandra bin folder, if you run 
@@ -90,7 +103,8 @@ want MUSIC installed. However, Cassandra and Zookeeper needs to be configured to
 
 - Zookeeper: 
 	
-	- Once zookeeper has been installed on all the nodes, modify the  zk_install_location/conf/zoo.cfg on all the nodes with the following lines:
+	- Once zookeeper has been installed on all the nodes, modify the  zk_install_location/conf/zoo.cfg
+	  on all the nodes with the following lines:
 		
 			tickTime=2000
 			dataDir=/var/zookeeper
@@ -103,14 +117,20 @@ want MUSIC installed. However, Cassandra and Zookeeper needs to be configured to
 			node.3=public IP of node 3:2888:3888
 
 
-	- Create the directory /var/zookeeper in all the machines and within that 	  create a file called myid that contains the id of the machine. The machine 	  running node.i will contain just the number i in
+	- Create the directory /var/zookeeper in all the machines and within that 	  create a file called
+	  myid that contains the id of the machine. The machine 	  running node.i will contain just the
+number i in
 	  the file myid. 
 	  
-	- Start each of the nodes one by one from the zk_install_location/bin 	  folder using the command:
+	- Start each of the nodes one by one from the zk_install_location/bin 	  folder using the
+	  command:
 	
 			sudo ./zkServer.sh start
 
-	- On each node check the file zookeeper.out in the  zk_install_location/	  bin to make sure all the machines are talking to each other and there are 	  no errors. Note that while the machines are yet to come up there maybe 	  error messages saying that connection has not yet been established. 	  Clearly, this is ok.
+	- On each node check the file zookeeper.out in the  zk_install_location/	  bin to make sure all
+	  the machines are talking to each other and there are 	  no errors. Note that while the machines
+are yet to come up there maybe 	  error messages saying that connection has not yet been
+established. 	  Clearly, this is ok.
 
 	- If there are no errors, then from zk_install_location/bin simply run 
 	
@@ -136,9 +156,11 @@ want MUSIC installed. However, Cassandra and Zookeeper needs to be configured to
 			[zkshell] ls /
 			[zookeeper, zk_test]
 			
-- Download the latest Apache Tomcat and follow these instructions <http://tecadmin.net/install-tomcat-9-on-ubuntu/> (this is for version 9).  
+- Download the latest Apache Tomcat and follow these instructions
+  <http://tecadmin.net/install-tomcat-9-on-ubuntu/> (this is for version 9).  
 - Build the MUSIC war file and place within the webapps folder of the tomcat installation.
-- Download the client app for MUSIC from  <https://github.com/att/music/tree/master/tests/musicTest.jar>, and run the jar file
+- Download the client app for MUSIC from
+  <https://github.com/att/music/tree/master/tests/musicTest.jar>, and run the jar file
 musicTest.jar with any of the node public IPs as parameter. If there
 are no errors and all the tests pass, then you have MUSIC working. 
 

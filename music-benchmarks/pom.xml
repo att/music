@@ -64,7 +64,17 @@
   <artifactId>ApacheJMeter_java</artifactId> 
   <version>2.11</version>
 </dependency>
-        
+        	<dependency>
+			<groupId>com.datastax.cassandra</groupId>
+			<artifactId>cassandra-driver-core</artifactId>
+			<version>3.0.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.zookeeper</groupId>
+			<artifactId>zookeeper</artifactId>
+			<version>3.4.6</version>
+		</dependency>
+	
 	</dependencies>
   
 </project>

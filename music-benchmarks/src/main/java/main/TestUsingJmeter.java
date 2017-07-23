@@ -27,12 +27,11 @@ public class TestUsingJmeter extends AbstractJavaSamplerClient implements Serial
     
     public SampleResult runTest(JavaSamplerContext context) {
     	SampleResult result = new SampleResult();
-    	result.sampleStart(); // start stopwatch
         try{
+        	BmOperation bmo = new BmOperation("music_bm.txt");
         	int threadNum = JMeterContextService.getContext().getThreadNum();
-        	System.out.println("running jmeter in thread "+ threadNum);
-        	int delay = 1000*(new Random()).nextInt(5)+1000;
-        	Thread.sleep(delay);
+        	result.sampleStart(); // start stopwatch
+        	bmo.execute(threadNum);
         	result.sampleEnd(); // stop stopwatch
             result.setSuccessful( true );
             result.setResponseMessage( "Successfully performed action" );

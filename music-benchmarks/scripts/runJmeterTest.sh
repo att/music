@@ -7,8 +7,13 @@
 # num_trials: The number of trials for which each experiment should be run, to get an average of
 # results. 
 
+echo Initializing music..
 
 num_threads=$1
+num_entries=$((num_threads + 5))
+
+java -jar musicBmSetup.jar music_bm.txt $num_entries
+
 num_trials=$2
 op_type=$(head -n 1 music_bm.txt)
 
@@ -19,6 +24,7 @@ echo num_trials = $num_trials
 current_date_time="`date +%d_%H_%M`";
 folder_name=$op_type
 echo results stored in folder: results/$folder_name
+
 
 #start running the trials
 

@@ -1,6 +1,10 @@
 package main;
 
 
+import java.io.BufferedReader;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
@@ -51,38 +55,26 @@ public class TestUsingJmeter extends AbstractJavaSamplerClient implements Serial
     return result;
     }
     
-    public static void main(String[] nodeIps){
-    	//create key space
-		MusicHandle musHandle = new MusicHandle(nodeIps);
-		String bmKeyspace = "BenchmarksKeySpace";
-		System.out.println("Keyspace "+bmKeyspace+" created...");
-		musHandle.createKeyspaceEventual(bmKeyspace);
-		
-		
-		//create table
-		String bmTable = "BmEmployees";
-		Map<String,String> fields = new HashMap<String,String>();
-		fields.put("id", "uuid");
-		fields.put("name", "text");
-		fields.put("count", "varint");
-		fields.put("address", "Map<text,text>");
-		fields.put("PRIMARY KEY", "(name)");
-		musHandle.createTableEventual(bmKeyspace, bmTable, fields);
-		
-		//fill rows in the table
-		for(int i = 0; i < 5; ++i){
-			Map<String,Object> values = new HashMap<String,Object>();
-		    values.put("id", UUID.randomUUID());
-		    values.put("name", "emp"+i);
-		    values.put("count", 4);
-		    Map<String, String> address = new HashMap<String, String>();
-		    address.put("number", "1");
-		    address.put("street", "att way");
-		    values.put("address", address);
-	   	musHandle.insertIntoTableEventual(bmKeyspace, bmTable,values);
-		}
+    public static void main(String[] args){   	
+		//read the file and populate parameters (third line is ipList)
+		try {
+			BufferedReader br = new BufferedReader(new FileReader(args[0]));
 
+			br.readLine();
+
+			br.readLine();
+
+			String ipListLine = br.readLine();
+			String[] ipList = ipListLine.split(" ");
+			
+	    	int numEntries = Integer.parseInt(args[1]);
+			MusicHandle musHandle = new MusicHandle(ipList);
+			musHandle.initialize(numEntries);
+			br.close();
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
     }
-       
-    
 }

@@ -34,6 +34,7 @@ public class BmOperation {
 	}
 
 	public void execute(int threadNum){//thread num is used to exclusively identify the threads/requests
+		musicHandle.rowId = "emp"+threadNum;
 		if(operationType.equals("cassa_ev_put")){
 			musicHandle.cassaEvPut();
 		}else
@@ -44,11 +45,11 @@ public class BmOperation {
 			musicHandle.cassaQuorumPut();
 		}else
 		if(operationType.equals("music_critical_put")){
-			musicHandle.musicCriticalPut("emp"+threadNum);
+			musicHandle.musicCriticalPut();
 		}else
 		if(operationType.equals("zk_critical_put")){
-			musicHandle.zkCriticalPut("emp"+threadNum);
-		}
+			musicHandle.zkCriticalPut();
+		}else
 		if(operationType.equals("music_mix_put")){	
 			/*
 			 * parameter in the BmOperation interpreted as % eventual puts
@@ -59,7 +60,7 @@ public class BmOperation {
 			if(threadNum % propEvPuts == 0)
 				musicHandle.musicEvPut();
 			else
-				musicHandle.musicCriticalPut("emp"+threadNum);
+				musicHandle.musicCriticalPut();
 		}
 		//this option is causing bugs...mainly in closing out the thread. Not really needed now. 
 		/*	if(operationType.equals("cassa_direct_put")){
@@ -70,7 +71,7 @@ public class BmOperation {
 
 	public static void main(String[] args){
 		BmOperation opHandle = new BmOperation("/Users/bharathb/AttWork/Music/keys/apache-jmeter-3.0/bin/music_bm.txt");
-		opHandle.execute(0);
+		opHandle.execute(10);
 	}
 
 }

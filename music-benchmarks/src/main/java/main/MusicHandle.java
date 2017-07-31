@@ -20,13 +20,14 @@ import com.sun.jersey.api.json.JSONConfiguration;
 public class MusicHandle {
 	String[] musicNodes;
 	String bmKeySpace, bmTable;
+	public String rowId;
 	public MusicHandle(String[] musicNodes){
 		this.musicNodes = musicNodes;
 		bmKeySpace = "BenchmarksKeySpace";
 		bmTable = "BmEmployees";
 	}
 
-	public void initialize(){
+	public void initialize(int numEntries){
 		createKeyspaceEventual(bmKeySpace);
 		System.out.println("Keyspace "+bmKeySpace+" created...");
 
@@ -37,16 +38,16 @@ public class MusicHandle {
 		fields.put("job", "text");
 		fields.put("PRIMARY KEY", "(name)");
 		createTableEventual(bmKeySpace, bmTable, fields);
-		System.out.println("Table "+bmKeySpace+" created...");
+		System.out.println("Table "+bmTable+" created...");
 
 		//fill rows in the table
-		for(int i = 0; i < 5; ++i){
+		for(int i = 0; i < numEntries; ++i){
 			Map<String,Object> values = new HashMap<String,Object>();
 		    values.put("name", "emp"+i);
 		    values.put("job", "researcher");
 		    insertIntoTableEventual(bmKeySpace, bmTable,values);
 		}
-		System.out.println("Rows Inserted...");
+		System.out.println(numEntries + " rows inserted...");
 		
 		//set up zookeeper for direct operations
 		
@@ -98,7 +99,7 @@ public class MusicHandle {
 	public void createKeyspaceEventual(String keyspaceName){
 		Map<String,Object> replicationInfo = new HashMap<String, Object>();
 		replicationInfo.put("class", "SimpleStrategy");
-		replicationInfo.put("replication_factor", 3);
+		replicationInfo.put("replication_factor", 1);
 		String durabilityOfWrites="true";
 		Map<String,String> consistencyInfo= new HashMap<String, String>();
 		consistencyInfo.put("type", "eventual");
@@ -339,7 +340,7 @@ public class MusicHandle {
 				JSONConfiguration.FEATURE_POJO_MAPPING, Boolean.TRUE);
 
 		Client client = Client.create(clientConfig);
-		String url = getMusicNodeURL()+"/cassa/keyspaces/"+bmKeySpace+"/tables/"+bmTable+"/rows?name=emp0";
+		String url = getMusicNodeURL()+"/cassa/keyspaces/"+bmKeySpace+"/tables/"+bmTable+"/rows?name="+rowId;
 		WebResource webResource = client
 				.resource(url);
 
@@ -368,7 +369,7 @@ public class MusicHandle {
 				JSONConfiguration.FEATURE_POJO_MAPPING, Boolean.TRUE);
 
 		Client client = Client.create(clientConfig);
-		String url = getMusicNodeURL()+"/keyspaces/"+bmKeySpace+"/tables/"+bmTable+"/rows?name=emp0";
+		String url = getMusicNodeURL()+"/keyspaces/"+bmKeySpace+"/tables/"+bmTable+"/rows?name="+rowId;
 		WebResource webResource = client
 				.resource(url);
 
@@ -381,7 +382,7 @@ public class MusicHandle {
 
 	public void cassaQuorumPut(){
 		Map<String,Object> values = new HashMap<String,Object>();
-		values.put("job","musicEvPut"+System.currentTimeMillis());
+		values.put("job","cassaQuorumPut"+System.currentTimeMillis());
 
 		Map<String,String> consistencyInfo= new HashMap<String, String>();
 		consistencyInfo.put("type", "atomic");
@@ -396,7 +397,7 @@ public class MusicHandle {
 				JSONConfiguration.FEATURE_POJO_MAPPING, Boolean.TRUE);
 
 		Client client = Client.create(clientConfig);
-		String url = getMusicNodeURL()+"/cassa/keyspaces/"+bmKeySpace+"/tables/"+bmTable+"/rows?name=emp0";
+		String url = getMusicNodeURL()+"/cassa/keyspaces/"+bmKeySpace+"/tables/"+bmTable+"/rows?name="+rowId;
 		WebResource webResource = client
 				.resource(url);
 
@@ -408,13 +409,13 @@ public class MusicHandle {
 	}
 
 	
-	public void musicCriticalPut(String candidateName){
+	public void musicCriticalPut(){
 		/*create lock for the candidate. The music API dictates that
 		 * the lock name must be of the form keyspacename.tableName.primaryKeyName
 		 * */
 		System.out.println("trying to acquire lock!");
 
-		String lockName = bmKeySpace+"."+bmTable+"."+candidateName;
+		String lockName = bmKeySpace+"."+bmTable+"."+rowId;
 		String lockId = createLock(lockName);
 		while(acquireLock(lockId) != true);
 		
@@ -435,7 +436,7 @@ public class MusicHandle {
 				JSONConfiguration.FEATURE_POJO_MAPPING, Boolean.TRUE);
 
 		Client client = Client.create(clientConfig);
-		String url = getMusicNodeURL()+"/keyspaces/"+bmKeySpace+"/tables/"+bmTable+"/rows?name="+candidateName;
+		String url = getMusicNodeURL()+"/keyspaces/"+bmKeySpace+"/tables/"+bmTable+"/rows?name="+rowId;
 		System.out.println(url);
 		WebResource webResource = client
 				.resource(url);
@@ -450,19 +451,19 @@ public class MusicHandle {
 		unlock(lockId);
 	}
 
-	public void zkCriticalPut(String candidateName){
+	public void zkCriticalPut(){
 		/*create lock for the candidate. The music API dictates that
 		 * the lock name must be of the form keyspacename.tableName.primaryKeyName
 		 * */
 		System.out.println("trying to acquire lock!");
 
-		String lockName = bmKeySpace+"."+bmTable+"."+candidateName;
+		String lockName = bmKeySpace+"."+bmTable+"."+rowId;
 		String lockId = createLock(lockName);
 		while(acquireLock(lockId) != true);
 		
 		//update candidate entry if you have the lock
 		Map<String,Object> values = new HashMap<String,Object>();
-		values.put("name",candidateName);
+		values.put("name",rowId);
 		values.put("job","zkCriticalPut"+System.currentTimeMillis());
 
 		Map<String,String> consistencyInfo= new HashMap<String, String>();

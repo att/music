@@ -1,6 +1,7 @@
 package com.att.research.music.main;
 
 import java.io.File;
+import java.util.Arrays;
 
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletContext;
@@ -8,13 +9,18 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 
 import org.apache.log4j.BasicConfigurator;
+import org.apache.log4j.Logger;
 import org.apache.log4j.PropertyConfigurator;
 
 public class Log4JInitServlet extends HttpServlet {
 
 	private static final long serialVersionUID = 1L;
+	
+	final static Logger logger = Logger.getLogger(RestMusic.class);
+
 
 	public void init(ServletConfig config) throws ServletException {
+		
 		System.out.println("Log4JInitServlet is initializing log4j");
 		String log4jLocation = config.getInitParameter("log4j-properties-location");
 
@@ -35,6 +41,11 @@ public class Log4JInitServlet extends HttpServlet {
 				BasicConfigurator.configure();
 			}
 		}
+		
+		PropertiesReader prop = new PropertiesReader();
+		logger.info("Starting MUSIC node with id:"+prop.getMyId()+" and public ip:"+prop.getMyPublicIp()+"...");
+		logger.info("List of all MUSIC ids:"+ Arrays.toString(prop.getAllIds()));
+		logger.info("List of all MUSIC public ips:"+ Arrays.toString(prop.getAllPublicIps()));
 		super.init(config);
 	}
 	

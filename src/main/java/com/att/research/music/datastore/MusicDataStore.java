@@ -108,7 +108,7 @@ public class MusicDataStore {
 		}
 	}
 	
-	public  ArrayList<String> getAllNodePublicIps(){
+/*	public  ArrayList<String> getAllNodePublicIps(){
 		Metadata metadata = cluster.getMetadata();
 		ArrayList<String> nodePublicIps = new ArrayList<String>();
 		for ( Host host : metadata.getAllHosts() ) {
@@ -116,7 +116,7 @@ public class MusicDataStore {
 		}
 		return nodePublicIps;
 	}
-	
+*/	
 	private void connectToCassaCluster(String address){	
 		cluster = Cluster.builder().withPort(9042).addContactPoint(address).build();
 		Metadata metadata = cluster.getMetadata();

@@ -35,28 +35,12 @@ public class MusicUtil {
 	public static String myCassaHost = "localhost";
 	public static String defaultMusicIp = "localhost";
 	public static final String musicInternalKeySpaceName = "MusicInternalKeySpace";
-	public static final String nodeIdsTable ="nodeIds";
 	public static final String evPutsTable = "evPutTracker_";
 	public static final boolean debug = true;
-	public static final String version = "1.0.6";
+	public static final String version = "1.0.7";
 	public static final String musicRestIp = "localhost";
+	public static final String musicPropertiesFilePath="/etc/music/music.properties";
 	
-	public static String getMyId(){
-		InetAddress IP;
-		String hostName="";
-		try {
-			IP = Inet4Address.getLocalHost();
-			hostName = 	IP.getHostName();	
-		} catch (UnknownHostException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
-		hostName = hostName.replace("-", "_");
-		hostName = hostName.replace(".", "_");
-		if(hostName.length() > 20)
-			hostName = hostName.substring(0, 20);
-		return hostName;
-	}
 	public static String getTestType(){
 		String testType = "";
 		try {

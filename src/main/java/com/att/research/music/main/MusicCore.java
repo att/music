@@ -83,7 +83,7 @@ public class MusicCore {
 	}        
 	
 	public static void initializeNode(){
-		logger.info("Initializing MUSIC node");
+		logger.info("Initializing MUSIC node...");
 		/*this cannot be done in a startup routing since this depends on 
 		 * obtaining the node ids from others via rest
 		 */
@@ -92,22 +92,12 @@ public class MusicCore {
 		String ksQuery ="CREATE KEYSPACE  IF NOT EXISTS "+ keyspaceName +" WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 3 };";
 		generalPut(ksQuery, "eventual");
 
-		//create table to track nodeIds;
-		String tabQuery = "CREATE TABLE IF NOT EXISTS "+keyspaceName+"."+MusicUtil.nodeIdsTable+" (public_ip text PRIMARY KEY,nodeId text);"; 
-		generalPut(tabQuery, "eventual");
-
-
-		ArrayList<String> allNodeIps = getDSHandle().getAllNodePublicIps();
-		logger.info("Initializing music internals, node ips:"+allNodeIps);
-		for (String musicNodeIp : allNodeIps) {
-			MusicRestClient restHandle = new MusicRestClient(musicNodeIp);
-			String nodeId = restHandle.getMusicId();
-			//populate the nodeId in the node Id table
-			String insertQuery = "INSERT into "+keyspaceName+"."+MusicUtil.nodeIdsTable+" (public_ip,nodeId) values('"+musicNodeIp+"','"+nodeId+"')";
-			generalPut(insertQuery, "eventual");
-
+		PropertiesReader prop = new PropertiesReader();
+		
+		String[] allNodeIds = prop.getAllIds();
+		for(int i=0; i < allNodeIds.length;++i){
 			//create table to track eventual puts
-			tabQuery = "CREATE TABLE IF NOT EXISTS "+keyspaceName+"."+MusicUtil.evPutsTable+nodeId+" (key text PRIMARY KEY, status text);"; 
+			String tabQuery = "CREATE TABLE IF NOT EXISTS "+keyspaceName+"."+MusicUtil.evPutsTable+allNodeIds[i]+" (key text PRIMARY KEY, status text);"; 
 			generalPut(tabQuery, "eventual");
 		}
 	}
@@ -157,8 +147,8 @@ public class MusicCore {
 		//this is for backward compatibility where locks could also be acquired on just
 		//keyspaces or tables.
 		if(isTableOrKeySpaceLock(key) == true){
-			logger.info("In acquire lock: A table or keyspace lock is no longer relevant, so returning true");
-			return false; 
+			logger.info("In acquire lock: A table or keyspace lock so no need to perform sync...so returning true");
+			return true; 
 		}
 		
 		//if you are already the lock holder no need to sync, simply return true
@@ -197,41 +187,46 @@ public class MusicCore {
 		return result;
 	}
 
-	private static String getNodeId(String musicNodeIP){
+/*	private static String getNodeId(String musicNodeIP){
 		String query = "select * from "+MusicUtil.musicInternalKeySpaceName+"."+MusicUtil.nodeIdsTable+" where public_ip='"+musicNodeIP+"';";
 		ResultSet rs = get(query);
         List<Row> rows = rs.all();
         Row row = rows.get(0);//there should be only one row
         return row.getString("nodeId");
 	}
-	
+*/	
 	private static  void syncAllReplicas(String key){
 		/*sync operation 		
 		wait till all the eventual puts are done at the other music nodes (with timeout)
 		and wait till all values are the same at the music nodes*/
-		ArrayList<String> listOfNodePublicIps = getDSHandle().getAllNodePublicIps();
-		logger.debug("In sync all replicas:public Ips of nodes:"+listOfNodePublicIps);
+		PropertiesReader prop = new PropertiesReader();
+		String[] allPublicIps = prop.getAllPublicIps();
+		String[] allIds = prop.getAllIds();
+		
+		logger.debug("In sync all replicas:public Ips of nodes:"+allPublicIps);
 		boolean synced = false;
 		int backOffFactor = 0; 
 		long backOffTime = 50;
 		while(!synced){
 			MusicUtil.sleep(backOffTime*backOffFactor);
 			backOffFactor = backOffFactor +1;		
-			MusicDigest referenceDigest = getDigest(listOfNodePublicIps.get(0),key);//could be any of the nodes
+			MusicDigest referenceDigest = getDigest(allPublicIps[0], allIds[0],key);//could be any of the nodes
 			String referenceValue = referenceDigest.getVectorTs();
 			boolean mismatch = false;
-			for (int i=1; i < listOfNodePublicIps.size();i++){ 
+			for (int i=1; i < allPublicIps.length;i++){ 
 				MusicDigest mg;
-				String remoteNodePublicIp="";
+				String nodePublicIp="";
+				String nodeId="";
 				try {
-					remoteNodePublicIp = listOfNodePublicIps.get(i);
-					mg = getDigest(remoteNodePublicIp,key);
+					nodePublicIp = allPublicIps[i];
+					nodeId = allIds[i];
+					mg = getDigest(nodePublicIp,nodeId, key);
 					if(mg == null){
-						logger.debug("In sync all replicas:There is no digest from "+remoteNodePublicIp+", move on");
+						logger.debug("In sync all replicas:There is no digest from "+nodePublicIp+", move on");
 						continue;
 					}
 				} catch (NoHostAvailableException e) {
-					logger.debug("In sync all replicas: Node "+remoteNodePublicIp+" not responding correctly...");
+					logger.debug("In sync all replicas: Node "+nodePublicIp+" not responding correctly...");
 					continue;//if the host is dead we do not care about his value
 				}
 				if(mg.getEvPutStatus().equals("inprogress")){	
@@ -248,9 +243,8 @@ public class MusicCore {
 		}
 	}
 
-	public static  MusicDigest getDigest(String publicIp,String key){
+	public static  MusicDigest getDigest(String publicIp,String nodeId, String key){
 		long startTime = System.currentTimeMillis();
-		String nodeId = getNodeId(publicIp);
 		logger.debug("In getDigest:Trying to obtain message digest from node "+nodeId+" with IP:"+publicIp);
 		String[] splitString = key.split("\\.");
 		String keyspaceName = splitString[0];
@@ -274,7 +268,7 @@ public class MusicCore {
 			vectorTs = "";
 		
 		String metaKeyspaceName = MusicUtil.musicInternalKeySpaceName;
-		String metaTableName = MusicUtil.evPutsTable+MusicUtil.getMyId();
+		String metaTableName = MusicUtil.evPutsTable+nodeId;
 		String queryToGetEvPutStatus =  "SELECT status FROM "+metaKeyspaceName+"."+metaTableName+ " WHERE key"+"='"+key+"';";
 		results = getDSHandle(publicIp).executeEventualGet(queryToGetEvPutStatus);
 		String evPutStatus =null;
@@ -309,8 +303,9 @@ public class MusicCore {
 	}
 	public static  boolean eventualPut(String keyspaceName, String tableName, String primaryKey, String query){
 		//do a cassandra write one on the meta table with status as in-progress
+		PropertiesReader prop = new PropertiesReader();
 		String metaKeyspaceName = MusicUtil.musicInternalKeySpaceName;
-		String evPutTrackerTable = MusicUtil.evPutsTable+MusicUtil.getMyId();
+		String evPutTrackerTable = MusicUtil.evPutsTable+prop.getMyId();
 		String metaKey = "'"+keyspaceName+"."+tableName+"."+primaryKey+"'";
 
 		String queryToUpdateEvPut =  "Insert into "+metaKeyspaceName+"."+evPutTrackerTable+"  (key,status) values ("+metaKey+",'inprogress');";   

@@ -12,11 +12,11 @@ public class PropertiesReader {
 
 	public PropertiesReader(){
 		prop = new Properties();
-		URL resource = getClass().getResource("/");
-		String musicPropertiesFilePath = resource.getPath().replace("WEB-INF/classes/", "WEB-INF/music.properties");
+//		URL resource = getClass().getResource("/");
+//		String musicPropertiesFilePath = resource.getPath().replace("WEB-INF/classes/", "WEB-INF/music.properties");
 		// Open the file
 		try {
-			InputStream fstream = new FileInputStream(musicPropertiesFilePath);
+			InputStream fstream = new FileInputStream(MusicUtil.musicPropertiesFilePath);
 			prop.load(fstream);
 	        fstream.close();
 		} catch (FileNotFoundException e) {

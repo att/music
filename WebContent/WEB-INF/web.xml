@@ -21,7 +21,7 @@
 		<servlet-class>com.att.research.music.main.Log4JInitServlet</servlet-class>
 		<init-param>
 			<param-name>log4j-properties-location</param-name>
-			<param-value>WEB-INF/log4j.properties</param-value>
+			<param-value>/etc/music/log4j.properties</param-value>
 		</init-param>
 		<load-on-startup>1</load-on-startup>
 	</servlet>

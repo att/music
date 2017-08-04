@@ -22,7 +22,7 @@ stated inside of the file.
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.att.research.music</groupId>
   <artifactId>MUSIC</artifactId>
-  <version>1.0.6</version>
+  <version>1.0.7</version>
   
     	<repositories>
 		<repository>

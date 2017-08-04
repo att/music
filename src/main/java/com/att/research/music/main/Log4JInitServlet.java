@@ -31,7 +31,7 @@ public class Log4JInitServlet extends HttpServlet {
 			BasicConfigurator.configure();
 		} else {
 			String webAppPath = sc.getRealPath("/");
-			String log4jProp = webAppPath + log4jLocation;
+			String log4jProp = log4jLocation;
 			File yoMamaYesThisSaysYoMama = new File(log4jProp);
 			if (yoMamaYesThisSaysYoMama.exists()) {
 				System.out.println("Initializing log4j with: " + log4jProp);
@@ -43,9 +43,10 @@ public class Log4JInitServlet extends HttpServlet {
 		}
 		
 		PropertiesReader prop = new PropertiesReader();
-		logger.info("Starting MUSIC node with id:"+prop.getMyId()+" and public ip:"+prop.getMyPublicIp()+"...");
+		logger.info("Starting MUSIC "+ MusicUtil.version +" on node with id "+prop.getMyId()+" and public ip "+prop.getMyPublicIp()+"...");
 		logger.info("List of all MUSIC ids:"+ Arrays.toString(prop.getAllIds()));
 		logger.info("List of all MUSIC public ips:"+ Arrays.toString(prop.getAllPublicIps()));
+		MusicCore.initializeNode();
 		super.init(config);
 	}
 	

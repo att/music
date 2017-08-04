@@ -47,6 +47,13 @@ E.g. 127.0.0.1 localhost music-1. Some of the apt-get installation seem to requi
 operation. By the end of this you should have Zookeeper working.
 - Download the latest Apache Tomcat and follow these instructions
   <http://tecadmin.net/install-tomcat-9-on-ubuntu/> (this is for version 9).  
+- Create a music.properties file and place it /etc/music/music.properties. Here is a simple of the file: 
+
+			myId=0
+			all.ids=0
+			my.public.ip=localhost
+			all.public.ips=localhost
+	
 - Build the MUSIC war file and place within the webapps folder of the tomcat installation.
 - Download the client app for MUSIC from
   <https://github.com/att/music/tree/master/tests/musicTest.jar>, and run the jar file
@@ -157,7 +164,14 @@ established. 	  Clearly, this is ok.
 			[zookeeper, zk_test]
 			
 - Download the latest Apache Tomcat and follow these instructions
-  <http://tecadmin.net/install-tomcat-9-on-ubuntu/> (this is for version 9).  
+  <http://tecadmin.net/install-tomcat-9-on-ubuntu/> (this is for version 9). 
+- Create a music.properties file and place it in /etc/music/music.properties at each node. Here is a simple of the file: 
+
+			myId=0
+			all.ids=0:1:2
+			my.public.ip=public IP of node 0
+			all.public.ips=public IP of node 0:public IP of node 1:public IP of node 2
+
 - Build the MUSIC war file and place within the webapps folder of the tomcat installation.
 - Download the client app for MUSIC from
   <https://github.com/att/music/tree/master/tests/musicTest.jar>, and run the jar file
@@ -180,17 +194,17 @@ Look at /var/lib/tomcat7/webapps/MUSIC/WEB-INF/log4j.properties:
 
 ```properties
    # Root logger option
-   log4j.rootLogger=INFO, file, stdout
+   log4j.rootLogger=INFO, file
 
    # Direct log messages to a log file
    log4j.appender.file=org.apache.log4j.RollingFileAppender
-   log4j.appender.file.File=${catalina.home}/logs/music.log
+   log4j.appender.file.File=/var/log/music/music.log
    log4j.appender.file.MaxFileSize=10MB
    log4j.appender.file.MaxBackupIndex=10
    log4j.appender.file.layout=org.apache.log4j.PatternLayout
    log4j.appender.file.layout.ConversionPattern=%d{yyyy-MM-dd HH:mm:ss} %-5p %c{1}:%L - %m%n
 
-   # Direct log messages to stdout
+   # Direct log messages to stdout to use this option, add stdout to rootLogger options
    log4j.appender.stdout=org.apache.log4j.ConsoleAppender
    log4j.appender.stdout.Target=System.out
    log4j.appender.stdout.layout=org.apache.log4j.PatternLayout
@@ -198,21 +212,22 @@ Look at /var/lib/tomcat7/webapps/MUSIC/WEB-INF/log4j.properties:
 ```
 
 Notice there are two log4j.appender sections. The first one directs log lines to a file. The second
-one directs log lines to stdout (which winds up in catalina.out).
+one directs log lines to stdout (which winds up in catalina.out). 
+
+The music.log is placed /var/log/music/music.log. To change this location modify this line in the web.xml of MUSIC within the WEB-INF folder:
+
+		<init-param>
+			<param-name>log4j-properties-location</param-name>
+			<param-value>/etc/music/log4j.properties</param-value>
+		</init-param>
+
 
 To redirect MUSIC's log info to a log file, with more control over rotation rules:
 
-1. Set "log4j.rootLogger" to "INFO, file" instead. (INFO can also be changed. See the
-log4j.properties docs for info.)
-2. Uncomment all the lines under "# Direct log messages to a log file".
-3. Fix the line with "og4j" so that it reads "log4j" instead.
-4. Change "${catalina.home}/logs/music.log" to "/var/log/music/music.log"
 5. Adjust "MaxFileSize" to the largest size desired for each log file prior to rotation.
 6. Adjust "MaxBackupIndex" to the max number of desired rotated logs.
 7. Remove any unwanted files from /var/log/tomcat7.
 8. Restart tomcat7 with "service tomcat7 restart".
-9. Backup this file. When updating MUSIC.war, it might be overwritten and need to be replaced
-(followed by bouncing tomcat7 again).
 
 Note that the logrotate.d settings for tomcat7 may stay in place (for catalina.out). In the case of
 MUSIC, logrotate.d may not run often enough for the file to be
@@ -229,7 +244,7 @@ file's syntax will change significantly (new info will be sent at that time).
 ### Muting MUSIC jersey output
 
 The jersey package that MUSIC uses to parse REST calls prints out the entire header and json body by
-default. To mute it, remove the following lines from the web.xml in the WEB_INF foler:
+default. To mute it (if it exists), remove the following lines from the web.xml in the WEB_INF foler:
 
 ```xml
 <init-param>

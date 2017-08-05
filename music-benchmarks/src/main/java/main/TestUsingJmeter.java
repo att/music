@@ -32,7 +32,7 @@ public class TestUsingJmeter extends AbstractJavaSamplerClient implements Serial
     public SampleResult runTest(JavaSamplerContext context) {
     	SampleResult result = new SampleResult();
         try{
-        	BmOperation bmo = new BmOperation("music_bm.txt");
+        	BmOperation bmo = new BmOperation("music_bm.properties");
         	int threadNum = JMeterContextService.getContext().getThreadNum();
         	result.sampleStart(); // start stopwatch
         	bmo.execute(threadNum);
@@ -57,24 +57,10 @@ public class TestUsingJmeter extends AbstractJavaSamplerClient implements Serial
     
     public static void main(String[] args){   	
 		//read the file and populate parameters (third line is ipList)
-		try {
-			BufferedReader br = new BufferedReader(new FileReader(args[0]));
-
-			br.readLine();
-
-			br.readLine();
-
-			String ipListLine = br.readLine();
-			String[] ipList = ipListLine.split(" ");
-			
-	    	int numEntries = Integer.parseInt(args[1]);
-			MusicHandle musHandle = new MusicHandle(ipList);
-			musHandle.initialize(numEntries);
-			br.close();
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+    	System.out.println("Using Music jmeter benchmark version 1.0.3..");
+    	String configFile = args[0];
+    	int numEntries = Integer.parseInt(args[1]);
+    	BmOperation bmoHandle = new BmOperation(configFile);
+    	bmoHandle.initialize(numEntries);
     }
 }

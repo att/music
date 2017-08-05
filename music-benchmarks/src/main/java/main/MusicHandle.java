@@ -28,6 +28,8 @@ public class MusicHandle {
 	}
 
 	public void initialize(int numEntries){
+		System.out.println("Begin MUSIC initialization..");
+
 		createKeyspaceEventual(bmKeySpace);
 		System.out.println("Keyspace "+bmKeySpace+" created...");
 
@@ -183,7 +185,6 @@ public class MusicHandle {
 		Client client = Client.create();
 		String msg = getMusicNodeURL()+"/locks/create/"+lockName;
 		WebResource webResource = client.resource(msg);
-		System.out.println(msg);
 		WebResource.Builder wb = webResource.accept(MediaType.TEXT_PLAIN);
 
 		ClientResponse response = wb.post(ClientResponse.class);
@@ -194,15 +195,12 @@ public class MusicHandle {
 
 		String output = response.getEntity(String.class);
 
-//		System.out.println("Server response .... \n");
-//		System.out.println(output);
 		return output;
 	}
 
 	private  boolean acquireLock(String lockId){
 		Client client = Client.create();
 		String msg = getMusicNodeURL()+"/locks/acquire/"+lockId;
-		System.out.println(msg);
 		WebResource webResource = client.resource(msg);
 
 
@@ -413,7 +411,6 @@ public class MusicHandle {
 		/*create lock for the candidate. The music API dictates that
 		 * the lock name must be of the form keyspacename.tableName.primaryKeyName
 		 * */
-		System.out.println("trying to acquire lock!");
 
 		String lockName = bmKeySpace+"."+bmTable+"."+rowId;
 		String lockId = createLock(lockName);
@@ -437,7 +434,6 @@ public class MusicHandle {
 
 		Client client = Client.create(clientConfig);
 		String url = getMusicNodeURL()+"/keyspaces/"+bmKeySpace+"/tables/"+bmTable+"/rows?name="+rowId;
-		System.out.println(url);
 		WebResource webResource = client
 				.resource(url);
 
@@ -455,7 +451,6 @@ public class MusicHandle {
 		/*create lock for the candidate. The music API dictates that
 		 * the lock name must be of the form keyspacename.tableName.primaryKeyName
 		 * */
-		System.out.println("trying to acquire lock!");
 
 		String lockName = bmKeySpace+"."+bmTable+"."+rowId;
 		String lockId = createLock(lockName);
@@ -480,7 +475,6 @@ public class MusicHandle {
 
 		Client client = Client.create(clientConfig);
 		String url = getMusicNodeURL()+"/purezk/bmObject";
-		System.out.println(url);
 		WebResource webResource = client
 				.resource(url);
 

@@ -32,12 +32,13 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Map;
 
-import musicinterface.RestMusicFunctions;
+import protocol.HADaemon.ScriptResult;
+import musicinterface.MusicHandle;
 
 
 
 public class HalUtil {
-	public static String version="1.0.0";
+	public static String version="1.0.1";
 	private static String getMusicNodeIp(){
 		return ConfigReader.getConfigAttribute("musicLocation");
 /*		String serverAddress;
@@ -78,41 +79,40 @@ public class HalUtil {
 	}
 	
 	
-	public static boolean executeBashScriptWithParams(ArrayList<String> script){
+	public static ScriptResult executeBashScriptWithParams(ArrayList<String> script){
 		try {
 			ProcessBuilder pb = new ProcessBuilder(script);
 			final Process process = pb.start();
 			int exitCode = process.waitFor();
+
+			StringBuffer errorOutput = new StringBuffer();
+            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
+            String line = "";                       
+            while ((line = reader.readLine())!= null) {
+            		if(!line.equals(""))
+            			errorOutput.append(line + "\n");
+            }
+            System.out.print(errorOutput);
 			if(exitCode == 0)
-				return true;
-			else return false;
+				return ScriptResult.ALREADY_RUNNING;
+			else
+			if(exitCode == 1)
+				return ScriptResult.FAIL_RESTART;
+			else
+			if(exitCode == 2)
+				return ScriptResult.SUCCESS_RESTART;
 
-	/*		InputStream is = process.getInputStream();
-			InputStreamReader isr = new InputStreamReader(is);
-			BufferedReader br = new BufferedReader(isr);
-			String result = br.readLine();*/
-/*			if(result.equals("Running"))
-				return true;
-			else return false;*/
-/*			String s;
-			ArrayList<String> opText = new ArrayList<String>();
-			  while ((s = br.readLine()) != null) {
-	                opText.add(s);
-	            }
-			  System.out.println(opText.size());
-			  System.out.println(opText);
-
-*/		} catch (IOException e) {
+		} catch (IOException e) {
 			e.printStackTrace();
 		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		return false;
+		return ScriptResult.FAIL_RESTART;
 	}
 	
 	private static Map<String, Object> getActiveDetails(){
-		Map<String,Object> results = RestMusicFunctions.readAllRows("votingAppBharath", "ActiveDetails");
+		Map<String,Object> results = MusicHandle.readAllRows("votingAppBharath", "ActiveDetails");
 		for (Map.Entry<String, Object> entry : results.entrySet()){
 			Map<String, Object> valueMap = (Map<String, Object>)entry.getValue();
 			return valueMap;
@@ -122,8 +122,10 @@ public class HalUtil {
 	
 	public static void main(String[] args){
 		ArrayList<String> script = new ArrayList<String>();
-		script.add("test.sh");
-		script.add("bhar");
+		script.add("/Users/bharathb/AttWork/Music/hal/halTesting/sampleAppFolder/ensureVotingAppRunning.sh");
+		script.add("0");
+		script.add("passive");
+		System.out.println(HalUtil.executeBashScriptWithParams(script));
 	}
 
 }

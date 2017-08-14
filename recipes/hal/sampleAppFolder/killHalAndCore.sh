@@ -1,4 +1,4 @@
-dir=/home/ubuntu/votingapp
+dir=$1 #give full path
 ps aux > $dir/HalLog.out
 halId=`grep "hal.jar" $dir/HalLog.out | awk '{ print $2 }'`
 sudo kill -9 $halId

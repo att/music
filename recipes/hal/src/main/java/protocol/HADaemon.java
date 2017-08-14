@@ -28,22 +28,23 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
-import musicinterface.RestMusicFunctions;
+import musicinterface.MusicHandle;
 
 public class HADaemon {
 	String id;
 	String lockName,lockRef;
-	public static enum CoreState {PASSIVE, ACTIVE}
-	String appName;
+	public  enum CoreState {PASSIVE, ACTIVE};
+	public  enum ScriptResult {ALREADY_RUNNING, SUCCESS_RESTART, FAIL_RESTART};
+	String coreName;
 	public HADaemon(String id){
 		this.id = id; 
 		bootStrap();
 	}
 	
 	private void bootStrap(){
-		appName = ConfigReader.getConfigAttribute("appName");
-		String keyspaceName=appName;
-		RestMusicFunctions.createKeyspaceEventual(keyspaceName);
+		coreName = "hal_"+ConfigReader.getConfigAttribute("appName");
+		String keyspaceName=coreName;
+		MusicHandle.createKeyspaceEventual(keyspaceName);
 		
 		String tableName = "Replicas";
 		Map<String,String> replicaFields = new HashMap<String,String>();
@@ -53,30 +54,31 @@ public class HADaemon {
 		replicaFields.put("lockRef", "text");
 		replicaFields.put("PRIMARY KEY", "(id)");
 
-		RestMusicFunctions.createTableEventual(keyspaceName, tableName, replicaFields);	
+		MusicHandle.createTableEventual(keyspaceName, tableName, replicaFields);	
 		
 		String activeTableName = "ActiveDetails";
 		Map<String,String> activeTableFields = new HashMap<String,String>();
 		activeTableFields.put("active", "text");
 		activeTableFields.put("id", "text");
 		activeTableFields.put("PRIMARY KEY", "(active)");
-		RestMusicFunctions.createTableEventual(keyspaceName, activeTableName, activeTableFields);	
+		MusicHandle.createTableEventual(keyspaceName, activeTableName, activeTableFields);	
 		
 		
-		lockName = ConfigReader.getConfigAttribute("appName")+".active";
+		lockName = coreName+".active";
 		createLockRefIfDoesNotExist();
 
 	}
 	
 	private void createLockRefIfDoesNotExist(){
+		System.out.println("Checking if any lock reference already exists for this object in MUSIC...");
 		String oldLockRef = getLockRef(this.id);
 		if((oldLockRef == null) || (oldLockRef.equals(""))){
-			System.out.println("Lock does not exist already");
-			lockRef = RestMusicFunctions.createLockRef(lockName);
+			System.out.println("No prior lock reference..");
+			lockRef = MusicHandle.createLockRef(lockName);
 			updateHealth(this.id, CoreState.PASSIVE);
 		}
 		else{
-			System.out.println("Lock already exists");
+			System.out.println("Lock reference already exists");
 			lockRef = oldLockRef;
 		}
 		
@@ -84,9 +86,9 @@ public class HADaemon {
 	
 	private String getLockRef(String replicaId){	
 		//first check if a lock reference exists for this id..
-		Map<String,Object> replicaDetails = RestMusicFunctions.readSpecificRow(appName, "Replicas", "id", replicaId); 
+		Map<String,Object> replicaDetails = MusicHandle.readSpecificRow(coreName, "Replicas", "id", replicaId); 
 		if(replicaDetails == null){
-			System.out.println("no enry found for this replica...");
+			System.out.println("No entry found in MUSIC Replicas table for this daemon...");
 			return null; 
 		}
 		System.out.println("Entry found:"+replicaDetails.get("lockref"));
@@ -95,12 +97,13 @@ public class HADaemon {
 	
 	//this function maintains the key invariant that it will return true for only one id
 	private boolean isActiveLockHolder(){
-		boolean isLockHolder = RestMusicFunctions.acquireLock(lockRef);
+		boolean isLockHolder = MusicHandle.acquireLock(lockRef);
 		if(isLockHolder){//update active table
+			System.out.println("Daemon is the current lock holder!...");
 			Map<String,Object> values = new HashMap<String,Object>();
 			values.put("active","active");
 			values.put("id",this.id);
-			RestMusicFunctions.insertIntoTableEventual(appName, "ActiveDetails", values);
+			MusicHandle.insertIntoTableEventual(coreName, "ActiveDetails", values);
 		}		
 		return isLockHolder;
 	}
@@ -114,20 +117,30 @@ public class HADaemon {
 	}
 	
 	
-	private boolean tryToEnsureCoreFunctioning(String id,CoreState mode, int noOfAttempts){
+	private ScriptResult tryToEnsureCoreFunctioning(String id,CoreState mode, int noOfAttempts){
 		ArrayList<String> script =null;
-		boolean result = false;
+		ScriptResult result = ScriptResult.FAIL_RESTART;
 
 		if(mode.equals(CoreState.ACTIVE))	
 			script = ConfigReader.getExeCommandWithParams("ensure-active-"+id);
 		else if(mode.equals(CoreState.PASSIVE))
 			script = ConfigReader.getExeCommandWithParams("ensure-passive-"+id);
 		
-		while(result == false){
+		while(noOfAttempts > 0){
 			result = HalUtil.executeBashScriptWithParams(script);
-			noOfAttempts--;
-			if(noOfAttempts <= 0)
-				break; 
+			if(result == ScriptResult.ALREADY_RUNNING){
+				System.out.println("Executed core script, the core was already running");
+				return result;
+			}else
+			if(result == ScriptResult.SUCCESS_RESTART){
+				noOfAttempts--;
+				System.out.println("Executed core script, the core had to be restarted, retry attempts left ="+noOfAttempts);
+				return result;
+			}else
+			if(result == ScriptResult.FAIL_RESTART){
+				noOfAttempts--;
+				System.out.println("Executed core script, the core could not be re-started, retry attempts left ="+noOfAttempts);
+			}			
 		}
 		return result;
 	}
@@ -142,11 +155,11 @@ public class HADaemon {
 			values.put("isActive",false);		
 		values.put("TimeOfLastUpdate", System.currentTimeMillis());
 		values.put("lockRef", this.lockRef);
-		RestMusicFunctions.insertIntoTableEventual(appName, "Replicas", values);
+		MusicHandle.insertIntoTableEventual(coreName, "Replicas", values);
 	}
 	
 	private boolean isReplicaAlive(String id){	
-		Map<String,Object> valueMap = RestMusicFunctions.readSpecificRow(appName, "Replicas", "id", id);
+		Map<String,Object> valueMap = MusicHandle.readSpecificRow(coreName, "Replicas", "id", id);
 		System.out.println("Checking health of hal-d "+id+"...");
 		if(valueMap == null){
 			System.out.println("No entry showing...");
@@ -167,7 +180,7 @@ public class HADaemon {
 	}
 	
 	private Map<String, Object> getActiveDetails(){
-		Map<String,Object> results = RestMusicFunctions.readAllRows(appName, "ActiveDetails");
+		Map<String,Object> results = MusicHandle.readAllRows(coreName, "ActiveDetails");
 		for (Map.Entry<String, Object> entry : results.entrySet()){
 			Map<String, Object> valueMap = (Map<String, Object>)entry.getValue();
 			return valueMap;
@@ -189,7 +202,7 @@ public class HADaemon {
 		}
 
 		System.out.println("Unlocking hal "+replicaId + " with lockref"+ lockRef);
-		RestMusicFunctions.unlock(lockRef);
+		MusicHandle.unlock(lockRef);
 		System.out.println("Unlocked hal "+replicaId);
 		
 		//create entry in replicas table
@@ -198,7 +211,7 @@ public class HADaemon {
 		values.put("isActive",false);		
 //		values.put("TimeOfLastUpdate", System.currentTimeMillis());
 		values.put("lockRef", "");
-		RestMusicFunctions.updateTableEventual(appName, "Replicas", "id", replicaId, values);
+		MusicHandle.updateTableEventual(coreName, "Replicas", "id", replicaId, values);
 	}
 	
 	private void tryToEnsurePeerHealth(){
@@ -210,7 +223,7 @@ public class HADaemon {
 					//restart if suspected dead
 					//releaseLock(replicaId);
 					restartHALDaemon(replicaId, 2);
-					System.out.println(lockRef + " status: "+RestMusicFunctions.acquireLock(lockRef));
+					System.out.println(lockRef + " status: "+MusicHandle.acquireLock(lockRef));
 				}
 			}
 		}	
@@ -244,7 +257,7 @@ public class HADaemon {
 		long startTime = System.currentTimeMillis();
 		long restartTimeout = Long.parseLong(ConfigReader.getConfigAttribute("timeout"));
 		while(true){
-			Map<String,Object> replicaDetails = RestMusicFunctions.readSpecificRow(appName, "Replicas", "id", currentActiveId);
+			Map<String,Object> replicaDetails = MusicHandle.readSpecificRow(coreName, "Replicas", "id", currentActiveId);
 			oldIdStillActive  = (Boolean)replicaDetails.get("isactive");
 			if(oldIdStillActive == false)
 				break;
@@ -268,29 +281,27 @@ public class HADaemon {
 		
 		while(true){
 			updateHealth(id, CoreState.ACTIVE);
-			if(RestMusicFunctions.acquireLock(lockRef) == false){
+			if(MusicHandle.acquireLock(lockRef) == false){
 				System.out.println("******I no longer have the lock!Make myself passive*******");
-				lockRef = RestMusicFunctions.createLockRef(lockName);//put yourself back in the queue
+				lockRef = MusicHandle.createLockRef(lockName);//put yourself back in the queue
 				passiveFlow();
 			}
-
-			//update music with lockid
-			
 			int noOfAttempts = Integer.parseInt(ConfigReader.getConfigAttribute("noOfRetryAttempts"));
-			boolean result = tryToEnsureCoreFunctioning(id, CoreState.ACTIVE,noOfAttempts);
-			System.out.println("--(Active) Hal Daemon--"+id+"---CORE ACTIVE---Lock Ref:"+lockRef);
+			ScriptResult result = tryToEnsureCoreFunctioning(id, CoreState.ACTIVE,noOfAttempts);
 
-			if(result == false){//unable to start core, just give up and become passive
-				System.out.println("Unable to start the core...giving up lock");
-				RestMusicFunctions.unlock(lockRef);
-				lockRef = RestMusicFunctions.createLockRef(lockName);//put yourself back in the queue
+			if(result == ScriptResult.FAIL_RESTART){//unable to start core, just give up and become passive
+				System.out.println("Tried enough times and still unable to start the core, giving up lock and starting passive flow..");
+				MusicHandle.unlock(lockRef);
+				lockRef = MusicHandle.createLockRef(lockName);//put yourself back in the queue
 				passiveFlow();
 			}
+			
+			System.out.println("--(Active) Hal Daemon--"+id+"---CORE ACTIVE---Lock Ref:"+lockRef);
 			
 			System.out.println("--(Active) Hal Daemon--"+id+"---HEALTH  UPDATED---");
-			System.out.println(lockRef + " status: "+RestMusicFunctions.acquireLock(lockRef));
+			System.out.println(lockRef + " status: "+MusicHandle.acquireLock(lockRef));
 			tryToEnsurePeerHealth();
-			System.out.println(lockRef + " status: "+RestMusicFunctions.acquireLock(lockRef));
+			System.out.println(lockRef + " status: "+MusicHandle.acquireLock(lockRef));
 			System.out.println("--(Active) Hal Daemon--"+id+"---PEERS CHECKED---");
 
 		}
@@ -298,8 +309,6 @@ public class HADaemon {
 	
 	private void passiveFlow(){
 		while(true){
-			//ensure you still have a lock
-		//	createLockRefIfDoesNotExist();
 			//update own health in music
 			updateHealth(this.id, CoreState.PASSIVE);
 			System.out.println("--{Passive} Hal Daemon--"+id+"---HEALTH  UPDATED---");

@@ -1,19 +1,16 @@
 {
     "appName":"votingAppBharath",
-    "ensure-active-0":"/home/ubuntu/votingapp/ensureVotingAppRunning.sh 0 active",
-    "ensure-active-1":"/home/ubuntu/votingapp/ensureVotingAppRunning.sh 1 active",
-    "ensure-active-2":"/home/ubuntu/votingapp/ensureVotingAppRunning.sh 2 active",
-    "ensure-active-3":"/home/ubuntu/votingapp/ensureVotingAppRunning.sh 3 active",
-    "ensure-passive-0":"/home/ubuntu/votingapp/ensureVotingAppRunning.sh 0 passive",
-    "ensure-passive-1":"/home/ubuntu/votingapp/ensureVotingAppRunning.sh 1 passive",
-    "ensure-passive-2":"/home/ubuntu/votingapp/ensureVotingAppRunning.sh 2 passive",
-    "ensure-passive-3":"/home/ubuntu/votingapp/ensureVotingAppRunning.sh 3 passive",
-    "restart-hal-0":"ssh -i /home/ubuntu/votingapp/bharath_cirrus101.pem ubuntu@135.197.240.156 /home/ubuntu/votingapp/restartHalIfDead.sh 0",
-    "restart-hal-1":"ssh -i /home/ubuntu/votingapp/bharath_cirrus101.pem ubuntu@135.197.240.158 /home/ubuntu/votingapp/restartHalIfDead.sh 1",
-    "restart-hal-2":"ssh -i /home/ubuntu/votingapp/bharath_bigsite.pem ubuntu@135.197.226.68 /home/ubuntu/votingapp/restartHalIfDead.sh 2",
-    "restart-hal-3":"ssh -i /home/ubuntu/votingapp/bharath_bigsite.pem ubuntu@135.197.226.49 /home/ubuntu/votingapp/restartHalIfDead.sh 3",
+    "ensure-active-0":"/Users/bharathb/AttWork/Music/hal/halTesting/sampleAppFolder/ensureVotingAppRunning.sh 0 active",
+    "ensure-active-1":"/Users/bharathb/AttWork/Music/hal/halTesting/sampleAppFolder/ensureVotingAppRunning.sh 1 active",
+    "ensure-active-2":"/Users/bharathb/AttWork/Music/hal/halTesting/sampleAppFolder/ensureVotingAppRunning.sh 2 active",
+    "ensure-passive-0":"/Users/bharathb/AttWork/Music/hal/halTesting/sampleAppFolder/ensureVotingAppRunning.sh 0 passive",
+    "ensure-passive-1":"/Users/bharathb/AttWork/Music/hal/halTesting/sampleAppFolder/ensureVotingAppRunning.sh 1 passive",
+    "ensure-passive-2":"/Users/bharathb/AttWork/Music/hal/halTesting/sampleAppFolder/ensureVotingAppRunning.sh 2 passive",
+    "restart-hal-0":"/Users/bharathb/AttWork/Music/hal/halTesting/sampleAppFolder/restartHalIfDead.sh 0",
+    "restart-hal-1":"/Users/bharathb/AttWork/Music/hal/halTesting/sampleAppFolder/restartHalIfDead.sh 1",
+    "restart-hal-2":"/Users/bharathb/AttWork/Music/hal/halTesting/sampleAppFolder/restartHalIfDead.sh 2",
     "timeout":"50000",
     "noOfRetryAttempts":"3",
-    "replicaIdList":["0","1","2","3"]
+    "replicaIdList":["0"]
     "musicLocation":"localhost"
 }

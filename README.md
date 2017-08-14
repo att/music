@@ -45,20 +45,37 @@ E.g. 127.0.0.1 localhost music-1. Some of the apt-get installation seem to requi
 - Download Apache Zookeeper 3.4.6 from and follow these instructions
   <https://zookeeper.apache.org/doc/trunk/zookeeperStarted.html> pertaining to the standalone
 operation. By the end of this you should have Zookeeper working.
-- Download the latest Apache Tomcat and follow these instructions
-  <http://tecadmin.net/install-tomcat-9-on-ubuntu/> (this is for version 9).  
-- Create a music.properties file and place it /etc/music/music.properties. Here is a simple of the file: 
+- Create a music.properties file and place it in /etc/music/. Here is a sample of the file: 
 
 			myId=0
 			all.ids=0
 			my.public.ip=localhost
 			all.public.ips=localhost
-	
-- Build the MUSIC war file and place within the webapps folder of the tomcat installation.
-- Download the client app for MUSIC from
-  <https://github.com/att/music/tree/master/tests/musicTest.jar>, and run the jar file
-musicTest.jar with localhost as parameter. If there
-are no errors and all the tests pass, then you have MUSIC working. 
+			
+- Create a log4j.properties file and place it in /etc/music/. Here is a sample of the file:
+
+		   # Root logger option
+		   log4j.rootLogger=INFO, file
+		
+		   # Direct log messages to a log file
+		   log4j.appender.file=org.apache.log4j.RollingFileAppender
+		   log4j.appender.file.File=/var/log/music/music.log
+		   log4j.appender.file.MaxFileSize=10MB
+		   log4j.appender.file.MaxBackupIndex=10
+		   log4j.appender.file.layout=org.apache.log4j.PatternLayout
+		   log4j.appender.file.layout.ConversionPattern=%d{yyyy-MM-dd HH:mm:ss} %-5p %c{1}:%L - %m%n
+		
+		   # Direct log messages to stdout to use this option, add stdout to rootLogger options
+		   log4j.appender.stdout=org.apache.log4j.ConsoleAppender
+		   log4j.appender.stdout.Target=System.out
+		   log4j.appender.stdout.layout=org.apache.log4j.PatternLayout
+		   log4j.appender.stdout.layout.ConversionPattern=%d{yyyy-MM-dd HH:mm:ss} %-5p %c{1}:%L - %m%n
+
+- As shown above, the music messages are logged into a file music.log. Create an empty music.log file and place it in /var/log/music/. Tomcat does not seem to create this automatically. 	
+- Download the latest Apache Tomcat and install it using these instructions
+  <http://tecadmin.net/install-tomcat-9-on-ubuntu/> (this is for version 9).  
+- Build the MUSIC.war file and place it within the webapps folder of the tomcat installation.
+- Start tomcat and you should now have MUSIC running. 
 
 <a name ="ms-install">
 
@@ -119,9 +136,9 @@ described here. Not very common.
 			initLimit=5
 			syncLimit=2
 			quorumListenOnAllIPs=true 
-			node.1=public IP of node 1:2888:3888
-			node.2=public IP of node 2:2888:3888
-			node.3=public IP of node 3:2888:3888
+			server.1=public IP of node 1:2888:3888
+			server.2=public IP of node 2:2888:3888
+			server.3=public IP of node 3:2888:3888
 
 
 	- Create the directory /var/zookeeper in all the machines and within that 	  create a file called
@@ -163,34 +180,49 @@ established. 	  Clearly, this is ok.
 			[zkshell] ls /
 			[zookeeper, zk_test]
 			
-- Download the latest Apache Tomcat and follow these instructions
-  <http://tecadmin.net/install-tomcat-9-on-ubuntu/> (this is for version 9). 
-- Create a music.properties file and place it in /etc/music/music.properties at each node. Here is a simple of the file: 
+- MUSIC
+	- Create a music.properties file and place it in /etc/music/ at each node. Here is a sample of the file: 
 
 			myId=0
 			all.ids=0:1:2
 			my.public.ip=public IP of node 0
 			all.public.ips=public IP of node 0:public IP of node 1:public IP of node 2
+		For each node, a separate file needs to be created with its own id (between 0 and the number of nodes) and with information about its own public ip. 
+	- Create a log4j.properties file and place it in /etc/music/ at each node. Here is a sample of the file:
 
-- Build the MUSIC war file and place within the webapps folder of the tomcat installation.
-- Download the client app for MUSIC from
-  <https://github.com/att/music/tree/master/tests/musicTest.jar>, and run the jar file
-musicTest.jar with any of the node public IPs as parameter. If there
-are no errors and all the tests pass, then you have MUSIC working. 
+			   # Root logger option
+			   log4j.rootLogger=INFO, file
+			
+			   # Direct log messages to a log file
+			   log4j.appender.file=org.apache.log4j.RollingFileAppender
+			   log4j.appender.file.File=/var/log/music/music.log
+			   log4j.appender.file.MaxFileSize=10MB
+			   log4j.appender.file.MaxBackupIndex=10
+			   log4j.appender.file.layout=org.apache.log4j.PatternLayout
+			   log4j.appender.file.layout.ConversionPattern=%d{yyyy-MM-dd HH:mm:ss} %-5p %c{1}:%L - %m%n
+			
+			   # Direct log messages to stdout to use this option, add stdout to rootLogger options
+			   log4j.appender.stdout=org.apache.log4j.ConsoleAppender
+			   log4j.appender.stdout.Target=System.out
+			   log4j.appender.stdout.layout=org.apache.log4j.PatternLayout
+			   log4j.appender.stdout.layout.ConversionPattern=%d{yyyy-MM-dd HH:mm:ss} %-5p %c{1}:%L - %m%n
+	- As shown above, the music messages are logged into a file music.log. Create an empty music.log file and place it in /var/log/music/. Tomcat does not seem to create this automatically. 	
+	- Download the latest Apache Tomcat and install it using these instructions
+  <http://tecadmin.net/install-tomcat-9-on-ubuntu/> (this is for version 9).  
+	- Build the MUSIC.war file and place it within the webapps folder of the tomcat installation.
+	- Start tomcat and you should now have MUSIC running. 
 
 <a name="ms-logging">
-
-## Logging
-
+## More on info on log4j Logging
 </a>
-### log4j
+
 
 This section explains how MUSIC log4j properties can be used and modified to control logging. 
 
 Once MUSIC.war is installed, tomcat7 will unpack it into /var/lib/tomcat7/webapps/MUSIC (this is the
 standard Ubuntu installation, the location may differ for self installs).
 
-Look at /var/lib/tomcat7/webapps/MUSIC/WEB-INF/log4j.properties:
+Look at /var/lib/tomcat7/webapps/MUSIC/WEB-INF/log4j.properties.sample that should be modified and placed in /etc/music/:
 
 ```properties
    # Root logger option

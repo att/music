@@ -74,7 +74,7 @@ operation. By the end of this you should have Zookeeper working.
 - As shown above, the music messages are logged into a file music.log. Create an empty music.log file and place it in /var/log/music/. Tomcat does not seem to create this automatically. 	
 - Download the latest Apache Tomcat and install it using these instructions
   <http://tecadmin.net/install-tomcat-9-on-ubuntu/> (this is for version 9).  
-- Build the MUSIC.war file and place it within the webapps folder of the tomcat installation.
+- Build the MUSIC.war (or download it from (https://github.com/att/music/blob/master/MUSIC.war) and place it within the webapps folder of the tomcat installation.
 - Start tomcat and you should now have MUSIC running. 
 
 <a name ="ms-install">
@@ -209,7 +209,7 @@ established. 	  Clearly, this is ok.
 	- As shown above, the music messages are logged into a file music.log. Create an empty music.log file and place it in /var/log/music/. Tomcat does not seem to create this automatically. 	
 	- Download the latest Apache Tomcat and install it using these instructions
   <http://tecadmin.net/install-tomcat-9-on-ubuntu/> (this is for version 9).  
-	- Build the MUSIC.war file and place it within the webapps folder of the tomcat installation.
+	- Build the MUSIC.war (or download it from https://github.com/att/music/blob/master/MUSIC.war) and place it within the webapps folder of the tomcat installation.
 	- Start tomcat and you should now have MUSIC running. 
 
 <a name="ms-logging">

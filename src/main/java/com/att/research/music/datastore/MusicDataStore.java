@@ -95,7 +95,7 @@ public class MusicDataStore {
 				Metadata metadata = cluster.getMetadata();
 				logger.debug("Connected to cassa cluster "+metadata.getClusterName()+" at "+address);
 /*				for ( Host host : metadata.getAllHosts() ) {
-					System.out.printf("Datacenter: %s; Host broadcast: %s; Rack: %s\n",
+						.out.printf("Datacenter: %s; Host broadcast: %s; Rack: %s\n",
 							host.getDatacenter(), host.getBroadcastAddress(), host.getRack());
 							
 				}*/

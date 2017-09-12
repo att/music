@@ -37,7 +37,7 @@ public class Log4JInitServlet extends HttpServlet {
 				System.out.println("Initializing log4j with: " + log4jProp);
 				PropertyConfigurator.configure(log4jProp);
 			} else {
-				System.err.println("*** " + log4jProp + " file not found, so initializing log4j with BasicConfigurator");
+				System.out.println("*** " + log4jProp + " file not found, so initializing log4j with BasicConfigurator");
 				BasicConfigurator.configure();
 			}
 		}
@@ -46,7 +46,12 @@ public class Log4JInitServlet extends HttpServlet {
 		logger.info("Starting MUSIC "+ MusicUtil.version +" on node with id "+prop.getMyId()+" and public ip "+prop.getMyPublicIp()+"...");
 		logger.info("List of all MUSIC ids:"+ Arrays.toString(prop.getAllIds()));
 		logger.info("List of all MUSIC public ips:"+ Arrays.toString(prop.getAllPublicIps()));
-		MusicCore.initializeNode();
+		try {
+			MusicCore.initializeNode();
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		super.init(config);
 	}
 	

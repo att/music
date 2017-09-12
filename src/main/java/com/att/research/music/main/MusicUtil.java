@@ -24,11 +24,17 @@ package com.att.research.music.main;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Scanner;
+
+import org.apache.maven.model.Model;
+import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
+import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 
 public class MusicUtil {
 	public static String myZkHost = "localhost";
@@ -37,10 +43,29 @@ public class MusicUtil {
 	public static final String musicInternalKeySpaceName = "MusicInternalKeySpace";
 	public static final String evPutsTable = "evPutTracker_";
 	public static final boolean debug = true;
-	public static final String version = "1.0.7";
+	public static final String version = "1.0.8";
 	public static final String musicRestIp = "localhost";
 	public static final String musicPropertiesFilePath="/etc/music/music.properties";
 	
+	public static String getVersion(){
+/*        Model model;
+        String version="";
+		try {
+			MavenXpp3Reader reader = new MavenXpp3Reader();
+			model = reader.read(new FileReader("pom.xml"));
+			version = model.getVersion();
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (XmlPullParserException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}*/
+		return version;
+	}
 	public static String getTestType(){
 		String testType = "";
 		try {

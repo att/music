@@ -82,7 +82,7 @@ public class MusicCore {
 		return mDstoreHandle;
 	}        
 	
-	public static void initializeNode(){
+	public static void initializeNode() throws Exception{
 		logger.info("Initializing MUSIC node...");
 		/*this cannot be done in a startup routing since this depends on 
 		 * obtaining the node ids from others via rest
@@ -412,13 +412,8 @@ public class MusicCore {
 
 	//this is mainly for some  functions like keyspace creation etc which does not
 	//really need the bells and whistles of Music locking. 
-	public static  void generalPut(String query, String consistency){
-		try {
+	public static  void generalPut(String query, String consistency) throws Exception{
 			getDSHandle().executePut(query,consistency);
-		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
 	}
 
 	public static TableMetadata returnColumnMetadata(String keyspace, String tablename){

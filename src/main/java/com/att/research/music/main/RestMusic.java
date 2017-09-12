@@ -73,8 +73,8 @@ public class RestMusic {
 	@Path("/version")
 	@Produces(MediaType.TEXT_PLAIN)
 	public String version() {
-		logger.info("Replying to request for MUSIC version with:"+MusicUtil.version);
-		return "MUSIC:"+MusicUtil.version;
+		logger.info("Replying to request for MUSIC version with:"+MusicUtil.getVersion());
+		return "MUSIC:"+MusicUtil.getVersion();
 	}
 
 	@GET
@@ -158,9 +158,6 @@ public class RestMusic {
 	@Path("/keyspaces/{name}")
 	@Consumes(MediaType.APPLICATION_JSON)
 	public void createKeySpace(JsonKeySpace  kspObject,@PathParam("name") String keyspaceName) throws Exception{
-		//first create music internal stuff by calling the initialization routine
-//		MusicCore.initializeNode();
-
 		String consistency = "eventual";//for now this needs only eventual consistency
 		long start = System.currentTimeMillis();
 		Map<String,Object> replicationInfo = kspObject.getReplicationInfo();
@@ -252,6 +249,20 @@ public class RestMusic {
 		MusicCore.generalPut(query, consistency);
 	}
 
+	
+	
+	@POST
+	@Path("/keyspaces/{keyspace}/tables/{tablename}/index/{field}")
+	public void createIndex(@PathParam("keyspace") String keyspace, @PathParam("tablename") String tablename, @PathParam("field") String fieldName,@Context UriInfo info) throws Exception{
+		MultivaluedMap<String, String> rowParams = info.getQueryParameters();
+		String indexName="";
+		if(rowParams.getFirst("index_name") != null)
+			indexName = rowParams.getFirst("index_name");	
+		String query = "Create index "+indexName+" if not exists on "+keyspace+"."+tablename+" ("+fieldName+");";
+		MusicCore.generalPut(query, "eventual");
+	}
+	
+	
 	@POST
 	@Path("/keyspaces/{keyspace}/tables/{tablename}/rows")
 	@Consumes(MediaType.APPLICATION_JSON)
@@ -287,7 +298,7 @@ public class RestMusic {
 			counter = counter +1;
 		}
 
-		System.out.println(valueString);
+		//System.out.println(valueString);
 		String query =  "INSERT INTO "+keyspace+"."+tablename+" "+ fieldsString+" VALUES "+ valueString;   
 
 		String ttl = insObj.getTtl();

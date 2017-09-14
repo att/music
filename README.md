@@ -47,7 +47,7 @@ E.g. 127.0.0.1 localhost music-1. Some of the apt-get installation seem to requi
 operation. By the end of this you should have Zookeeper working.
 - Create a music.properties file and place it in /etc/music/. Here is a sample of the file: 
 
-			myId=0
+			my.id=0
 			all.ids=0
 			my.public.ip=localhost
 			all.public.ips=localhost
@@ -183,7 +183,7 @@ established. 	  Clearly, this is ok.
 - MUSIC
 	- Create a music.properties file and place it in /etc/music/ at each node. Here is a sample of the file: 
 
-			myId=0
+			my.id=0
 			all.ids=0:1:2
 			my.public.ip=public IP of node 0
 			all.public.ips=public IP of node 0:public IP of node 1:public IP of node 2

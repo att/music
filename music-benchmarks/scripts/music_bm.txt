@@ -1,3 +1,0 @@
-cassa_rest_put
--1
-localhost

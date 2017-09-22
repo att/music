@@ -74,7 +74,6 @@
               <idleTime>true</idleTime>
             </value>
           </objProp>
-          <stringProp name="filename">/Users/bharathb/music-jmeter/results.jtl</stringProp>
         </ResultCollector>
         <hashTree/>
         <ResultCollector guiclass="GraphVisualizer" testclass="ResultCollector" testname="Graph Results" enabled="true">
@@ -108,7 +107,6 @@
               <idleTime>true</idleTime>
             </value>
           </objProp>
-          <stringProp name="filename">/Users/bharathb/music-jmeter/results.jtl</stringProp>
         </ResultCollector>
         <hashTree/>
       </hashTree>

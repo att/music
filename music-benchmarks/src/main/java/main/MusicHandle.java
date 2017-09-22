@@ -2,7 +2,6 @@ package main;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
-import java.util.UUID;
 
 import javax.ws.rs.core.MediaType;
 
@@ -21,10 +20,19 @@ public class MusicHandle {
 	String[] musicNodes;
 	String bmKeySpace, bmTable;
 	public String rowId;
+	ClientConfig clientConfig;
+	Client client; 
 	public MusicHandle(String[] musicNodes){
 		this.musicNodes = musicNodes;
-		bmKeySpace = "BenchmarksKeySpace";
+		bmKeySpace = "BmKeySpace";
 		bmTable = "BmEmployees";
+		
+		clientConfig = new DefaultClientConfig();
+
+		clientConfig.getFeatures().put(
+				JSONConfiguration.FEATURE_POJO_MAPPING, Boolean.TRUE);
+
+		client = Client.create(clientConfig);
 	}
 
 	public void initialize(int numEntries){
@@ -80,12 +88,7 @@ public class MusicHandle {
 		JsonInsert jIns = new JsonInsert();
 		jIns.setValues(values);
 		jIns.setConsistencyInfo(consistencyInfo);
-		ClientConfig clientConfig = new DefaultClientConfig();
 
-		clientConfig.getFeatures().put(
-				JSONConfiguration.FEATURE_POJO_MAPPING, Boolean.TRUE);
-
-		Client client = Client.create(clientConfig);
 
 		WebResource webResource = client
 				.resource(getMusicNodeURL()+"/purezk/bmObject");
@@ -110,13 +113,6 @@ public class MusicHandle {
 		jsonKp.setDurabilityOfWrites(durabilityOfWrites);
 		jsonKp.setReplicationInfo(replicationInfo);
 
-		ClientConfig clientConfig = new DefaultClientConfig();
-
-		clientConfig.getFeatures().put(
-				JSONConfiguration.FEATURE_POJO_MAPPING, Boolean.TRUE);
-
-		Client client = Client.create(clientConfig);
-
 		String queryURL =getMusicNodeURL()+"/keyspaces/"+keyspaceName; 
 		WebResource webResource = client
 				.resource(queryURL);
@@ -137,12 +133,6 @@ public class MusicHandle {
 		jtab.setFields(fields);
 		jtab.setConsistencyInfo(consistencyInfo);
 
-		ClientConfig clientConfig = new DefaultClientConfig();
-
-		clientConfig.getFeatures().put(
-				JSONConfiguration.FEATURE_POJO_MAPPING, Boolean.TRUE);
-
-		Client client = Client.create(clientConfig);
 
 		WebResource webResource = client
 				.resource(getMusicNodeURL()+"/keyspaces/"+keyspaceName+"/tables/"+tableName);
@@ -162,13 +152,6 @@ public class MusicHandle {
 		JsonInsert jIns = new JsonInsert();
 		jIns.setValues(values);
 		jIns.setConsistencyInfo(consistencyInfo);
-		ClientConfig clientConfig = new DefaultClientConfig();
-
-		clientConfig.getFeatures().put(
-				JSONConfiguration.FEATURE_POJO_MAPPING, Boolean.TRUE);
-
-		Client client = Client.create(clientConfig);
-
 		WebResource webResource = client
 				.resource(getMusicNodeURL()+"/keyspaces/"+keyspaceName+"/tables/"+tableName+"/rows");
 
@@ -182,7 +165,6 @@ public class MusicHandle {
 	}
 	
 	private  String createLock(String lockName){
-		Client client = Client.create();
 		String msg = getMusicNodeURL()+"/locks/create/"+lockName;
 		WebResource webResource = client.resource(msg);
 		WebResource.Builder wb = webResource.accept(MediaType.TEXT_PLAIN);
@@ -199,7 +181,6 @@ public class MusicHandle {
 	}
 
 	private  boolean acquireLock(String lockId){
-		Client client = Client.create();
 		String msg = getMusicNodeURL()+"/locks/acquire/"+lockId;
 		WebResource webResource = client.resource(msg);
 
@@ -218,7 +199,6 @@ public class MusicHandle {
 	}
 
 	private  void unlock(String lockId){
-		Client client = Client.create();
 		WebResource webResource = client.resource(getMusicNodeURL()+"/locks/release/"+lockId);
 
 		ClientResponse response = webResource.delete(ClientResponse.class);
@@ -233,13 +213,6 @@ public class MusicHandle {
 
 	
 	private  Map<String,Object> readSpecificRow(String keyspaceName, String tableName,String keyName, String keyValue){
-		ClientConfig clientConfig = new DefaultClientConfig();
-
-		clientConfig.getFeatures().put(
-				JSONConfiguration.FEATURE_POJO_MAPPING, Boolean.TRUE);
-
-		Client client = Client.create(clientConfig);
-		
 		WebResource webResource = client
 				.resource(getMusicNodeURL()+"/keyspaces/"+keyspaceName+"/tables/"+tableName+"/rows?"+keyName+"="+keyValue);
 
@@ -253,13 +226,6 @@ public class MusicHandle {
 	}
 	
 	private  Map<String,Object> readAllRows(String keyspaceName, String tableName){
-		ClientConfig clientConfig = new DefaultClientConfig();
-
-		clientConfig.getFeatures().put(
-				JSONConfiguration.FEATURE_POJO_MAPPING, Boolean.TRUE);
-
-		Client client = Client.create(clientConfig);
-		
 		WebResource webResource = client
 				.resource(getMusicNodeURL()+"/keyspaces/"+keyspaceName+"/tables/"+tableName+"/rows");
 
@@ -279,13 +245,6 @@ public class MusicHandle {
 		JsonTable jsonTb = new JsonTable();
 		jsonTb.setConsistencyInfo(consistencyInfo);
 
-		ClientConfig clientConfig = new DefaultClientConfig();
-
-		clientConfig.getFeatures().put(
-				JSONConfiguration.FEATURE_POJO_MAPPING, Boolean.TRUE);
-
-		Client client = Client.create(clientConfig);
-
 		WebResource webResource = client
 				.resource(getMusicNodeURL()+"/keyspaces/"+keyspaceName+"/tables/"+tableName);
 
@@ -303,13 +262,6 @@ public class MusicHandle {
 		JsonKeySpace jsonKp = new JsonKeySpace();
 		jsonKp.setConsistencyInfo(consistencyInfo);
 
-		ClientConfig clientConfig = new DefaultClientConfig();
-
-		clientConfig.getFeatures().put(
-				JSONConfiguration.FEATURE_POJO_MAPPING, Boolean.TRUE);
-
-		Client client = Client.create(clientConfig);
-
 		WebResource webResource = client
 				.resource(getMusicNodeURL()+"/keyspaces/"+keyspaceName);
 
@@ -321,7 +273,8 @@ public class MusicHandle {
 	}
 	
 	//the actual bm operations
-	public void cassaEvPut(){		
+	public void cassaEvPut(){	
+		long start = System.currentTimeMillis();
 		Map<String,Object> values = new HashMap<String,Object>();
 		values.put("job","restCassa"+System.currentTimeMillis());
 
@@ -332,22 +285,20 @@ public class MusicHandle {
 		jIns.setValues(values);
 		jIns.setConsistencyInfo(consistencyInfo);
 
-		ClientConfig clientConfig = new DefaultClientConfig();
-
-		clientConfig.getFeatures().put(
-				JSONConfiguration.FEATURE_POJO_MAPPING, Boolean.TRUE);
-
-		Client client = Client.create(clientConfig);
 		String url = getMusicNodeURL()+"/cassa/keyspaces/"+bmKeySpace+"/tables/"+bmTable+"/rows?name="+rowId;
-		WebResource webResource = client
-				.resource(url);
+		WebResource webResource = client.resource(url);
+
+		long startInt = System.currentTimeMillis();
 
 		ClientResponse response = webResource.accept("application/json")
 				.type("application/json").put(ClientResponse.class, jIns);
+		
+    	System.out.println("MusicHandle, web resource accept call:"+(System.currentTimeMillis() - startInt));
+
 
 		if (response.getStatus() < 200 || response.getStatus() > 299) 
 			throw new RuntimeException("Failed : HTTP error code : "+ response.getStatus()+"url:"+url);
-
+    	System.out.println("MusicHandle, cassaEvput:"+(System.currentTimeMillis() - start));
 	}
 	
 	public void musicEvPut(){
@@ -361,12 +312,6 @@ public class MusicHandle {
 		jIns.setValues(values);
 		jIns.setConsistencyInfo(consistencyInfo);
 
-		ClientConfig clientConfig = new DefaultClientConfig();
-
-		clientConfig.getFeatures().put(
-				JSONConfiguration.FEATURE_POJO_MAPPING, Boolean.TRUE);
-
-		Client client = Client.create(clientConfig);
 		String url = getMusicNodeURL()+"/keyspaces/"+bmKeySpace+"/tables/"+bmTable+"/rows?name="+rowId;
 		WebResource webResource = client
 				.resource(url);
@@ -389,12 +334,6 @@ public class MusicHandle {
 		jIns.setValues(values);
 		jIns.setConsistencyInfo(consistencyInfo);
 
-		ClientConfig clientConfig = new DefaultClientConfig();
-
-		clientConfig.getFeatures().put(
-				JSONConfiguration.FEATURE_POJO_MAPPING, Boolean.TRUE);
-
-		Client client = Client.create(clientConfig);
 		String url = getMusicNodeURL()+"/cassa/keyspaces/"+bmKeySpace+"/tables/"+bmTable+"/rows?name="+rowId;
 		WebResource webResource = client
 				.resource(url);
@@ -427,12 +366,6 @@ public class MusicHandle {
 		JsonInsert jIns = new JsonInsert();
 		jIns.setValues(values);
 		jIns.setConsistencyInfo(consistencyInfo);
-		ClientConfig clientConfig = new DefaultClientConfig();
-
-		clientConfig.getFeatures().put(
-				JSONConfiguration.FEATURE_POJO_MAPPING, Boolean.TRUE);
-
-		Client client = Client.create(clientConfig);
 		String url = getMusicNodeURL()+"/keyspaces/"+bmKeySpace+"/tables/"+bmTable+"/rows?name="+rowId;
 		WebResource webResource = client
 				.resource(url);
@@ -468,12 +401,6 @@ public class MusicHandle {
 		JsonInsert jIns = new JsonInsert();
 		jIns.setValues(values);
 		jIns.setConsistencyInfo(consistencyInfo);
-		ClientConfig clientConfig = new DefaultClientConfig();
-
-		clientConfig.getFeatures().put(
-				JSONConfiguration.FEATURE_POJO_MAPPING, Boolean.TRUE);
-
-		Client client = Client.create(clientConfig);
 		String url = getMusicNodeURL()+"/purezk/bmObject";
 		WebResource webResource = client
 				.resource(url);

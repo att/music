@@ -39,7 +39,9 @@ public void initialize(int numEntries){
 public void execute(int threadNum){//thread num is used to exclusively identify the threads/requests
 	musicHandle.rowId = "emp"+threadNum;
 	if(operationType.equals("cassa_ev_put")){
+		long start = System.currentTimeMillis();
 		musicHandle.cassaEvPut();
+    	System.out.println("BmOperation, execute:"+(System.currentTimeMillis() - start));
 	}else
 		if(operationType.equals("music_ev_put")){
 			musicHandle.musicEvPut();
@@ -53,7 +55,7 @@ public void execute(int threadNum){//thread num is used to exclusively identify 
 					if(operationType.equals("zk_critical_put")){
 						musicHandle.zkCriticalPut();
 					}else
-						if(operationType.equals("music_mix_put")){	
+						if(operationType.equals("music_mix_put")){	//parameter field relevant only for this option
 							/*
 							 * parameter in the BmOperation interpreted as % eventual puts
 							 * and we use the threadNum to determine if the operation should be eventual or 

@@ -16,6 +16,7 @@ Please follow these steps (in the sequence specified) to run a benchmark client 
 - Configure the musicBm.properties file with the exact music operation that needs to be tested and the location of the MUSIC Ips (localhost if MUSIC is running locally). The test will randomly send the REST requests across the MUSIC nodes. Here is a sample: 
 
 			op.type=cassa_ev_put 
+			rep.factor=3 #this is the replication factor for the keyspace
 			parameter=-1
 			ip.list=public ip of MUSIC node 0:public ip of MUSIC node 1:public ip of MUSIC node 2 
 			

@@ -22,8 +22,11 @@ public class MusicHandle {
 	public String rowId;
 	ClientConfig clientConfig;
 	Client client; 
-	public MusicHandle(String[] musicNodes){
+	final int repFactor;
+	public MusicHandle(String[] musicNodes, int repFactor){
 		this.musicNodes = musicNodes;
+		this.repFactor=repFactor;
+		
 		bmKeySpace = "BmKeySpace";
 		bmTable = "BmEmployees";
 		
@@ -93,8 +96,7 @@ public class MusicHandle {
 		WebResource webResource = client
 				.resource(getMusicNodeURL()+"/purezk/bmObject");
 
-		ClientResponse response = webResource.accept("application/json")
-				.type("application/json").post(ClientResponse.class, jIns);
+		ClientResponse response = webResource.accept("application/json").header("Connection", "close").type("application/json").post(ClientResponse.class, jIns);
 
 		if (response.getStatus() < 200 || response.getStatus() > 299) 
 			throw new RuntimeException("Failed : HTTP error code : "+ response.getStatus());
@@ -104,7 +106,7 @@ public class MusicHandle {
 	public void createKeyspaceEventual(String keyspaceName){
 		Map<String,Object> replicationInfo = new HashMap<String, Object>();
 		replicationInfo.put("class", "SimpleStrategy");
-		replicationInfo.put("replication_factor", 1);
+		replicationInfo.put("replication_factor", repFactor);
 		String durabilityOfWrites="true";
 		Map<String,String> consistencyInfo= new HashMap<String, String>();
 		consistencyInfo.put("type", "eventual");
@@ -116,8 +118,8 @@ public class MusicHandle {
 		String queryURL =getMusicNodeURL()+"/keyspaces/"+keyspaceName; 
 		WebResource webResource = client
 				.resource(queryURL);
-
-		ClientResponse response = webResource.accept("application/json")
+		
+		ClientResponse response = webResource.accept("application/json").header("Connection", "close")
 				.type("application/json").post(ClientResponse.class, jsonKp);
 
 		if (response.getStatus() < 200 || response.getStatus() > 299) 
@@ -137,7 +139,7 @@ public class MusicHandle {
 		WebResource webResource = client
 				.resource(getMusicNodeURL()+"/keyspaces/"+keyspaceName+"/tables/"+tableName);
 
-		ClientResponse response = webResource.accept("application/json")
+		ClientResponse response = webResource.accept("application/json").header("Connection", "close")
 				.type("application/json").post(ClientResponse.class, jtab);
 
 		if (response.getStatus() < 200 || response.getStatus() > 299) 
@@ -155,7 +157,7 @@ public class MusicHandle {
 		WebResource webResource = client
 				.resource(getMusicNodeURL()+"/keyspaces/"+keyspaceName+"/tables/"+tableName+"/rows");
 
-		ClientResponse response = webResource.accept("application/json")
+		ClientResponse response = webResource.accept("application/json").header("Connection", "close")
 				.type("application/json").post(ClientResponse.class, jIns);
 
 		if (response.getStatus() < 200 || response.getStatus() > 299) 
@@ -169,7 +171,7 @@ public class MusicHandle {
 		WebResource webResource = client.resource(msg);
 		WebResource.Builder wb = webResource.accept(MediaType.TEXT_PLAIN);
 
-		ClientResponse response = wb.post(ClientResponse.class);
+		ClientResponse response = wb.header("Connection", "close").post(ClientResponse.class);
 
 		if (response.getStatus() != 200) {
 			throw new RuntimeException("Failed : HTTP error code : "+ response.getStatus()+"url:"+msg);
@@ -187,7 +189,7 @@ public class MusicHandle {
 
 		WebResource.Builder wb = webResource.accept(MediaType.TEXT_PLAIN);
 
-		ClientResponse response = wb.get(ClientResponse.class);
+		ClientResponse response = wb.header("Connection", "close").get(ClientResponse.class);
 
 		if (response.getStatus() != 200) {
 			throw new RuntimeException("Failed : HTTP error code : "+ response.getStatus()+"url:"+msg);
@@ -201,7 +203,7 @@ public class MusicHandle {
 	private  void unlock(String lockId){
 		WebResource webResource = client.resource(getMusicNodeURL()+"/locks/release/"+lockId);
 
-		ClientResponse response = webResource.delete(ClientResponse.class);
+		ClientResponse response = webResource.header("Connection", "close").delete(ClientResponse.class);
 
 
 		if (response.getStatus() != 204) {
@@ -216,7 +218,7 @@ public class MusicHandle {
 		WebResource webResource = client
 				.resource(getMusicNodeURL()+"/keyspaces/"+keyspaceName+"/tables/"+tableName+"/rows?"+keyName+"="+keyValue);
 
-		ClientResponse response = webResource.accept("application/json").get(ClientResponse.class);
+		ClientResponse response = webResource.header("Connection", "close").accept("application/json").get(ClientResponse.class);
 
 		if (response.getStatus() < 200 || response.getStatus() > 299) 
 			throw new RuntimeException("Failed : HTTP error code : "+ response.getStatus());
@@ -229,7 +231,7 @@ public class MusicHandle {
 		WebResource webResource = client
 				.resource(getMusicNodeURL()+"/keyspaces/"+keyspaceName+"/tables/"+tableName+"/rows");
 
-		ClientResponse response = webResource.accept("application/json").get(ClientResponse.class);
+		ClientResponse response = webResource.header("Connection", "close").accept("application/json").get(ClientResponse.class);
 
 		if (response.getStatus() < 200 || response.getStatus() > 299) 
 			throw new RuntimeException("Failed : HTTP error code : "+ response.getStatus());
@@ -248,7 +250,7 @@ public class MusicHandle {
 		WebResource webResource = client
 				.resource(getMusicNodeURL()+"/keyspaces/"+keyspaceName+"/tables/"+tableName);
 
-		ClientResponse response = webResource.type("application/json")
+		ClientResponse response = webResource.header("Connection", "close").type("application/json")
 				.delete(ClientResponse.class, jsonTb);
 
 		if (response.getStatus() < 200 || response.getStatus() > 299) 
@@ -265,7 +267,7 @@ public class MusicHandle {
 		WebResource webResource = client
 				.resource(getMusicNodeURL()+"/keyspaces/"+keyspaceName);
 
-		ClientResponse response = webResource.type("application/json")
+		ClientResponse response = webResource.header("Connection", "close").type("application/json")
 				.delete(ClientResponse.class, jsonKp);
 
 		if (response.getStatus() < 200 || response.getStatus() > 299) 
@@ -290,7 +292,7 @@ public class MusicHandle {
 
 		long startInt = System.currentTimeMillis();
 
-		ClientResponse response = webResource.accept("application/json")
+		ClientResponse response = webResource.accept("application/json").header("Connection", "close")
 				.type("application/json").put(ClientResponse.class, jIns);
 		
     	System.out.println("MusicHandle, web resource accept call:"+(System.currentTimeMillis() - startInt));
@@ -316,7 +318,7 @@ public class MusicHandle {
 		WebResource webResource = client
 				.resource(url);
 
-		ClientResponse response = webResource.accept("application/json")
+		ClientResponse response = webResource.accept("application/json").header("Connection", "close")
 				.type("application/json").put(ClientResponse.class, jIns);
 
 		if (response.getStatus() < 200 || response.getStatus() > 299) 
@@ -338,7 +340,7 @@ public class MusicHandle {
 		WebResource webResource = client
 				.resource(url);
 
-		ClientResponse response = webResource.accept("application/json")
+		ClientResponse response = webResource.accept("application/json").header("Connection", "close")
 				.type("application/json").put(ClientResponse.class, jIns);
 
 		if (response.getStatus() < 200 || response.getStatus() > 299) 
@@ -370,7 +372,7 @@ public class MusicHandle {
 		WebResource webResource = client
 				.resource(url);
 
-		ClientResponse response = webResource.accept("application/json")
+		ClientResponse response = webResource.accept("application/json").header("Connection", "close")
 				.type("application/json").put(ClientResponse.class, jIns);
 
 		if (response.getStatus() < 200 || response.getStatus() > 299) 
@@ -405,7 +407,7 @@ public class MusicHandle {
 		WebResource webResource = client
 				.resource(url);
 
-		ClientResponse response = webResource.accept("application/json")
+		ClientResponse response = webResource.accept("application/json").header("Connection", "close")
 				.type("application/json").put(ClientResponse.class, jIns);
 
 		if (response.getStatus() < 200 || response.getStatus() > 299) 

@@ -11,7 +11,7 @@ public class BmOperation {
 	private String parameter;
 	private String[] ipList;
 	private MusicHandle musicHandle;
-
+	
 	public BmOperation(String fileName){
 		Properties prop = new Properties();
 		try {
@@ -28,8 +28,9 @@ public class BmOperation {
 		operationType = prop.getProperty("op.type");
 		parameter = prop.getProperty("parameter");
 		ipList = prop.getProperty("ip.list").split(":");
-
-		musicHandle = new MusicHandle(ipList);		
+		int repFactor = Integer.parseInt(prop.getProperty("rep.factor"));
+		
+		musicHandle = new MusicHandle(ipList,repFactor);		
 }
 
 public void initialize(int numEntries){

@@ -612,6 +612,7 @@ public class RestMusic {
 	@Produces(MediaType.APPLICATION_JSON)
 	public boolean updateTableCassa(JsonInsert insObj, @PathParam("keyspace") String keyspace, @PathParam("tablename") String tablename, @Context UriInfo info	) throws Exception{
 		//obtain the field value pairs of the update
+		long startTime = System.currentTimeMillis();
 		Map<String,Object> valuesMap =  insObj.getValues();
 		TableMetadata tableInfo = MusicCore.returnColumnMetadata(keyspace, tablename);
 		String vectorTs = "'"+Thread.currentThread().getId()+System.currentTimeMillis()+"'";
@@ -664,6 +665,8 @@ public class RestMusic {
 		query = query + " SET "+fieldValueString+" WHERE "+rowSpec+";";
 		boolean operationResult = true;	
 		MusicCore.getDSHandle().executePut(query, insObj.getConsistencyInfo().get("type"));
+		long timeTaken = System.currentTimeMillis() - startTime;
+		logger.info("Time taken for cassa put:"+timeTaken);
 		return operationResult; 	
 	}
 

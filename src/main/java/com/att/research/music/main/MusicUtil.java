@@ -43,7 +43,7 @@ public class MusicUtil {
 	public static final String musicInternalKeySpaceName = "MusicInternalKeySpace";
 	public static final String evPutsTable = "evPutTracker_";
 	public static final boolean debug = true;
-	public static final String version = "1.0.9";
+	public static final String version = "1.0.10";
 	public static final String musicRestIp = "localhost";
 	public static final String musicPropertiesFilePath="/etc/music/music.properties";
 	

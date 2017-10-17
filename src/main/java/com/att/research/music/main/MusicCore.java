@@ -301,31 +301,10 @@ public class MusicCore {
 	public boolean createKeyspace(String keyspaceName, JsonKeySpace kspObject) throws Exception {
 		return true;
 	}
+	
 	public static  boolean eventualPut(String keyspaceName, String tableName, String primaryKey, String query){
-		//do a cassandra write one on the meta table with status as in-progress
-		PropertiesReader prop = new PropertiesReader();
-		String metaKeyspaceName = MusicUtil.musicInternalKeySpaceName;
-		String evPutTrackerTable = MusicUtil.evPutsTable+prop.getMyId();
-		String metaKey = "'"+keyspaceName+"."+tableName+"."+primaryKey+"'";
-
-		String queryToUpdateEvPut =  "Insert into "+metaKeyspaceName+"."+evPutTrackerTable+"  (key,status) values ("+metaKey+",'inprogress');";   
-		getDSHandle().executePut(queryToUpdateEvPut, "eventual");
-
-		boolean result; 
-		String lockName = keyspaceName+"."+tableName+"."+primaryKey;
-		if(isKeyUnLocked(lockName) == false){
-			result = false;
-		}else{
-			logger.debug("In eventual put: The key is un-locked, can perform eventual puts..");
-			//do actual write 
-			getDSHandle().executePut(query, "eventual");
-			result = true;
-		}
-
-		//clean up meta table
-		String queryToResetEvPutStatus =  "Delete from "+metaKeyspaceName+"."+evPutTrackerTable+" where key="+metaKey+";";   
-		getDSHandle().executePut(queryToResetEvPutStatus, "eventual");
-		return result;
+		getDSHandle().executePut(query, "eventual");
+		return true;
 	}
 
 	public static  boolean criticalPut(String keyspaceName, String tableName, String primaryKey, String query, String lockId){

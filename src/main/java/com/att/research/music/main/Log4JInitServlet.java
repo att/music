@@ -46,12 +46,12 @@ public class Log4JInitServlet extends HttpServlet {
 		logger.info("Starting MUSIC "+ MusicUtil.version +" on node with id "+prop.getMyId()+" and public ip "+prop.getMyPublicIp()+"...");
 		logger.info("List of all MUSIC ids:"+ Arrays.toString(prop.getAllIds()));
 		logger.info("List of all MUSIC public ips:"+ Arrays.toString(prop.getAllPublicIps()));
-		try {
+/*		try {
 			MusicCore.initializeNode();
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-		}
+		}*/
 		super.init(config);
 	}
 	

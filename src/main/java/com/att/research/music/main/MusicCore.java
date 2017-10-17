@@ -82,11 +82,9 @@ public class MusicCore {
 		return mDstoreHandle;
 	}        
 	
+	/*
 	public static void initializeNode() throws Exception{
 		logger.info("Initializing MUSIC node...");
-		/*this cannot be done in a startup routing since this depends on 
-		 * obtaining the node ids from others via rest
-		 */
 		String keyspaceName = MusicUtil.musicInternalKeySpaceName;
 		
 		String ksQuery ="CREATE KEYSPACE  IF NOT EXISTS "+ keyspaceName +" WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 3 };";
@@ -101,6 +99,7 @@ public class MusicCore {
 			generalPut(tabQuery, "eventual");
 		}
 	}
+	*/
 
 
 	public static  String createLockReference(String lockName){
@@ -173,115 +172,12 @@ public class MusicCore {
 		getLockingServiceHandle().setLockState(key, mls);
 		logger.debug("In acquire lock: Set lock state to locked");
 
-		//ensure that there are no eventual puts pending and that all replicas of key
-		//have the same value
-		syncAllReplicas(key);
-		logger.debug("In acquire lock: synced all replicas");
-
-
 		//change status to locked
 		lockHolder = lockId;
 		mls = new MusicLockState(MusicLockState.LockStatus.LOCKED, lockHolder);
 		getLockingServiceHandle().setLockState(key, mls);
 		logger.info("In acquire lock: Set lock state to locked and assigned current lock ref "+ lockId+" as holder");
 		return result;
-	}
-
-/*	private static String getNodeId(String musicNodeIP){
-		String query = "select * from "+MusicUtil.musicInternalKeySpaceName+"."+MusicUtil.nodeIdsTable+" where public_ip='"+musicNodeIP+"';";
-		ResultSet rs = get(query);
-        List<Row> rows = rs.all();
-        Row row = rows.get(0);//there should be only one row
-        return row.getString("nodeId");
-	}
-*/	
-	private static  void syncAllReplicas(String key){
-		/*sync operation 		
-		wait till all the eventual puts are done at the other music nodes (with timeout)
-		and wait till all values are the same at the music nodes*/
-		PropertiesReader prop = new PropertiesReader();
-		String[] allPublicIps = prop.getAllPublicIps();
-		String[] allIds = prop.getAllIds();
-		
-		logger.debug("In sync all replicas:public Ips of nodes:"+allPublicIps);
-		boolean synced = false;
-		int backOffFactor = 0; 
-		long backOffTime = 50;
-		while(!synced){
-			MusicUtil.sleep(backOffTime*backOffFactor);
-			backOffFactor = backOffFactor +1;		
-			MusicDigest referenceDigest = getDigest(allPublicIps[0], allIds[0],key);//could be any of the nodes
-			String referenceValue = referenceDigest.getVectorTs();
-			boolean mismatch = false;
-			for (int i=1; i < allPublicIps.length;i++){ 
-				MusicDigest mg;
-				String nodePublicIp="";
-				String nodeId="";
-				try {
-					nodePublicIp = allPublicIps[i];
-					nodeId = allIds[i];
-					mg = getDigest(nodePublicIp,nodeId, key);
-					if(mg == null){
-						logger.debug("In sync all replicas:There is no digest from "+nodePublicIp+", move on");
-						continue;
-					}
-				} catch (NoHostAvailableException e) {
-					logger.debug("In sync all replicas: Node "+nodePublicIp+" not responding correctly...");
-					continue;//if the host is dead we do not care about his value
-				}
-				if(mg.getEvPutStatus().equals("inprogress")){	
-					mismatch = true;
-					break;
-				}
-				if(referenceValue.equals(mg.getVectorTs()) == false){
-					mismatch = true;
-					break;
-				}
-			}
-			if(mismatch == false)
-				synced = true; 		
-		}
-	}
-
-	public static  MusicDigest getDigest(String publicIp,String nodeId, String key){
-		long startTime = System.currentTimeMillis();
-		logger.debug("In getDigest:Trying to obtain message digest from node "+nodeId+" with IP:"+publicIp);
-		String[] splitString = key.split("\\.");
-		String keyspaceName = splitString[0];
-		String tableName = splitString[1];
-		String primaryKey = splitString[2];
-
-		TableMetadata tableInfo = returnColumnMetadata(keyspaceName, tableName);
-
-		String primKeyFieldName = tableInfo.getPrimaryKey().get(0).getName();
-
-		String queryToGetVectorTS =  "SELECT vector_ts FROM "+keyspaceName+"."+tableName+ " WHERE "+primKeyFieldName+"='"+primaryKey+"';";
-
-		ResultSet results =null;
-		results = getDSHandle(publicIp).executeEventualGet(queryToGetVectorTS);
-
-		String vectorTs=null;
-		for (Row row : results) {
-			vectorTs = row.getString("vector_ts");
-		}
-		if(vectorTs == null)
-			vectorTs = "";
-		
-		String metaKeyspaceName = MusicUtil.musicInternalKeySpaceName;
-		String metaTableName = MusicUtil.evPutsTable+nodeId;
-		String queryToGetEvPutStatus =  "SELECT status FROM "+metaKeyspaceName+"."+metaTableName+ " WHERE key"+"='"+key+"';";
-		results = getDSHandle(publicIp).executeEventualGet(queryToGetEvPutStatus);
-		String evPutStatus =null;
-		for (Row row : results) {
-			evPutStatus = row.getString("status");
-		}
-		if(evPutStatus == null)
-			evPutStatus = "";
-		MusicDigest mg = new MusicDigest(evPutStatus,vectorTs);	
-		long timeTaken = System.currentTimeMillis()-startTime;
-		logger.debug("In getDigest:Obtained message digest from node "+nodeId+" with IP:"+publicIp+" "+mg+" in "+timeTaken+" ms");
-
-		return mg;
 	}
 
 	private static boolean isKeyUnLocked(String lockName){

@@ -362,7 +362,7 @@ public class MusicHandle {
 		values.put("job","musicCriticalPut"+System.currentTimeMillis());
 
 		Map<String,String> consistencyInfo= new HashMap<String, String>();
-		consistencyInfo.put("type", "atomic");
+		consistencyInfo.put("type", "critical");
 		consistencyInfo.put("lockId", lockId);
 
 		JsonInsert jIns = new JsonInsert();
@@ -381,6 +381,28 @@ public class MusicHandle {
 		//release lock now that the operation is done
 		unlock(lockId);
 	}
+	
+	public void musicAtomicPut(){
+		Map<String,Object> values = new HashMap<String,Object>();
+		values.put("job","musicAtomicPut"+System.currentTimeMillis());
+
+		Map<String,String> consistencyInfo= new HashMap<String, String>();
+		consistencyInfo.put("type", "atomic");
+
+		JsonInsert jIns = new JsonInsert();
+		jIns.setValues(values);
+		jIns.setConsistencyInfo(consistencyInfo);
+		String url = getMusicNodeURL()+"/keyspaces/"+bmKeySpace+"/tables/"+bmTable+"/rows?name="+rowId;
+		WebResource webResource = client
+				.resource(url);
+
+		ClientResponse response = webResource.accept("application/json").header("Connection", "close")
+				.type("application/json").put(ClientResponse.class, jIns);
+
+		if (response.getStatus() < 200 || response.getStatus() > 299) 
+			throw new RuntimeException("Failed : HTTP error code : "+ response.getStatus()+"url:"+url);
+	}
+
 
 	public void zkCriticalPut(){
 		/*create lock for the candidate. The music API dictates that

@@ -132,6 +132,34 @@ public class MusicCore {
 		return null;
 	}
 
+	public static boolean acquireLockWithLease(String key, String lockId, long leasePeriod){	
+		/* check if the current lock has exceeded its lease and if yes, release that lock*/	
+		MusicLockState mls = getMusicLockState(key);
+		if(mls != null){
+			long currentLockPeriod = System.currentTimeMillis() - mls.getLeaseStartTime();
+			long currentLeasePeriod = mls.getLeasePeriod();
+			if(currentLockPeriod > currentLeasePeriod){
+					//notify first
+					logger.info("Lock period "+currentLockPeriod+" has exceeded lease period "+currentLeasePeriod);
+					mls = releaseLock(lockId);
+			}
+		}
+		
+		/* call the traditional acquire lock now and if the result returned is true, set the 
+		 *  begin time-stamp and lease period
+		 */
+		if(acquireLock(key, lockId) == true){
+			mls = getMusicLockState(key);//get latest state
+			if(mls.getLeaseStartTime() == -1){//set it again only if it is not set already
+				mls.setLeaseStartTime(System.currentTimeMillis());
+				mls.setLeasePeriod(leasePeriod);
+				getLockingServiceHandle().setLockState(key, mls);			
+			}		
+			return true;		
+		}else
+			return false; 
+	}
+
 	public static  boolean  acquireLock(String key, String lockId){
 		/* first check if I am on top. Since ids are not reusable there is no need to check lockStatus
 		 * If the status is unlocked, then the above
@@ -150,7 +178,6 @@ public class MusicCore {
 			return true; 
 		}
 		
-		//if you are already the lock holder no need to sync, simply return true
 		//read the lock name corresponding to the key and if the status is locked or being locked, then return false
 		try{
 			String currentLockHolder = getMusicLockState(key).getLockHolder();
@@ -159,7 +186,7 @@ public class MusicCore {
 				return true;
 			}
 		}catch (NullPointerException e) {
-			logger.debug("In acquire lock:No lock object exists as of now..");
+			logger.debug("In acquire lock:No one has tried to acquire the lock yet..");
 		}
 		
 		//change status to "being locked". This state transition is necessary to ensure syncing before granting the lock
@@ -207,7 +234,7 @@ public class MusicCore {
 		try {
 			MusicLockState mls = getLockingServiceHandle().getLockState(keyspaceName+"."+tableName+"."+primaryKey);
 			if(mls.getLockHolder().equals(lockId)){
-				String consistency = "atomic";
+				String consistency = "critical";
 				getDSHandle().executePut(query,consistency);
 				return true; 
 			}
@@ -220,6 +247,24 @@ public class MusicCore {
 		return false;
 	}
 
+	
+	public static boolean atomicPut(String keyspaceName, String tableName, String primaryKey, String query){
+		String key = keyspaceName+"."+tableName+"."+primaryKey;
+		String lockId = createLockReference(key);
+		long leasePeriod = MusicUtil.defaultLockLeasePeriod;
+		if(acquireLockWithLease(key, lockId, leasePeriod) == true){
+			logger.info("acquired lock with id "+lockId);
+			criticalPut(keyspaceName, tableName, primaryKey, query, lockId);
+			releaseLock(lockId);
+			return true;
+		}
+		else{
+			logger.info("unable to acquire lock, id "+lockId);
+			return false; 	
+		}
+	}
+	
+	
 	public static  ResultSet criticalGet(String keyspaceName, String tableName, String primaryKey, String query, String lockId){
 		ResultSet results = null;
 		try {
@@ -263,7 +308,7 @@ public class MusicCore {
 		return lockName;
 	}
 	
-	public static  void  unLock(String lockId){
+	public static  MusicLockState  releaseLock(String lockId){
 		getLockingServiceHandle().unlockAndDeleteId(lockId);
 		MusicLockState mls;
 		String lockName = getLockNameFromId(lockId);
@@ -278,6 +323,7 @@ public class MusicCore {
 			logger.info("In unlock: lock released for "+lockId+" and no one else waiting i line");
 		}
 		getLockingServiceHandle().setLockState(lockName, mls);
+		return mls;
 	}
 
 	public static  void deleteLock(String lockName){

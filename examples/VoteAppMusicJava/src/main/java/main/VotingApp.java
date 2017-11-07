@@ -42,6 +42,7 @@ public class VotingApp {
 	String keyspaceName;
 	ArrayList<String> lockNames;
 	MusicConnector musicHandle;
+	private final String version="1.0.0";
 	public VotingApp(String[] musicIps){
 		lockNames = new ArrayList<String>();	
 		musicHandle = new MusicConnector(musicIps);
@@ -50,7 +51,7 @@ public class VotingApp {
 	
 	public void createVotingKeyspace(){
 		keyspaceName = "VotingAppForMusic";
-		System.out.println(keyspaceName);
+		System.out.println("Voting app version "+ version+" .....");
 		Map<String,Object> replicationInfo = new HashMap<String, Object>();
 		replicationInfo.put("class", "SimpleStrategy");
 		replicationInfo.put("replication_factor", 1);
@@ -115,12 +116,14 @@ public class VotingApp {
 	private void checkMusicVersion(){
 		Client client = Client.create();
 		System.out.println(musicHandle.getMusicNodeURL()+"/version");
+		
 
+//		System.setProperty("sun.net.http.allowRestrictedHeaders", "true");
 		WebResource webResource = client
 				.resource(musicHandle.getMusicNodeURL()+"/version");
+		
 
-		ClientResponse response = webResource.accept("text/plain")
-				.get(ClientResponse.class);
+		ClientResponse response = webResource.accept("text/plain").header("Connection", "close").get(ClientResponse.class);
 		
 		if (response.getStatus() != 200) {
 			throw new RuntimeException("Failed : HTTP error code : "
@@ -237,7 +240,7 @@ public class VotingApp {
 		values.put("count",count);
 
 		Map<String,String> consistencyInfo= new HashMap<String, String>();
-		consistencyInfo.put("type", "atomic");
+		consistencyInfo.put("type", "critical");
 		consistencyInfo.put("lockId", lockId);
 
 		JsonInsert jIns = new JsonInsert();
@@ -458,7 +461,7 @@ public class VotingApp {
 	}
 	public static void main(String[] args) {	
 		long start = System.currentTimeMillis();
-			for(int i =0; i < 1;++i){
+			for(int i =0; i < 2;++i){
 				VotingApp vHandle = new VotingApp(args);
 				vHandle.overAllTests();
 

@@ -163,7 +163,7 @@ public class MusicDataStore {
 		logger.debug("in data store handle, executing put:"+query);
 		long start = System.currentTimeMillis();
 		Statement statement = new SimpleStatement(query);
-		if(consistency.equalsIgnoreCase("atomic")){
+		if(consistency.equalsIgnoreCase("critical")){
 			logger.info("Executing critical put query:"+query);
 			statement.setConsistencyLevel(ConsistencyLevel.QUORUM);
 		}
@@ -269,7 +269,7 @@ public class MusicDataStore {
 
 		logger.info("In preprared insert: the actual insert query:"+insertQuery+"; the values"+values);
 		PreparedStatement preparedInsert = session.prepare(insertQuery);
-		if(consistency.equalsIgnoreCase("atomic")){
+		if(consistency.equalsIgnoreCase("critical")){
 			logger.info("Executing critical put query");
 			preparedInsert.setConsistencyLevel(ConsistencyLevel.QUORUM);
 		}

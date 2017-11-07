@@ -36,10 +36,35 @@ public class MusicLockState implements Serializable{
 	public static enum LockStatus {UNLOCKED, BEING_LOCKED, LOCKED};//captures the state of the lock
 	LockStatus lockStatus;
 	String lockHolder;
+	long leasePeriod=Long.MAX_VALUE, leaseStartTime=-1;
+	
 	public MusicLockState(LockStatus lockStatus, String lockHolder){
 		this.lockStatus = lockStatus;
 		this.lockHolder = lockHolder; 
 	}
+	
+	
+	public long getLeasePeriod() {
+		return leasePeriod;
+	}
+
+
+	public void setLeasePeriod(long leasePeriod) {
+		this.leasePeriod = leasePeriod;
+	}
+
+
+	public long getLeaseStartTime() {
+		return leaseStartTime;
+	}
+
+
+	public void setLeaseStartTime(long leaseStartTime) {
+		this.leaseStartTime = leaseStartTime;
+	}
+
+
+
 	public LockStatus getLockStatus() {
 		return lockStatus;
 	}

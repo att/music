@@ -30,6 +30,7 @@ public class HaVApp {
 	VotingApp vHandle;
 	String scriptPath;
 	int id;
+	private final String version="1.0.0";
 	public HaVApp(int id, String scriptPath){
 		this.id = id;
 		this.scriptPath = scriptPath;
@@ -56,6 +57,7 @@ public class HaVApp {
 		System.out.println(readVoteCountForCandidate("Flash"));
 */	}
 	private boolean isActive(){
+		System.out.println("HA-Voting app version "+ version+" .....");
 		try {
 			Scanner fileScanner = new Scanner(new File(scriptPath+"/modeOfCoreReplica"+id+".out"));
 			while(fileScanner.hasNext()){

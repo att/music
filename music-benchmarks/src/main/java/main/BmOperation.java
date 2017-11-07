@@ -11,7 +11,7 @@ public class BmOperation {
 	private String parameter;
 	private String[] ipList;
 	private MusicHandle musicHandle;
-	
+
 	public BmOperation(String fileName){
 		Properties prop = new Properties();
 		try {
@@ -29,60 +29,63 @@ public class BmOperation {
 		parameter = prop.getProperty("parameter");
 		ipList = prop.getProperty("ip.list").split(":");
 		int repFactor = Integer.parseInt(prop.getProperty("rep.factor"));
-		
+
 		musicHandle = new MusicHandle(ipList,repFactor);		
-}
+	}
 
-public void initialize(int numEntries){
-	musicHandle.initialize(numEntries);
-}
+	public void initialize(int numEntries){
+		musicHandle.initialize(numEntries);
+	}
 
-public void execute(int threadNum){//thread num is used to exclusively identify the threads/requests
-	musicHandle.rowId = "emp"+threadNum;
-	if(operationType.equals("cassa_ev_put")){
-		long start = System.currentTimeMillis();
-		musicHandle.cassaEvPut();
-    	System.out.println("BmOperation, execute:"+(System.currentTimeMillis() - start));
-	}else
-		if(operationType.equals("music_ev_put")){
-			musicHandle.musicEvPut();
+	public void execute(int threadNum){//thread num is used to exclusively identify the threads/requests
+		musicHandle.rowId = "emp"+threadNum;
+		if(operationType.equals("cassa_ev_put")){
+			long start = System.currentTimeMillis();
+			musicHandle.cassaEvPut();
+			System.out.println("BmOperation, execute:"+(System.currentTimeMillis() - start));
 		}else
-			if(operationType.equals("cassa_quorum_put")){
-				musicHandle.cassaQuorumPut();
+			if(operationType.equals("music_ev_put")){
+				musicHandle.musicEvPut();
 			}else
-				if(operationType.equals("music_critical_put")){
-					musicHandle.musicCriticalPut();
+				if(operationType.equals("cassa_quorum_put")){
+					musicHandle.cassaQuorumPut();
 				}else
-					if(operationType.equals("zk_critical_put")){
-						musicHandle.zkCriticalPut();
+					if(operationType.equals("music_critical_put")){
+						musicHandle.musicCriticalPut();
 					}else
-						if(operationType.equals("music_mix_put")){	//parameter field relevant only for this option
-							/*
-							 * parameter in the BmOperation interpreted as % eventual puts
-							 * and we use the threadNum to determine if the operation should be eventual or 
-							 * critical based on simple modulo arithmetic. 
-							 */
-							int propEvPuts = 100/Integer.parseInt(parameter);
-							if(threadNum % propEvPuts == 0)
-								musicHandle.musicEvPut();
-							else
-								musicHandle.musicCriticalPut();
-						}
-	//this option is causing bugs...mainly in closing out the thread. Not really needed now. 
-	/*	if(operationType.equals("cassa_direct_put")){
+						if(operationType.equals("music_atomic_put")){
+							musicHandle.musicAtomicPut();
+						}else
+							if(operationType.equals("zk_critical_put")){
+								musicHandle.zkCriticalPut();
+							}else
+								if(operationType.equals("music_mix_put")){	//parameter field relevant only for this option
+									/*
+									 * parameter in the BmOperation interpreted as % eventual puts
+									 * and we use the threadNum to determine if the operation should be eventual or 
+									 * critical based on simple modulo arithmetic. 
+									 */
+									int propEvPuts = 100/Integer.parseInt(parameter);
+									if(threadNum % propEvPuts == 0)
+										musicHandle.musicEvPut();
+									else
+										musicHandle.musicCriticalPut();
+								}
+		//this option is causing bugs...mainly in closing out the thread. Not really needed now. 
+		/*	if(operationType.equals("cassa_direct_put")){
 			cassaHandle.update();			
 		}else */
-	//		cassaHandle.close();
-}
+		//		cassaHandle.close();
+	}
 
-public static void main(String[] args){
-	BmOperation opHandle = new BmOperation("/Users/bharathb/AttWork/Music/keys/apache-jmeter-3.0/bin/music_bm.properties");
-	opHandle.initialize(10);
-	opHandle.execute(5);
-	opHandle.execute(4);
-	opHandle.execute(3);
-	opHandle.execute(2);
+	public static void main(String[] args){
+		BmOperation opHandle = new BmOperation("/Users/bharathb/AttWork/Music/keys/apache-jmeter-3.0/bin/music_bm.properties");
+		opHandle.initialize(10);
+		opHandle.execute(5);
+		opHandle.execute(4);
+		opHandle.execute(3);
+		opHandle.execute(2);
 
-}
+	}
 
 }

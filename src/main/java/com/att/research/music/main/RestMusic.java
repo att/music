@@ -58,6 +58,7 @@ import com.att.research.music.datastore.MusicDataStore;
 import com.att.research.music.datastore.jsonobjects.JsonDelete;
 import com.att.research.music.datastore.jsonobjects.JsonInsert;
 import com.att.research.music.datastore.jsonobjects.JsonKeySpace;
+import com.att.research.music.datastore.jsonobjects.JsonLeasedLock;
 import com.att.research.music.datastore.jsonobjects.JsonTable;
 import com.att.research.music.lockingservice.MusicLockState;
 import com.datastax.driver.core.DataType;
@@ -123,6 +124,18 @@ public class RestMusic {
 		String result = MusicCore.acquireLock(lockName,lockId)+"";
 		return result; 
 	}
+	
+	@POST
+	@Path("/locks/acquire-with-lease/{lockreference}")
+	@Consumes(MediaType.APPLICATION_JSON)
+	@Produces(MediaType.TEXT_PLAIN)	
+	public String accquireLockWithLease(JsonLeasedLock lockObj, @PathParam("lockreference") String lockId){
+		String lockName = lockId.substring(lockId.indexOf("$")+1, lockId.lastIndexOf("$"));
+		//lockName is the "key" of the form keyspaceName.tableName.rowId
+		String result = MusicCore.acquireLockWithLease(lockName, lockId, lockObj.getLeasePeriod())+"";
+		return result; 
+	} 
+	
 
 	@GET
 	@Path("/locks/enquire/{lockname}")
@@ -145,7 +158,7 @@ public class RestMusic {
 	@DELETE
 	@Path("/locks/release/{lockreference}")
 	public void unLock(@PathParam("lockreference") String lockId){
-		MusicCore.unLock(lockId);
+		MusicCore.releaseLock(lockId);
 	}
 
 	@DELETE
@@ -321,11 +334,16 @@ public class RestMusic {
 		String consistency = insObj.getConsistencyInfo().get("type");
 		if(consistency.equalsIgnoreCase("eventual"))
 			MusicCore.eventualPut(keyspace,tablename,primaryKey, query);
-		else if(consistency.equalsIgnoreCase("atomic")){
+		else if(consistency.equalsIgnoreCase("critical")){
 			String lockId = insObj.getConsistencyInfo().get("lockId");
 			MusicCore.criticalPut(keyspace,tablename,primaryKey, query, lockId);
 		}
+		else if(consistency.equalsIgnoreCase("atomic")){
+			MusicCore.atomicPut(keyspace,tablename,primaryKey, query);
+		}
 	}
+	
+	
 
 	@PUT
 	@Path("/keyspaces/{keyspace}/tables/{tablename}/rows")
@@ -389,14 +407,19 @@ public class RestMusic {
 		String consistency = insObj.getConsistencyInfo().get("type");
 
 		boolean operationResult = false;
+
 		if(consistency.equalsIgnoreCase("eventual"))
 			operationResult = MusicCore.eventualPut(keyspace,tablename,primaryKey, query);
-		else if(consistency.equalsIgnoreCase("atomic")){
+		else if(consistency.equalsIgnoreCase("critical")){
 			String lockId = insObj.getConsistencyInfo().get("lockId");
 			operationResult = MusicCore.criticalPut(keyspace,tablename,primaryKey, query, lockId);
 		}
-		return operationResult; 	
+		else if(consistency.equalsIgnoreCase("atomic")){
+			operationResult = MusicCore.atomicPut(keyspace,tablename,primaryKey, query);
+		}
+		return operationResult;
 	}
+	
 
 	@DELETE
 	@Path("/keyspaces/{keyspace}/tables/{tablename}/rows")
@@ -448,13 +471,18 @@ public class RestMusic {
 		boolean operationResult = false;
 
 		String consistency = delObj.getConsistencyInfo().get("type");
+		
+		
 		if(consistency.equalsIgnoreCase("eventual"))
 			operationResult = MusicCore.eventualPut(keyspace,tablename,primaryKey, query);
-		else if(consistency.equalsIgnoreCase("atomic")){
+		else if(consistency.equalsIgnoreCase("critical")){
 			String lockId = delObj.getConsistencyInfo().get("lockId");
 			operationResult = MusicCore.criticalPut(keyspace,tablename,primaryKey, query, lockId);
 		}
-		return operationResult; 
+		else if(consistency.equalsIgnoreCase("atomic")){
+			operationResult = MusicCore.atomicPut(keyspace,tablename,primaryKey, query);
+		}
+		return operationResult;
 	}
 
 	@DELETE

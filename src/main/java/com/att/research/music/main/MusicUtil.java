@@ -43,13 +43,13 @@ public class MusicUtil {
 	//public static final String musicInternalKeySpaceName = "MusicInternalKeySpace";
 	//public static final String evPutsTable = "evPutTracker_";
 	public static final boolean debug = true;
-	public static final String version = "2.0.0";
+	public static final String version = "2.1.0";
 	public static final String musicRestIp = "localhost";
 	public static final String musicPropertiesFilePath="/etc/music/music.properties";
 	public static final long defaultLockLeasePeriod = 5000;
 	
 	public static String getVersion(){
-/*        Model model;
+/*       Model model;
         String version="";
 		try {
 			MavenXpp3Reader reader = new MavenXpp3Reader();

@@ -12,11 +12,13 @@ import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Logger;
 import org.apache.log4j.PropertyConfigurator;
 
+import com.att.research.music.rest.RestMusicDataAPI;
+
 public class Log4JInitServlet extends HttpServlet {
 
 	private static final long serialVersionUID = 1L;
 	
-	final static Logger logger = Logger.getLogger(RestMusic.class);
+	final static Logger logger = Logger.getLogger(RestMusicDataAPI.class);
 
 
 	public void init(ServletConfig config) throws ServletException {
@@ -43,7 +45,7 @@ public class Log4JInitServlet extends HttpServlet {
 		}
 		
 		PropertiesReader prop = new PropertiesReader();
-		logger.info("Starting MUSIC "+ MusicUtil.version +" on node with id "+prop.getMyId()+" and public ip "+prop.getMyPublicIp()+"...");
+		logger.info("Starting MUSIC "+ MusicUtil.getVersion() +" on node with id "+prop.getMyId()+" and public ip "+prop.getMyPublicIp()+"...");
 		logger.info("List of all MUSIC ids:"+ Arrays.toString(prop.getAllIds()));
 		logger.info("List of all MUSIC public ips:"+ Arrays.toString(prop.getAllPublicIps()));
 /*		try {

@@ -17,3 +17,10 @@ target/
 ._*
 
 .metadata
+# Eclipse stuff
+.settings/
+.classpath
+.project
+# Idea
+.idea
+

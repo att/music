@@ -30,8 +30,11 @@ import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+
+import javax.ws.rs.core.MultivaluedMap;
 
 import org.apache.log4j.Logger;
 
@@ -176,29 +179,43 @@ public class MusicDataStore {
 		logger.debug("Time taken for actual put in cassandra:"+(end-start));
 	}
 
-	public Object readRow(Row row, String name, DataType colType){	
+	public Object getColValue(Row row, String colName, DataType colType){	
 		switch(colType.getName()){
 		case VARCHAR: 
-			return row.getString(name);
+			return row.getString(colName);
 		case UUID: 
-			return row.getUUID(name);
+			return row.getUUID(colName);
 		case VARINT: 
-			return row.getVarint(name);
+			return row.getVarint(colName);
 		case BIGINT: 
-			return row.getLong(name);
+			return row.getLong(colName);
 		case INT: 
-			return row.getInt(name);
+			return row.getInt(colName);
 		case FLOAT: 
-			return row.getFloat(name);	
+			return row.getFloat(colName);	
 		case DOUBLE: 
-			return row.getDouble(name);
+			return row.getDouble(colName);
 		case BOOLEAN: 
-			return row.getBool(name);
+			return row.getBool(colName);
 		case MAP: 
-			return row.getMap(name, String.class, String.class);
+			return row.getMap(colName, String.class, String.class);
 		default: 
 			return null;
 		}
+	}
+	
+	public boolean doesRowSatisfyCondition(Row row, Map<String, Object> condition){
+		ColumnDefinitions colInfo = row.getColumnDefinitions();
+		
+		for (Map.Entry<String, Object> entry : condition.entrySet()){
+			String colName = entry.getKey();
+			DataType colType = colInfo.getType(colName);
+			Object columnValue = getColValue(row, colName, colType);
+			Object conditionValue = convertToActualDataType(colType, entry.getValue());
+			if(columnValue.equals(conditionValue) == false)
+				return false;		
+		}
+		return true;	
 	}
 
 	public Map<String, HashMap<String, Object>> marshalData(ResultSet results){
@@ -209,7 +226,7 @@ public class MusicDataStore {
 			HashMap<String,Object> resultOutput = new HashMap<String, Object>();
 			for (Definition definition : colInfo) {
 				if(!definition.getName().equals("vector_ts"))
-					resultOutput.put(definition.getName(), readRow(row, definition.getName(), definition.getType()));
+					resultOutput.put(definition.getName(), getColValue(row, definition.getName(), definition.getType()));
 			}
 			resultMap.put("row "+counter, resultOutput);
 			counter++;
@@ -219,7 +236,7 @@ public class MusicDataStore {
 
 
 	//new stuff...prepared statements
-	public static Object convertToActualDataType(DataType colType,Object valueObj) throws Exception{
+	public static Object convertToActualDataType(DataType colType,Object valueObj){
 		String valueObjString = valueObj+"";
 		switch(colType.getName()){
 		case UUID: 
@@ -278,6 +295,7 @@ public class MusicDataStore {
 			preparedInsert.setConsistencyLevel(ConsistencyLevel.ONE);
 		}
 		session.execute(preparedInsert.bind(values.toArray()));
+		
 	}
 
 }

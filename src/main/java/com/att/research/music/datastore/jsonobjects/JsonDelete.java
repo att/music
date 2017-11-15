@@ -29,7 +29,17 @@ public class JsonDelete {
 	
     private ArrayList<String> columns = null;
     private Map<String,String> consistencyInfo;
+	private Map<String,Object> conditions;
 
+    public Map<String, Object> getConditions() {
+		return conditions;
+	}
+
+	public void setConditions(Map<String, Object> conditions) {
+		this.conditions = conditions;
+	}
+
+    
 	public Map<String, String> getConsistencyInfo() {
 		return consistencyInfo;
 	}

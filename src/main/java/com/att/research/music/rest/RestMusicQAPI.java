@@ -20,6 +20,9 @@ import org.apache.log4j.Logger;
 import com.att.research.music.datastore.jsonobjects.JsonDelete;
 import com.att.research.music.datastore.jsonobjects.JsonInsert;
 import com.att.research.music.datastore.jsonobjects.JsonTable;
+import com.att.research.music.datastore.jsonobjects.JsonUpdate;
+import com.att.research.music.main.MusicCore;
+import com.datastax.driver.core.ResultSet;
 
 @Path("/priorityq/")
 public class RestMusicQAPI {
@@ -44,8 +47,8 @@ public class RestMusicQAPI {
 	@Path("/keyspaces/{keyspace}/{qname}/rows")
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
-	public boolean updateQ(JsonInsert insObj, @PathParam("keyspace") String keyspace, @PathParam("tablename") String tablename, @Context UriInfo info) throws Exception{
-		return new RestMusicDataAPI().updateTable(insObj, keyspace, tablename, info);
+	public boolean updateQ(JsonUpdate updateObj, @PathParam("keyspace") String keyspace, @PathParam("tablename") String tablename, @Context UriInfo info) throws Exception{
+		return new RestMusicDataAPI().updateTable(updateObj, keyspace, tablename, info);
 	}
 
 	@DELETE
@@ -61,7 +64,10 @@ public class RestMusicQAPI {
 	@Produces(MediaType.APPLICATION_JSON)	
 	public Map<String, HashMap<String, Object>> peek(@PathParam("keyspace") String keyspace, @PathParam("tablename") String tablename, @Context UriInfo info){
 		int limit =1; //peek must return just the top row
-		return new RestMusicDataAPI().selectSpecific(keyspace,tablename,info,limit);
+		String query = new RestMusicDataAPI().selectSpecificQuery(keyspace,tablename,info,limit);
+		ResultSet results = MusicCore.get(query);
+		return MusicCore.marshallResults(results);
+
 	} 
 
 	@GET
@@ -69,7 +75,9 @@ public class RestMusicQAPI {
 	@Produces(MediaType.APPLICATION_JSON)	
 	public Map<String, HashMap<String, Object>> filter(@PathParam("keyspace") String keyspace, @PathParam("tablename") String tablename, @Context UriInfo info){
 		int limit =-1; 
-		return new RestMusicDataAPI().selectSpecific(keyspace,tablename,info,limit);
+		String query = new RestMusicDataAPI().selectSpecificQuery(keyspace,tablename,info,limit);
+		ResultSet results = MusicCore.get(query);
+		return MusicCore.marshallResults(results);
 	} 
 
 	@DELETE

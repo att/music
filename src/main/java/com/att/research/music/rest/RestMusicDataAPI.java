@@ -46,7 +46,9 @@ import com.att.research.music.datastore.jsonobjects.JsonDelete;
 import com.att.research.music.datastore.jsonobjects.JsonInsert;
 import com.att.research.music.datastore.jsonobjects.JsonKeySpace;
 import com.att.research.music.datastore.jsonobjects.JsonTable;
+import com.att.research.music.datastore.jsonobjects.JsonUpdate;
 import com.att.research.music.main.MusicCore;
+import com.att.research.music.main.MusicCore.Condition;
 import com.att.research.music.main.MusicUtil;
 import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.ResultSet;
@@ -56,6 +58,15 @@ import com.datastax.driver.core.TableMetadata;
 @Path("/")
 public class RestMusicDataAPI {
 	final static Logger logger = Logger.getLogger(RestMusicDataAPI.class);
+
+	private class RowIdentifier{
+		public String primarKeyValue;
+		public String rowIdString;//the string with all the row identifiers separted by AND
+		public RowIdentifier(String primaryKeyValue, String rowIdString){
+			this.primarKeyValue = primaryKeyValue;
+			this.rowIdString = rowIdString;
+		}
+	}
 
 	@GET
 	@Path("/version")
@@ -94,7 +105,7 @@ public class RestMusicDataAPI {
 		query = query + ";";
 		long end = System.currentTimeMillis();
 		logger.debug("Time taken for setting up query in create keyspace:"+ (end-start));
-		MusicCore.generalPut(query, consistency);
+		MusicCore.nonKeyRelatedPut(query, consistency);
 	}
 
 	@DELETE
@@ -105,7 +116,7 @@ public class RestMusicDataAPI {
 		String consistency = "eventual";//for now this needs only eventual consistency
 
 		String query ="DROP KEYSPACE "+ keyspaceName+";"; 
-		MusicCore.generalPut(query, consistency);
+		MusicCore.nonKeyRelatedPut(query, consistency);
 	}
 
 
@@ -171,7 +182,7 @@ public class RestMusicDataAPI {
 			query = query + " WITH "+ propertiesString;
 
 		query = query +";";
-		MusicCore.generalPut(query, consistency);
+		MusicCore.nonKeyRelatedPut(query, consistency);
 	}
 
 	
@@ -184,7 +195,7 @@ public class RestMusicDataAPI {
 		if(rowParams.getFirst("index_name") != null)
 			indexName = rowParams.getFirst("index_name");	
 		String query = "Create index "+indexName+" if not exists on "+keyspace+"."+tablename+" ("+fieldName+");";
-		MusicCore.generalPut(query, "eventual");
+		MusicCore.nonKeyRelatedPut(query, "eventual");
 	}
 	
 	
@@ -245,13 +256,13 @@ public class RestMusicDataAPI {
 
 		String consistency = insObj.getConsistencyInfo().get("type");
 		if(consistency.equalsIgnoreCase("eventual"))
-			MusicCore.eventualPut(keyspace,tablename,primaryKey, query);
+			MusicCore.eventualPut(query);
 		else if(consistency.equalsIgnoreCase("critical")){
 			String lockId = insObj.getConsistencyInfo().get("lockId");
-			MusicCore.criticalPut(keyspace,tablename,primaryKey, query, lockId);
+			MusicCore.criticalPut(keyspace,tablename,primaryKey, query, lockId, null);
 		}
 		else if(consistency.equalsIgnoreCase("atomic")){
-			MusicCore.atomicPut(keyspace,tablename,primaryKey, query);
+			MusicCore.atomicPut(keyspace,tablename,primaryKey, query,null);
 		}
 	}
 	
@@ -261,9 +272,9 @@ public class RestMusicDataAPI {
 	@Path("/keyspaces/{keyspace}/tables/{tablename}/rows")
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
-	public boolean updateTable(JsonInsert insObj, @PathParam("keyspace") String keyspace, @PathParam("tablename") String tablename, @Context UriInfo info	) throws Exception{
+	public boolean updateTable(JsonUpdate updateObj, @PathParam("keyspace") String keyspace, @PathParam("tablename") String tablename, @Context UriInfo info) throws Exception{
 		//obtain the field value pairs of the update
-		Map<String,Object> valuesMap =  insObj.getValues();
+		Map<String,Object> valuesMap =  updateObj.getValues();
 		TableMetadata tableInfo = MusicCore.returnColumnMetadata(keyspace, tablename);
 		String vectorTs = "'"+Thread.currentThread().getId()+System.currentTimeMillis()+"'";
 		String fieldValueString="vector_ts="+vectorTs+",";
@@ -278,54 +289,49 @@ public class RestMusicDataAPI {
 			counter = counter +1;
 		}
 
-		//get the row specifier
-		String rowSpec="";
-		counter =0;
-		String query =  "UPDATE "+keyspace+"."+tablename+" ";   
-		MultivaluedMap<String, String> rowParams = info.getQueryParameters();
-		String primaryKey = "";
-		for (MultivaluedMap.Entry<String, List<String>> entry : rowParams.entrySet()){
-			String keyName = entry.getKey();
-			List<String> valueList = entry.getValue();
-			String indValue = valueList.get(0);
-			DataType colType = tableInfo.getColumn(entry.getKey()).getType();
-			String formattedValue = MusicCore.convertToSqlDataType(colType,indValue);	
-			primaryKey = primaryKey + indValue;
-			rowSpec = rowSpec + keyName +"="+ formattedValue;
-			if(counter!=rowParams.size()-1)
-				rowSpec = rowSpec+" AND ";
-			counter = counter +1;
-		}
+		
+		String ttl = updateObj.getTtl();
+		String timestamp = updateObj.getTimestamp();
 
-
-		String ttl = insObj.getTtl();
-		String timestamp = insObj.getTimestamp();
-
+		String updateQuery =  "UPDATE "+keyspace+"."+tablename+" ";   
 		if((ttl != null) && (timestamp != null)){
-			query = query + " USING TTL "+ ttl +" AND TIMESTAMP "+ timestamp;
+			updateQuery = updateQuery + " USING TTL "+ ttl +" AND TIMESTAMP "+ timestamp;
 		}
 
 		if((ttl != null) && (timestamp == null)){
-			query = query + " USING TTL "+ ttl;
+			updateQuery = updateQuery + " USING TTL "+ ttl;
 		}
 
 		if((ttl == null) && (timestamp != null)){
-			query = query + " USING TIMESTAMP "+ timestamp;
+			updateQuery = updateQuery + " USING TIMESTAMP "+ timestamp;
 		}
-		query = query + " SET "+fieldValueString+" WHERE "+rowSpec+";";
+		
+		//get the row specifier
+		RowIdentifier rowId = getRowIdentifier(keyspace, tablename,  info.getQueryParameters());
 
-		String consistency = insObj.getConsistencyInfo().get("type");
+		updateQuery = updateQuery + " SET "+fieldValueString+" WHERE "+rowId.rowIdString+";";
+		
+		//get the conditional, if any
+		Condition conditionInfo;
+		if(updateObj.getConditions() == null)
+			conditionInfo = null;
+		else{//to avoid parsing repeatedly, just send the select query to obtain row
+			String selectQuery =  "SELECT *  FROM "+keyspace+"."+tablename+ " WHERE "+rowId.rowIdString+";"; 
+			conditionInfo = new MusicCore.Condition(updateObj.getConditions() , selectQuery);
+		}
+
+		String consistency = updateObj.getConsistencyInfo().get("type");
 
 		boolean operationResult = false;
 
 		if(consistency.equalsIgnoreCase("eventual"))
-			operationResult = MusicCore.eventualPut(keyspace,tablename,primaryKey, query);
+			operationResult = MusicCore.eventualPut(updateQuery);
 		else if(consistency.equalsIgnoreCase("critical")){
-			String lockId = insObj.getConsistencyInfo().get("lockId");
-			operationResult = MusicCore.criticalPut(keyspace,tablename,primaryKey, query, lockId);
+			String lockId = updateObj.getConsistencyInfo().get("lockId");
+			operationResult = MusicCore.criticalPut(keyspace,tablename,rowId.primarKeyValue, updateQuery, lockId, conditionInfo);
 		}
 		else if(consistency.equalsIgnoreCase("atomic")){
-			operationResult = MusicCore.atomicPut(keyspace,tablename,primaryKey, query);
+			operationResult = MusicCore.atomicPut(keyspace,tablename,rowId.primarKeyValue, updateQuery,conditionInfo);
 		}
 		return operationResult;
 	}
@@ -347,23 +353,11 @@ public class RestMusicDataAPI {
 				counter = counter+1;
 			}
 		}
-		String rowSpec="";
-		counter =0;
-		TableMetadata tableInfo = MusicCore.returnColumnMetadata(keyspace, tablename);
-		MultivaluedMap<String, String> rowParams = info.getQueryParameters();
-		String primaryKey="";
-		for (MultivaluedMap.Entry<String, List<String>> entry : rowParams.entrySet()){
-			String keyName = entry.getKey();
-			List<String> valueList = entry.getValue();
-			String indValue = valueList.get(0);
-			DataType colType = tableInfo.getColumn(entry.getKey()).getType();
-			String formattedValue = MusicCore.convertToSqlDataType(colType,indValue);	
-			primaryKey = primaryKey+indValue;
-			rowSpec = rowSpec + keyName +"="+ formattedValue;
-			if(counter!=rowParams.size()-1)
-				rowSpec = rowSpec+" AND ";
-			counter = counter +1;
-		}
+		//get the row specifier
+		
+		RowIdentifier rowId = getRowIdentifier(keyspace, tablename,  info.getQueryParameters());
+		String rowSpec = rowId.rowIdString;
+		String primaryKeyValue = rowId.primarKeyValue;
 		String query ="";
 
 		if((columnList != null) && (!rowSpec.isEmpty())){
@@ -379,18 +373,28 @@ public class RestMusicDataAPI {
 		}
 
 		boolean operationResult = false;
+		
+		//get the conditional, if any
+		Condition conditionInfo;
+		if(delObj.getConditions() == null)
+			conditionInfo = null;
+		else{//to avoid parsing repeatedly, just send the select query to obtain row
+			String selectQuery =  "SELECT *  FROM "+keyspace+"."+tablename+ " WHERE "+rowId.rowIdString+";"; 
+			conditionInfo = new MusicCore.Condition(delObj.getConditions() , selectQuery);
+		}
+
 
 		String consistency = delObj.getConsistencyInfo().get("type");
 		
 		
 		if(consistency.equalsIgnoreCase("eventual"))
-			operationResult = MusicCore.eventualPut(keyspace,tablename,primaryKey, query);
+			operationResult = MusicCore.eventualPut(query);
 		else if(consistency.equalsIgnoreCase("critical")){
 			String lockId = delObj.getConsistencyInfo().get("lockId");
-			operationResult = MusicCore.criticalPut(keyspace,tablename,primaryKey, query, lockId);
+			operationResult = MusicCore.criticalPut(keyspace,tablename,primaryKeyValue, query, lockId, conditionInfo);
 		}
 		else if(consistency.equalsIgnoreCase("atomic")){
-			operationResult = MusicCore.atomicPut(keyspace,tablename,primaryKey, query);
+			operationResult = MusicCore.atomicPut(keyspace,tablename,primaryKeyValue, query, conditionInfo);
 		}
 		return operationResult;
 	}
@@ -401,47 +405,43 @@ public class RestMusicDataAPI {
 		//	String consistency = kspObject.getConsistencyInfo().get("type");
 		String consistency = "eventual";//for now this needs only eventual consistency
 		String query ="DROP TABLE IF EXISTS "+ keyspace+"."+tablename+";"; 
-		MusicCore.generalPut(query, consistency);
+		MusicCore.nonKeyRelatedPut(query, consistency);
 	}
 
-	public Map<String, HashMap<String, Object>> selectSpecific(String keyspace,String tablename, UriInfo info, int limit){	
-		String rowSpec="";
+	private RowIdentifier getRowIdentifier(String keyspace,String tablename, MultivaluedMap<String, String> rowParams){
+		String rowIdString="";
 		int counter =0;
 		TableMetadata tableInfo = MusicCore.returnColumnMetadata(keyspace, tablename);
-		MultivaluedMap<String, String> rowParams = info.getQueryParameters();
-		String primaryKey="";
+		String primaryKeyValue="";
 		for (MultivaluedMap.Entry<String, List<String>> entry : rowParams.entrySet()){
 			String keyName = entry.getKey();
 			List<String> valueList = entry.getValue();
 			String indValue = valueList.get(0);
 			DataType colType = tableInfo.getColumn(entry.getKey()).getType();
 			String formattedValue = MusicCore.convertToSqlDataType(colType,indValue);	
-			primaryKey = primaryKey+indValue;
-			rowSpec = rowSpec + keyName +"="+ formattedValue;
+			if(counter ==0)
+				primaryKeyValue = primaryKeyValue+indValue;
+			rowIdString = rowIdString + keyName +"="+ formattedValue;
 			if(counter!=rowParams.size()-1)
-				rowSpec = rowSpec+" AND ";
+				rowIdString = rowIdString+" AND ";
 			counter = counter +1;
 		}
+		return new RowIdentifier(primaryKeyValue, rowIdString);	
+	}
+	
+	public String selectSpecificQuery(String keyspace,String tablename, UriInfo info, int limit){	
+		String rowIdString = getRowIdentifier(keyspace, tablename, info.getQueryParameters()).rowIdString;
 
-		String query =  "SELECT *  FROM "+keyspace+"."+tablename+ " WHERE "+rowSpec; 
+		String query =  "SELECT *  FROM "+keyspace+"."+tablename+ " WHERE "+rowIdString; 
 
 		if(limit != -1){
 			query = query + " LIMIT "+limit;
 		}
 
 		query = query + ";";
-		ResultSet results = MusicCore.get(query);
-		return MusicCore.marshallResults(results);
+		return query; 
 	} 
 
-	private Map<String, HashMap<String, Object>> selectAll(String keyspace, String tablename){
-		long start = System.currentTimeMillis();
-		String query =  "SELECT *  FROM "+keyspace+"."+tablename+ ";"; 
-		ResultSet results = MusicCore.get(query);
-		long end = System.currentTimeMillis();
-		logger.debug("Time taken for the select all:"+(end-start));
-		return MusicCore.marshallResults(results);
-	}
 
 	@PUT
 	@Path("/keyspaces/{keyspace}/tables/{tablename}/rows/criticalget")
@@ -478,11 +478,14 @@ public class RestMusicDataAPI {
 	@Path("/keyspaces/{keyspace}/tables/{tablename}/rows")
 	@Produces(MediaType.APPLICATION_JSON)	
 	public Map<String, HashMap<String, Object>> select(@PathParam("keyspace") String keyspace, @PathParam("tablename") String tablename, @Context UriInfo info){
+		String query ="";
 		if(info.getQueryParameters().isEmpty())//select all
-			return selectAll(keyspace, tablename);
+			query =  "SELECT *  FROM "+keyspace+"."+tablename+ ";"; 
 		else{
 			int limit =-1; //do not limit the number of results
-			return selectSpecific(keyspace,tablename,info,limit);
+			query = selectSpecificQuery(keyspace,tablename,info,limit);
 		}
+		ResultSet results = MusicCore.get(query);
+		return MusicCore.marshallResults(results);
 	} 
 }

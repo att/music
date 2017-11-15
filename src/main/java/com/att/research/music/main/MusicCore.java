@@ -49,6 +49,23 @@ public class MusicCore {
 	static  MusicDataStore   mDstoreHandle = null;
 	final static Logger logger = Logger.getLogger(MusicCore.class);
 
+	public static class Condition{
+		Map<String, Object> conditions;
+		String selectQueryForTheRow;
+		public Condition(Map<String, Object> conditions, String selectQueryForTheRow) {
+			this.conditions = conditions;
+			this.selectQueryForTheRow = selectQueryForTheRow;
+		} 	
+		public boolean testCondition(){
+			//first generate the row
+			ResultSet results = quorumGet(selectQueryForTheRow);
+//			if(results.all().size() > 1)
+	//			return false; //there should only be one row
+			Row row = results.one();
+			return getDSHandle().doesRowSatisfyCondition(row, conditions);
+		}
+	}
+	
 	public static MusicLockingService getLockingServiceHandle(){
 		logger.debug("Acquiring lock store handle");
 		long start = System.currentTimeMillis();
@@ -225,17 +242,19 @@ public class MusicCore {
 		return true;
 	}
 	
-	public static  boolean eventualPut(String keyspaceName, String tableName, String primaryKey, String query){
+	public static  boolean eventualPut(String query){
 		getDSHandle().executePut(query, "eventual");
 		return true;
 	}
 
-	public static  boolean criticalPut(String keyspaceName, String tableName, String primaryKey, String query, String lockId){
+	public static  boolean criticalPut(String keyspaceName, String tableName, String primaryKey, String query, String lockId, Condition conditionInfo){
 		try {
 			MusicLockState mls = getLockingServiceHandle().getLockState(keyspaceName+"."+tableName+"."+primaryKey);
-			if(mls.getLockHolder().equals(lockId)){
-				String consistency = "critical";
-				getDSHandle().executePut(query,consistency);
+			if(mls.getLockHolder().equals(lockId) == true){
+				if(conditionInfo != null)//check if condition is true
+					if(conditionInfo.testCondition() == false)
+						return false; 
+				getDSHandle().executePut(query,"critical");
 				return true; 
 			}
 			else 
@@ -247,16 +266,15 @@ public class MusicCore {
 		return false;
 	}
 
-	
-	public static boolean atomicPut(String keyspaceName, String tableName, String primaryKey, String query){
+	public static boolean atomicPut(String keyspaceName, String tableName, String primaryKey, String query, Condition conditionInfo){
 		String key = keyspaceName+"."+tableName+"."+primaryKey;
 		String lockId = createLockReference(key);
 		long leasePeriod = MusicUtil.defaultLockLeasePeriod;
 		if(acquireLockWithLease(key, lockId, leasePeriod) == true){
 			logger.info("acquired lock with id "+lockId);
-			criticalPut(keyspaceName, tableName, primaryKey, query, lockId);
+			boolean result = criticalPut(keyspaceName, tableName, primaryKey, query, lockId,conditionInfo);
 			releaseLock(lockId);
-			return true;
+			return result;
 		}
 		else{
 			logger.info("unable to acquire lock, id "+lockId);
@@ -333,7 +351,7 @@ public class MusicCore {
 
 	//this is mainly for some  functions like keyspace creation etc which does not
 	//really need the bells and whistles of Music locking. 
-	public static  void generalPut(String query, String consistency) throws Exception{
+	public static  void nonKeyRelatedPut(String query, String consistency) throws Exception{
 			getDSHandle().executePut(query,consistency);
 	}
 

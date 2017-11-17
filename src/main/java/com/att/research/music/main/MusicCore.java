@@ -137,7 +137,9 @@ public class MusicCore {
 			long currentLeasePeriod = mls.getLeasePeriod();
 			if(currentLockPeriod > currentLeasePeriod){
 					logger.info("Lock period "+currentLockPeriod+" has exceeded lease period "+currentLeasePeriod);
-					mls = releaseLock(lockId);
+					boolean voluntaryRelease = false;
+					String currentLockHolder = mls.getLockHolder();
+					mls = releaseLock(currentLockHolder,voluntaryRelease);
 			}
 		}
 		
@@ -175,8 +177,10 @@ public class MusicCore {
 		}
 		
 		//read the lock name corresponding to the key and if the status is locked or being locked, then return false
+		MusicLockState currentMls=null, newMls;
 		try{
-			String currentLockHolder = getMusicLockState(key).getLockHolder();
+			currentMls = getMusicLockState(key);
+			String currentLockHolder = currentMls.getLockHolder();
 			if(lockId.equals(currentLockHolder)){
 				logger.info("In acquire lock: You already have the lock!");
 				return true;
@@ -187,35 +191,30 @@ public class MusicCore {
 		
 		//change status to "being locked". This state transition is necessary to ensure syncing before granting the lock
 		String lockHolder = null;
-		MusicLockState mls = new MusicLockState(MusicLockState.LockStatus.BEING_LOCKED, lockHolder);
-		getLockingServiceHandle().setLockState(key, mls);
-		logger.debug("In acquire lock: Set lock state to being_locked");
+		boolean needToSyncQuorum = false; 
+		if(currentMls != null)
+			needToSyncQuorum = currentMls.isNeedToSyncQuorum();
 			
-		mls = new MusicLockState(MusicLockState.LockStatus.LOCKED, lockHolder);
-		getLockingServiceHandle().setLockState(key, mls);
-		logger.debug("In acquire lock: Set lock state to locked");
-
+			
+		newMls = new MusicLockState(MusicLockState.LockStatus.BEING_LOCKED, lockHolder,needToSyncQuorum);
+		getLockingServiceHandle().setLockState(key, newMls);
+		logger.debug("In acquire lock: Set lock state to being_locked");
+		
+		//do syncing if this was a forced lock release
+		if(needToSyncQuorum){
+			logger.info("In acquire lock: Since there was a forcible release, need to sync quorum!");
+			syncQuorum(key);
+		}
+		
 		//change status to locked
 		lockHolder = lockId;
-		mls = new MusicLockState(MusicLockState.LockStatus.LOCKED, lockHolder);
-		getLockingServiceHandle().setLockState(key, mls);
+		needToSyncQuorum = false;
+		newMls = new MusicLockState(MusicLockState.LockStatus.LOCKED, lockHolder,needToSyncQuorum);
+		getLockingServiceHandle().setLockState(key, newMls);
 		logger.info("In acquire lock: Set lock state to locked and assigned current lock ref "+ lockId+" as holder");
 		return result;
 	}
 
-	private static boolean isKeyUnLocked(String lockName){
-		try {
-			MusicLockState mls;
-			mls = getLockingServiceHandle().getLockState(lockName);
-			if(mls.getLockStatus().equals(MusicLockState.LockStatus.UNLOCKED) == false){
-				logger.debug("In isKeyUnLocked:The key with lock name "+lockName+" is locked");
-				return false;//someone else is holding the lock to the key
-			}
-		} catch (NullPointerException e) {
-			logger.debug("In isKeyUnLocked:No lock has been created for this, so go ahead with the eventual put..");
-		}
-		return true;
-	}
 	
 	public boolean createKeyspace(String keyspaceName, JsonKeySpace kspObject) throws Exception {
 		return true;
@@ -292,7 +291,8 @@ public class MusicCore {
 		if(acquireLockWithLease(key, lockId, leasePeriod) == true){
 			logger.info("acquired lock with id "+lockId);
 			String result = criticalPut(keyspaceName, tableName, primaryKey, query, lockId,conditionInfo);
-			releaseLock(lockId);
+			boolean voluntaryRelease = true; 
+			releaseLock(lockId,voluntaryRelease);
 			return result;
 		}
 		else{
@@ -345,19 +345,19 @@ public class MusicCore {
 		return lockName;
 	}
 	
-	public static  MusicLockState  releaseLock(String lockId){
+	public static  MusicLockState  releaseLock(String lockId, boolean voluntaryRelease){
 		getLockingServiceHandle().unlockAndDeleteId(lockId);
-		MusicLockState mls;
 		String lockName = getLockNameFromId(lockId);
-		String nextInLine = whoseTurnIsIt(lockName);
-		if(!nextInLine.equals("")){
-			mls = new MusicLockState(MusicLockState.LockStatus.LOCKED, nextInLine);
-			logger.info("In unlock: lock released for "+lockId+" and given to "+nextInLine);
+		MusicLockState mls;
+		String lockHolder = null;
+		if(voluntaryRelease){
+			mls = new MusicLockState(MusicLockState.LockStatus.UNLOCKED, lockHolder);
+			logger.info("In unlock: lock voluntarily released for "+lockId);
 		}
 		else{
-			//change status to unlocked
-			mls = new MusicLockState(MusicLockState.LockStatus.UNLOCKED, null);
-			logger.info("In unlock: lock released for "+lockId+" and no one else waiting i line");
+			boolean needToSyncQuorum = true; 
+			mls = new MusicLockState(MusicLockState.LockStatus.UNLOCKED, lockHolder,needToSyncQuorum);
+			logger.info("In unlock: lock forcibly released for "+lockId);
 		}
 		getLockingServiceHandle().setLockState(lockName, mls);
 		return mls;

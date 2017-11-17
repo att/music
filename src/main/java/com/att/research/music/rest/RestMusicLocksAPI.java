@@ -71,7 +71,8 @@ public class RestMusicLocksAPI {
 	@DELETE
 	@Path("/release/{lockreference}")
 	public void unLock(@PathParam("lockreference") String lockId){
-		MusicCore.releaseLock(lockId);
+		boolean voluntaryRelease = true; 
+		MusicCore.releaseLock(lockId,voluntaryRelease);
 	}
 
 	@DELETE

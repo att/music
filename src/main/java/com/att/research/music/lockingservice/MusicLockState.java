@@ -35,6 +35,7 @@ import java.io.Serializable;
 public class MusicLockState implements Serializable{
 	public static enum LockStatus {UNLOCKED, BEING_LOCKED, LOCKED};//captures the state of the lock
 	LockStatus lockStatus;
+	boolean needToSyncQuorum = false;
 	String lockHolder;
 	long leasePeriod=Long.MAX_VALUE, leaseStartTime=-1;
 	
@@ -43,10 +44,20 @@ public class MusicLockState implements Serializable{
 		this.lockHolder = lockHolder; 
 	}
 	
+	public MusicLockState(LockStatus lockStatus, String lockHolder, boolean needToSyncQuorum){
+		this.lockStatus = lockStatus;
+		this.lockHolder = lockHolder; 
+		this.needToSyncQuorum = needToSyncQuorum;
+	}
+	
 	
 	public long getLeasePeriod() {
 		return leasePeriod;
 	}
+	public boolean isNeedToSyncQuorum() {
+		return needToSyncQuorum;
+	}
+
 
 
 	public void setLeasePeriod(long leasePeriod) {

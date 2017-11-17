@@ -47,7 +47,7 @@ public class RestMusicQAPI {
 	@Path("/keyspaces/{keyspace}/{qname}/rows")
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
-	public boolean updateQ(JsonUpdate updateObj, @PathParam("keyspace") String keyspace, @PathParam("tablename") String tablename, @Context UriInfo info) throws Exception{
+	public String updateQ(JsonUpdate updateObj, @PathParam("keyspace") String keyspace, @PathParam("tablename") String tablename, @Context UriInfo info) throws Exception{
 		return new RestMusicDataAPI().updateTable(updateObj, keyspace, tablename, info);
 	}
 
@@ -55,7 +55,7 @@ public class RestMusicQAPI {
 	@Path("/keyspaces/{keyspace}/{qname}/rows")
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
-	public boolean deleteFromQ(JsonDelete delObj, @PathParam("keyspace") String keyspace, @PathParam("tablename") String tablename, @Context UriInfo info) throws Exception{ 
+	public String deleteFromQ(JsonDelete delObj, @PathParam("keyspace") String keyspace, @PathParam("tablename") String tablename, @Context UriInfo info) throws Exception{ 
 		return new RestMusicDataAPI().deleteFromTable(delObj, keyspace, tablename, info);
 	}
 

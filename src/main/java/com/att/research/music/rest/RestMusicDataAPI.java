@@ -221,7 +221,7 @@ public class RestMusicDataAPI {
 			}
 
 			DataType colType = tableInfo.getColumn(entry.getKey()).getType();
-			String formattedValue = MusicCore.convertToSqlDataType(colType, valueObj);
+			String formattedValue = MusicCore.convertToCQLDataType(colType, valueObj);
 			valueString = valueString + formattedValue;
 			if(counter==valuesMap.size()-1){
 				fieldsString = fieldsString+")";
@@ -272,7 +272,7 @@ public class RestMusicDataAPI {
 	@Path("/keyspaces/{keyspace}/tables/{tablename}/rows")
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
-	public boolean updateTable(JsonUpdate updateObj, @PathParam("keyspace") String keyspace, @PathParam("tablename") String tablename, @Context UriInfo info) throws Exception{
+	public String updateTable(JsonUpdate updateObj, @PathParam("keyspace") String keyspace, @PathParam("tablename") String tablename, @Context UriInfo info) throws Exception{
 		//obtain the field value pairs of the update
 		Map<String,Object> valuesMap =  updateObj.getValues();
 		TableMetadata tableInfo = MusicCore.returnColumnMetadata(keyspace, tablename);
@@ -282,7 +282,7 @@ public class RestMusicDataAPI {
 		for (Map.Entry<String, Object> entry : valuesMap.entrySet()){
 			Object valueObj = entry.getValue();	
 			DataType colType = tableInfo.getColumn(entry.getKey()).getType();
-			String valueString = MusicCore.convertToSqlDataType(colType,valueObj);	
+			String valueString = MusicCore.convertToCQLDataType(colType,valueObj);	
 			fieldValueString = fieldValueString+ entry.getKey()+"="+valueString;
 			if(counter!=valuesMap.size()-1)
 				fieldValueString = fieldValueString+",";
@@ -322,7 +322,7 @@ public class RestMusicDataAPI {
 
 		String consistency = updateObj.getConsistencyInfo().get("type");
 
-		boolean operationResult = false;
+		String operationResult = "";
 
 		if(consistency.equalsIgnoreCase("eventual"))
 			operationResult = MusicCore.eventualPut(updateQuery);
@@ -341,7 +341,7 @@ public class RestMusicDataAPI {
 	@Path("/keyspaces/{keyspace}/tables/{tablename}/rows")
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
-	public boolean deleteFromTable(JsonDelete delObj, @PathParam("keyspace") String keyspace, @PathParam("tablename") String tablename, @Context UriInfo info) throws Exception{ 
+	public String deleteFromTable(JsonDelete delObj, @PathParam("keyspace") String keyspace, @PathParam("tablename") String tablename, @Context UriInfo info) throws Exception{ 
 		String columnString="";
 		int counter =0;
 		ArrayList<String> columnList = delObj.getColumns();
@@ -372,7 +372,6 @@ public class RestMusicDataAPI {
 			query =  "DELETE "+columnString+" FROM "+keyspace+"."+tablename+ ";"; 
 		}
 
-		boolean operationResult = false;
 		
 		//get the conditional, if any
 		Condition conditionInfo;
@@ -385,7 +384,8 @@ public class RestMusicDataAPI {
 
 
 		String consistency = delObj.getConsistencyInfo().get("type");
-		
+		String operationResult = "";
+
 		
 		if(consistency.equalsIgnoreCase("eventual"))
 			operationResult = MusicCore.eventualPut(query);
@@ -418,7 +418,7 @@ public class RestMusicDataAPI {
 			List<String> valueList = entry.getValue();
 			String indValue = valueList.get(0);
 			DataType colType = tableInfo.getColumn(entry.getKey()).getType();
-			String formattedValue = MusicCore.convertToSqlDataType(colType,indValue);	
+			String formattedValue = MusicCore.convertToCQLDataType(colType,indValue);	
 			if(counter ==0)
 				primaryKeyValue = primaryKeyValue+indValue;
 			rowIdString = rowIdString + keyName +"="+ formattedValue;
@@ -460,7 +460,7 @@ public class RestMusicDataAPI {
 			List<String> valueList = entry.getValue();
 			String indValue = valueList.get(0);
 			DataType colType = tableInfo.getColumn(entry.getKey()).getType();
-			String formattedValue = MusicCore.convertToSqlDataType(colType,indValue);	
+			String formattedValue = MusicCore.convertToCQLDataType(colType,indValue);	
 			primaryKey = primaryKey+indValue;
 			rowSpec = rowSpec + keyName +"="+ formattedValue;
 			if(counter!=rowParams.size()-1)

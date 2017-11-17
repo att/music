@@ -37,10 +37,12 @@ import com.att.research.music.datastore.MusicDataStore;
 import com.att.research.music.datastore.jsonobjects.JsonKeySpace;
 import com.att.research.music.lockingservice.MusicLockState;
 import com.att.research.music.lockingservice.MusicLockingService;
+import com.datastax.driver.core.ColumnDefinitions;
 import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.TableMetadata;
+import com.datastax.driver.core.ColumnDefinitions.Definition;
 import com.datastax.driver.core.exceptions.NoHostAvailableException;
 
 public class MusicCore {
@@ -59,8 +61,6 @@ public class MusicCore {
 		public boolean testCondition(){
 			//first generate the row
 			ResultSet results = quorumGet(selectQueryForTheRow);
-//			if(results.all().size() > 1)
-	//			return false; //there should only be one row
 			Row row = results.one();
 			return getDSHandle().doesRowSatisfyCondition(row, conditions);
 		}
@@ -98,26 +98,6 @@ public class MusicCore {
 		logger.debug("Time taken to acquire data store handle:"+(end-start));
 		return mDstoreHandle;
 	}        
-	
-	/*
-	public static void initializeNode() throws Exception{
-		logger.info("Initializing MUSIC node...");
-		String keyspaceName = MusicUtil.musicInternalKeySpaceName;
-		
-		String ksQuery ="CREATE KEYSPACE  IF NOT EXISTS "+ keyspaceName +" WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 3 };";
-		generalPut(ksQuery, "eventual");
-
-		PropertiesReader prop = new PropertiesReader();
-		
-		String[] allNodeIds = prop.getAllIds();
-		for(int i=0; i < allNodeIds.length;++i){
-			//create table to track eventual puts
-			String tabQuery = "CREATE TABLE IF NOT EXISTS "+keyspaceName+"."+MusicUtil.evPutsTable+allNodeIds[i]+" (key text PRIMARY KEY, status text);"; 
-			generalPut(tabQuery, "eventual");
-		}
-	}
-	*/
-
 
 	public static  String createLockReference(String lockName){
 		logger.info("Creating lock reference for lock name:"+lockName);
@@ -156,7 +136,6 @@ public class MusicCore {
 			long currentLockPeriod = System.currentTimeMillis() - mls.getLeaseStartTime();
 			long currentLeasePeriod = mls.getLeasePeriod();
 			if(currentLockPeriod > currentLeasePeriod){
-					//notify first
 					logger.info("Lock period "+currentLockPeriod+" has exceeded lease period "+currentLeasePeriod);
 					mls = releaseLock(lockId);
 			}
@@ -211,7 +190,7 @@ public class MusicCore {
 		MusicLockState mls = new MusicLockState(MusicLockState.LockStatus.BEING_LOCKED, lockHolder);
 		getLockingServiceHandle().setLockState(key, mls);
 		logger.debug("In acquire lock: Set lock state to being_locked");
-		
+			
 		mls = new MusicLockState(MusicLockState.LockStatus.LOCKED, lockHolder);
 		getLockingServiceHandle().setLockState(key, mls);
 		logger.debug("In acquire lock: Set lock state to locked");
@@ -242,43 +221,83 @@ public class MusicCore {
 		return true;
 	}
 	
-	public static  boolean eventualPut(String query){
+	public static  String eventualPut(String query){
 		getDSHandle().executePut(query, "eventual");
-		return true;
+		return true+"";
+	}
+	
+	private static void syncQuorum(String key){
+		
+		String[] splitString = key.split("\\.");
+		String keyspaceName = splitString[0];
+		String tableName = splitString[1];
+		String primaryKeyValue = splitString[2];
+		
+		//get the primary key d
+		TableMetadata tableInfo = returnColumnMetadata(keyspaceName, tableName);
+		String primaryKeyName = tableInfo.getPrimaryKey().get(0).getName();//we only support single primary key
+		DataType primaryKeyType = tableInfo.getPrimaryKey().get(0).getType();
+		String cqlFormattedPrimaryKeyValue = convertToCQLDataType(primaryKeyType, primaryKeyValue);
+		
+		//get the row of data from a quorum
+		String selectQuery =  "SELECT *  FROM "+keyspaceName+"."+tableName+ " WHERE "+primaryKeyName+"="+cqlFormattedPrimaryKeyValue+";"; 
+		ResultSet results = getDSHandle().executeCriticalGet(selectQuery);
+		
+		//write it back to a quorum
+		Row row = results.one();
+		ColumnDefinitions colInfo = row.getColumnDefinitions();
+		int totalColumns = colInfo.size();
+		int counter =1;
+		String fieldValueString="";
+		for (Definition definition : colInfo){
+			String colName = definition.getName();
+			if(colName.equals(primaryKeyName))
+				continue; 
+			DataType colType = definition.getType();
+			Object valueObj = getDSHandle().getColValue(row, colName, colType);	
+			String valueString = convertToCQLDataType(colType,valueObj);	
+			fieldValueString = fieldValueString+ colName+"="+valueString;
+			if(counter!=(totalColumns-1))
+				fieldValueString = fieldValueString+",";
+			counter = counter +1;
+		}
+		
+		String updateQuery =  "UPDATE "+keyspaceName+"."+tableName+" SET "+fieldValueString+" WHERE "+primaryKeyName+"="+cqlFormattedPrimaryKeyValue+";";
+		getDSHandle().executePut(updateQuery, "critical");
 	}
 
-	public static  boolean criticalPut(String keyspaceName, String tableName, String primaryKey, String query, String lockId, Condition conditionInfo){
+	public static  String criticalPut(String keyspaceName, String tableName, String primaryKey, String query, String lockId, Condition conditionInfo){
 		try {
 			MusicLockState mls = getLockingServiceHandle().getLockState(keyspaceName+"."+tableName+"."+primaryKey);
 			if(mls.getLockHolder().equals(lockId) == true){
 				if(conditionInfo != null)//check if condition is true
 					if(conditionInfo.testCondition() == false)
-						return false; 
+						return "false -- you are the lock holder but the condition is not true"; 
 				getDSHandle().executePut(query,"critical");
-				return true; 
+				return "true -- update performed"; 
 			}
 			else 
-				return false; 
+				return "false -- you are not the lock holder"; 
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		return false;
+		return "false -- something strange";
 	}
 
-	public static boolean atomicPut(String keyspaceName, String tableName, String primaryKey, String query, Condition conditionInfo){
+	public static String atomicPut(String keyspaceName, String tableName, String primaryKey, String query, Condition conditionInfo){
 		String key = keyspaceName+"."+tableName+"."+primaryKey;
 		String lockId = createLockReference(key);
 		long leasePeriod = MusicUtil.defaultLockLeasePeriod;
 		if(acquireLockWithLease(key, lockId, leasePeriod) == true){
 			logger.info("acquired lock with id "+lockId);
-			boolean result = criticalPut(keyspaceName, tableName, primaryKey, query, lockId,conditionInfo);
+			String result = criticalPut(keyspaceName, tableName, primaryKey, query, lockId,conditionInfo);
 			releaseLock(lockId);
 			return result;
 		}
 		else{
 			logger.info("unable to acquire lock, id "+lockId);
-			return false; 	
+			return "false--unable to obtain lock, try again later"; 	
 		}
 	}
 	
@@ -359,13 +378,13 @@ public class MusicCore {
 		return getDSHandle().returnColumnMetadata(keyspace, tablename);
 	}
 	
-	public static String convertToSqlDataType(DataType type,Object valueObj){
+	public static String convertToCQLDataType(DataType type,Object valueObj){
 		String value ="";
 		switch (type.getName()) {
 		case UUID:
 			value = valueObj+"";
 			break;
-		case TEXT:
+		case TEXT: case VARCHAR:
 			String valueString = valueObj+"";
 			valueString = valueString.replace("'", "''");
 			value = "'"+valueString+"'";
@@ -374,38 +393,13 @@ public class MusicCore {
 			Map<String,Object> otMap = (Map<String,Object>)valueObj;
 			value = "{"+jsonMaptoSqlString(otMap, ",")+"}";
 			break;
-		}
+		}	
 		default:
 			value = valueObj+"";
 			break;
 		}
 		return value;
 	}
-
-	public static Object convertToActualDataType(DataType colType,Object valueObj) throws Exception{
-		String valueObjString = valueObj+"";
-		switch(colType.getName()){
-		case UUID: 
-			return UUID.fromString(valueObjString);
-		case VARINT: 
-			return BigInteger.valueOf(Long.parseLong(valueObjString));
-		case BIGINT: 
-			return Long.parseLong(valueObjString);
-		case INT: 
-			return Integer.parseInt(valueObjString);
-		case FLOAT: 
-			return Float.parseFloat(valueObjString);	
-		case DOUBLE: 
-			return Double.parseDouble(valueObjString);
-		case BOOLEAN: 
-			return Boolean.parseBoolean(valueObjString);
-		case MAP: 
-			return (Map<String,Object>)valueObj;
-		default:
-			return valueObjString;
-		}
-	}
-
 	
 	//utility function to parse json map into sql like string
 	public static String jsonMaptoSqlString(Map<String, Object> jMap, String lineDelimiter){

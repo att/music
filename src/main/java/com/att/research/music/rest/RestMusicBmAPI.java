@@ -19,27 +19,20 @@ import javax.ws.rs.core.UriInfo;
 import org.apache.log4j.Logger;
 
 import com.att.research.music.datastore.jsonobjects.JsonInsert;
+import com.att.research.music.datastore.jsonobjects.JsonUpdate;
 import com.att.research.music.main.MusicCore;
+import com.att.research.music.main.MusicUtil;
 import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.TableMetadata;
 
 /*
- *  API to benchmark MUSIC
+ *  These are functions created purely for benchmarking purposes. 
  * 
  */
 @Path("/benchmarks/")
 public class RestMusicBmAPI {
 	final static Logger logger = Logger.getLogger(RestMusicBmAPI.class);
-
-	//music_ev_put
-	//music_atomic_put
-	//zk_atomic_put
-	//music_ev_get
-	//music_atomic_get
-	//zk_atomic_get
-
-	
 
 	//pure zk calls...
 	@POST
@@ -53,7 +46,11 @@ public class RestMusicBmAPI {
 	@Path("/purezk/{name}")
 	@Consumes(MediaType.APPLICATION_JSON)
 	public void pureZkUpdate(JsonInsert insObj,@PathParam("name") String nodeName) throws Exception{
+		logger.info("--------------Zk normal update-------------------------");
+		long start = System.currentTimeMillis();
 		MusicCore.pureZkWrite(nodeName, insObj.serialize());
+		long end = System.currentTimeMillis();
+		logger.info("Total time taken for Zk normal update:"+(end-start)+" ms");
 	}
 
 	@GET
@@ -62,4 +59,41 @@ public class RestMusicBmAPI {
 	public byte[] pureZkGet(@PathParam("name") String nodeName) throws Exception{
 		return MusicCore.pureZkRead(nodeName);
 	}
+	
+	@PUT
+	@Path("/purezk/atomic/{lockname}/{name}")
+	@Consumes(MediaType.APPLICATION_JSON)
+	public void pureZkAtomicPut(JsonInsert insObj,@PathParam("lockname") String lockName,@PathParam("name") String nodeName) throws Exception{
+		logger.info("--------------Zk atomic update-------------------------");
+		long start = System.currentTimeMillis();
+		String lockId = MusicCore.createLockReference(lockName);
+		long leasePeriod = MusicUtil.defaultLockLeasePeriod;
+		if(MusicCore.acquireLockWithLease(lockName, lockId, leasePeriod) == true){
+			logger.info("acquired lock with id "+lockId);
+			MusicCore.pureZkWrite(nodeName, insObj.serialize());
+			boolean voluntaryRelease = true; 
+			MusicCore.releaseLock(lockId,voluntaryRelease);
+		}
+		long end = System.currentTimeMillis();
+		logger.info("Total time taken for Zk atomic update:"+(end-start)+" ms");
+	}
+
+	@GET
+	@Path("/purezk/atomic/{lockname}/{name}")
+	@Consumes(MediaType.APPLICATION_JSON)
+	public void pureZkAtomicGet(JsonInsert insObj,@PathParam("lockname") String lockName,@PathParam("name") String nodeName) throws Exception{
+		logger.info("--------------Zk atomic read-------------------------");
+		long start = System.currentTimeMillis();
+		String lockId = MusicCore.createLockReference(lockName);
+		long leasePeriod = MusicUtil.defaultLockLeasePeriod;
+		if(MusicCore.acquireLockWithLease(lockName, lockId, leasePeriod) == true){
+			logger.info("acquired lock with id "+lockId);
+			MusicCore.pureZkRead(nodeName);
+			boolean voluntaryRelease = true; 
+			MusicCore.releaseLock(lockId,voluntaryRelease);
+		}
+		long end = System.currentTimeMillis();
+		logger.info("Total time taken for Zk atomic read:"+(end-start)+" ms");
+	}
+
 }

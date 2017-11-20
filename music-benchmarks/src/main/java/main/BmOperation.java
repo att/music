@@ -33,59 +33,72 @@ public class BmOperation {
 		musicHandle = new MusicHandle(ipList,repFactor);		
 	}
 
+	public BmOperation(String operationType, String parameter, String[] ipList, int repFactor){
+		this.operationType = operationType;
+		this.parameter = parameter;
+		this.ipList = ipList;
+		musicHandle = new MusicHandle(ipList,repFactor);		
+	}
+	
 	public void initialize(int numEntries){
 		musicHandle.initialize(numEntries);
 	}
 
 	public void execute(int threadNum){//thread num is used to exclusively identify the threads/requests
 		musicHandle.rowId = "emp"+threadNum;
-		if(operationType.equals("cassa_ev_put")){
-			long start = System.currentTimeMillis();
-			musicHandle.cassaEvPut();
-			System.out.println("BmOperation, execute:"+(System.currentTimeMillis() - start));
-		}else
-			if(operationType.equals("music_ev_put")){
+		
+        switch (operationType) {
+        case "music_ev_put":
+			musicHandle.musicEvPut();
+			break;
+        case "music_atomic_put":
+			musicHandle.musicAtomicPut();
+			break;
+        case "music_ev_get":
+			musicHandle.musicEvGet();
+			break;
+        case "music_atomic_get":
+			musicHandle.musicAtomicGet();
+			break;
+        case "zk_normal_put":
+        	musicHandle.zkNormalPut();
+			break;
+        case "zk_atomic_put":
+        	musicHandle.zkAtomicPut();
+			break;
+        case "zk_atomic_get":
+        	musicHandle.zkAtomicGet();
+			break;
+        case "music_mix_put":
+			int propEvPuts = 100/Integer.parseInt(parameter);
+			if(threadNum % propEvPuts == 0)
 				musicHandle.musicEvPut();
-			}else
-				if(operationType.equals("cassa_quorum_put")){
-					musicHandle.cassaQuorumPut();
-				}else
-					if(operationType.equals("music_critical_put")){
-						musicHandle.musicCriticalPut();
-					}else
-						if(operationType.equals("music_atomic_put")){
-							musicHandle.musicAtomicPut();
-						}else
-							if(operationType.equals("zk_critical_put")){
-								musicHandle.zkCriticalPut();
-							}else
-								if(operationType.equals("music_mix_put")){	//parameter field relevant only for this option
-									/*
-									 * parameter in the BmOperation interpreted as % eventual puts
-									 * and we use the threadNum to determine if the operation should be eventual or 
-									 * critical based on simple modulo arithmetic. 
-									 */
-									int propEvPuts = 100/Integer.parseInt(parameter);
-									if(threadNum % propEvPuts == 0)
-										musicHandle.musicEvPut();
-									else
-										musicHandle.musicCriticalPut();
-								}
-		//this option is causing bugs...mainly in closing out the thread. Not really needed now. 
-		/*	if(operationType.equals("cassa_direct_put")){
-			cassaHandle.update();			
-		}else */
-		//		cassaHandle.close();
+			else
+				musicHandle.musicAtomicPut();
+			break;
+        case "zk_mix_put":
+			propEvPuts = 100/Integer.parseInt(parameter);
+			if(threadNum % propEvPuts == 0)
+				musicHandle.zkNormalPut();
+			else
+				musicHandle.zkAtomicPut();
+			break;
+        default:
+        	System.out.println("No such operation exists");
+        }
 	}
 
 	public static void main(String[] args){
-		BmOperation opHandle = new BmOperation("/Users/bharathb/AttWork/Music/keys/apache-jmeter-3.0/bin/music_bm.properties");
-		opHandle.initialize(10);
-		opHandle.execute(5);
-		opHandle.execute(4);
-		opHandle.execute(3);
-		opHandle.execute(2);
+		String[] ipList = new String[1];
+		ipList[0] = "localhost";
+//		BmOperation opHandle = new BmOperation("music_ev_put", "-1", ipList, 1);
+//		BmOperation opHandle = new BmOperation("music_atomic_put", "-1", ipList, 1);
+//		BmOperation opHandle = new BmOperation("zk_normal_put", "-1", ipList, 1);
+		BmOperation opHandle = new BmOperation("zk_atomic_put", "-1", ipList, 1);
 
+		int threadNum =1;	
+	//	opHandle.initialize(10);
+		opHandle.execute(threadNum);
 	}
 
 }

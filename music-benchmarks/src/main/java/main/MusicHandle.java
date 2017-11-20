@@ -7,6 +7,7 @@ import javax.ws.rs.core.MediaType;
 
 import jsonAdapters.JsonInsert;
 import jsonAdapters.JsonKeySpace;
+import jsonAdapters.JsonSelect;
 import jsonAdapters.JsonTable;
 
 import com.sun.jersey.api.client.Client;
@@ -94,7 +95,7 @@ public class MusicHandle {
 
 
 		WebResource webResource = client
-				.resource(getMusicNodeURL()+"/purezk/bmObject");
+				.resource(getMusicNodeURL()+"/benchmarks/purezk/bmObject");
 
 		ClientResponse response = webResource.accept("application/json").header("Connection", "close").type("application/json").post(ClientResponse.class, jIns);
 
@@ -214,94 +215,9 @@ public class MusicHandle {
 
 
 	
-	private  Map<String,Object> readSpecificRow(String keyspaceName, String tableName,String keyName, String keyValue){
-		WebResource webResource = client
-				.resource(getMusicNodeURL()+"/keyspaces/"+keyspaceName+"/tables/"+tableName+"/rows?"+keyName+"="+keyValue);
-
-		ClientResponse response = webResource.header("Connection", "close").accept("application/json").get(ClientResponse.class);
-
-		if (response.getStatus() < 200 || response.getStatus() > 299) 
-			throw new RuntimeException("Failed : HTTP error code : "+ response.getStatus());
-		
-		Map<String,Object> output = response.getEntity(Map.class);
-		return output;	
-	}
 	
-	private  Map<String,Object> readAllRows(String keyspaceName, String tableName){
-		WebResource webResource = client
-				.resource(getMusicNodeURL()+"/keyspaces/"+keyspaceName+"/tables/"+tableName+"/rows");
-
-		ClientResponse response = webResource.header("Connection", "close").accept("application/json").get(ClientResponse.class);
-
-		if (response.getStatus() < 200 || response.getStatus() > 299) 
-			throw new RuntimeException("Failed : HTTP error code : "+ response.getStatus());
-		
-		Map<String,Object> output = response.getEntity(Map.class);
-		return output;	
-	}
-
-	private void dropTable(String keyspaceName, String tableName){
-		Map<String,String> consistencyInfo= new HashMap<String, String>();
-		consistencyInfo.put("type", "eventual");
-
-		JsonTable jsonTb = new JsonTable();
-		jsonTb.setConsistencyInfo(consistencyInfo);
-
-		WebResource webResource = client
-				.resource(getMusicNodeURL()+"/keyspaces/"+keyspaceName+"/tables/"+tableName);
-
-		ClientResponse response = webResource.header("Connection", "close").type("application/json")
-				.delete(ClientResponse.class, jsonTb);
-
-		if (response.getStatus() < 200 || response.getStatus() > 299) 
-			throw new RuntimeException("Failed : HTTP error code : "+ response.getStatus());
-	}
-
-	private void dropKeySpace(String keyspaceName){
-		Map<String,String> consistencyInfo= new HashMap<String, String>();
-		consistencyInfo.put("type", "eventual");
-
-		JsonKeySpace jsonKp = new JsonKeySpace();
-		jsonKp.setConsistencyInfo(consistencyInfo);
-
-		WebResource webResource = client
-				.resource(getMusicNodeURL()+"/keyspaces/"+keyspaceName);
-
-		ClientResponse response = webResource.header("Connection", "close").type("application/json")
-				.delete(ClientResponse.class, jsonKp);
-
-		if (response.getStatus() < 200 || response.getStatus() > 299) 
-			throw new RuntimeException("Failed : HTTP error code : "+ response.getStatus());
-	}
 	
 	//the actual bm operations
-	public void cassaEvPut(){	
-		long start = System.currentTimeMillis();
-		Map<String,Object> values = new HashMap<String,Object>();
-		values.put("job","restCassa"+System.currentTimeMillis());
-
-		Map<String,String> consistencyInfo= new HashMap<String, String>();
-		consistencyInfo.put("type", "eventual");
-
-		JsonInsert jIns = new JsonInsert();
-		jIns.setValues(values);
-		jIns.setConsistencyInfo(consistencyInfo);
-
-		String url = getMusicNodeURL()+"/cassa/keyspaces/"+bmKeySpace+"/tables/"+bmTable+"/rows?name="+rowId;
-		WebResource webResource = client.resource(url);
-
-		long startInt = System.currentTimeMillis();
-
-		ClientResponse response = webResource.accept("application/json").header("Connection", "close")
-				.type("application/json").put(ClientResponse.class, jIns);
-		
-    	System.out.println("MusicHandle, web resource accept call:"+(System.currentTimeMillis() - startInt));
-
-
-		if (response.getStatus() < 200 || response.getStatus() > 299) 
-			throw new RuntimeException("Failed : HTTP error code : "+ response.getStatus()+"url:"+url);
-    	System.out.println("MusicHandle, cassaEvput:"+(System.currentTimeMillis() - start));
-	}
 	
 	public void musicEvPut(){
 		Map<String,Object> values = new HashMap<String,Object>();
@@ -325,27 +241,6 @@ public class MusicHandle {
 			throw new RuntimeException("Failed : HTTP error code : "+ response.getStatus()+"url:"+url);	
 	}
 
-	public void cassaQuorumPut(){
-		Map<String,Object> values = new HashMap<String,Object>();
-		values.put("job","cassaQuorumPut"+System.currentTimeMillis());
-
-		Map<String,String> consistencyInfo= new HashMap<String, String>();
-		consistencyInfo.put("type", "atomic");
-
-		JsonInsert jIns = new JsonInsert();
-		jIns.setValues(values);
-		jIns.setConsistencyInfo(consistencyInfo);
-
-		String url = getMusicNodeURL()+"/cassa/keyspaces/"+bmKeySpace+"/tables/"+bmTable+"/rows?name="+rowId;
-		WebResource webResource = client
-				.resource(url);
-
-		ClientResponse response = webResource.accept("application/json").header("Connection", "close")
-				.type("application/json").put(ClientResponse.class, jIns);
-
-		if (response.getStatus() < 200 || response.getStatus() > 299) 
-			throw new RuntimeException("Failed : HTTP error code : "+ response.getStatus()+"url:"+url);	
-	}
 
 	
 	public void musicCriticalPut(){
@@ -402,7 +297,122 @@ public class MusicHandle {
 		if (response.getStatus() < 200 || response.getStatus() > 299) 
 			throw new RuntimeException("Failed : HTTP error code : "+ response.getStatus()+"url:"+url);
 	}
+	
+	public void musicEvGet(){
+		String url = getMusicNodeURL()+"/keyspaces/"+bmKeySpace+"/tables/"+bmTable+"/rows?name="+rowId;
+		WebResource webResource = client
+				.resource(url);
 
+		ClientResponse response = webResource.header("Connection", "close").accept("application/json").get(ClientResponse.class);
+
+		if (response.getStatus() < 200 || response.getStatus() > 299) 
+			throw new RuntimeException("Failed : HTTP error code : "+ response.getStatus());
+		
+		Map<String,Object> output = response.getEntity(Map.class);
+	}
+
+
+	public void musicAtomicGet(){
+		Map<String,String> consistencyInfo= new HashMap<String, String>();
+		consistencyInfo.put("type", "atomic");
+
+		JsonSelect jSel = new JsonSelect();
+		jSel.setConsistencyInfo(consistencyInfo);
+		String url = getMusicNodeURL()+"/keyspaces/"+bmKeySpace+"/tables/"+bmTable+"/rows/criticalget?name="+rowId;
+		WebResource webResource = client
+				.resource(url);
+
+		ClientResponse response = webResource.accept("application/json").header("Connection", "close")
+				.type("application/json").put(ClientResponse.class, jSel);
+
+		if (response.getStatus() < 200 || response.getStatus() > 299) 
+			throw new RuntimeException("Failed : HTTP error code : "+ response.getStatus()+"url:"+url);
+
+	}
+
+	public void zkNormalPut(){
+		Map<String,Object> values = new HashMap<String,Object>();
+		values.put("name",rowId);
+		values.put("job","zkCriticalPut"+System.currentTimeMillis());
+
+		Map<String,String> consistencyInfo= new HashMap<String, String>();
+		consistencyInfo.put("type", "critical");
+		consistencyInfo.put("lockId", "no-lock");
+
+		JsonInsert jIns = new JsonInsert();
+		jIns.setValues(values);
+		jIns.setConsistencyInfo(consistencyInfo);
+		String url = getMusicNodeURL()+"/benchmarks/purezk/bmObject";
+		WebResource webResource = client
+				.resource(url);
+
+		ClientResponse response = webResource.accept("application/json").header("Connection", "close")
+				.type("application/json").put(ClientResponse.class, jIns);
+
+		if (response.getStatus() < 200 || response.getStatus() > 299) 
+			throw new RuntimeException("Failed : HTTP error code : "+ response.getStatus()+"url:"+url);
+
+	}
+
+	public void zkAtomicPut(){
+		/*create lock for the candidate. The music API dictates that
+		 * the lock name must be of the form keyspacename.tableName.primaryKeyName
+		 * */
+
+		String lockName = bmKeySpace+"."+bmTable+"."+rowId;
+		String url = getMusicNodeURL()+"/benchmarks/purezk/atomic/"+lockName+"/bmObject";
+
+		Map<String,Object> values = new HashMap<String,Object>();
+		values.put("name",rowId);
+		values.put("job","zkAtomicPut"+System.currentTimeMillis());
+
+		Map<String,String> consistencyInfo= new HashMap<String, String>();
+		consistencyInfo.put("type", "atomic");
+		consistencyInfo.put("lockId", "no-lock");
+
+		JsonInsert jIns = new JsonInsert();
+		jIns.setValues(values);
+		jIns.setConsistencyInfo(consistencyInfo);
+		WebResource webResource = client
+				.resource(url);
+
+		ClientResponse response = webResource.accept("application/json").header("Connection", "close")
+				.type("application/json").put(ClientResponse.class, jIns);
+
+		if (response.getStatus() < 200 || response.getStatus() > 299) 
+			throw new RuntimeException("Failed : HTTP error code : "+ response.getStatus()+"url:"+url);
+	}	
+
+	public void zkAtomicGet(){
+		/*create lock for the candidate. The music API dictates that
+		 * the lock name must be of the form keyspacename.tableName.primaryKeyName
+		 * */
+
+		String lockName = bmKeySpace+"."+bmTable+"."+rowId;
+		String url = getMusicNodeURL()+"/benchmarks/purezk/atomic/"+lockName+"/bmObject";
+
+		Map<String,Object> values = new HashMap<String,Object>();
+		values.put("name",rowId);
+		values.put("job","zkAtomicPut"+System.currentTimeMillis());
+
+		Map<String,String> consistencyInfo= new HashMap<String, String>();
+		consistencyInfo.put("type", "atomic");
+		consistencyInfo.put("lockId", "no-lock");
+
+		JsonInsert jIns = new JsonInsert();
+		jIns.setValues(values);
+		jIns.setConsistencyInfo(consistencyInfo);
+		WebResource webResource = client
+				.resource(url);
+		
+		
+		ClientResponse response = webResource.accept("application/json").header("Connection", "close")
+				.type("application/json").put(ClientResponse.class, jIns);
+
+
+		if (response.getStatus() < 200 || response.getStatus() > 299) 
+			throw new RuntimeException("Failed : HTTP error code : "+ response.getStatus()+"url:"+url);
+	}	
 
 	public void zkCriticalPut(){
 		/*create lock for the candidate. The music API dictates that
@@ -413,27 +423,8 @@ public class MusicHandle {
 		String lockId = createLock(lockName);
 		while(acquireLock(lockId) != true);
 		
+		zkNormalPut();
 		//update candidate entry if you have the lock
-		Map<String,Object> values = new HashMap<String,Object>();
-		values.put("name",rowId);
-		values.put("job","zkCriticalPut"+System.currentTimeMillis());
-
-		Map<String,String> consistencyInfo= new HashMap<String, String>();
-		consistencyInfo.put("type", "atomic");
-		consistencyInfo.put("lockId", lockId);
-
-		JsonInsert jIns = new JsonInsert();
-		jIns.setValues(values);
-		jIns.setConsistencyInfo(consistencyInfo);
-		String url = getMusicNodeURL()+"/purezk/bmObject";
-		WebResource webResource = client
-				.resource(url);
-
-		ClientResponse response = webResource.accept("application/json").header("Connection", "close")
-				.type("application/json").put(ClientResponse.class, jIns);
-
-		if (response.getStatus() < 200 || response.getStatus() > 299) 
-			throw new RuntimeException("Failed : HTTP error code : "+ response.getStatus()+"url:"+url);
 
 		//release lock now that the operation is done
 		unlock(lockId);

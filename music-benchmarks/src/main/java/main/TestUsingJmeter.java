@@ -60,7 +60,7 @@ public class TestUsingJmeter extends AbstractJavaSamplerClient implements Serial
     
     public static void main(String[] args){   	
 		//read the file and populate parameters (third line is ipList)
-    	System.out.println("Using Music jmeter benchmark version 1.2.0..");
+    	System.out.println("Using Music jmeter benchmark version 1.3.0..");
     	String configFile = args[0];
     	int numEntries = Integer.parseInt(args[1]);
     	BmOperation bmoHandle = new BmOperation(configFile);

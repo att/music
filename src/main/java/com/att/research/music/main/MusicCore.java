@@ -73,7 +73,7 @@ public class MusicCore {
 			mLockHandle = new MusicLockingService();
 		}
 		long end = System.currentTimeMillis();
-		logger.debug("Time taken to acquire lock store handle:"+(end-start));
+		logger.debug("Time taken to acquire lock store handle:"+(end-start)+" ms");
 		return mLockHandle;
 	}
 
@@ -84,7 +84,7 @@ public class MusicCore {
 			mDstoreHandle = new MusicDataStore(remoteIp);
 		}
 		long end = System.currentTimeMillis();
-		logger.debug("Time taken to acquire data store handle:"+(end-start));
+		logger.debug("Time taken to acquire data store handle:"+(end-start)+" ms");
 		return mDstoreHandle;
 	}                                                                            
 
@@ -95,13 +95,16 @@ public class MusicCore {
 			mDstoreHandle = new MusicDataStore();
 		}
 		long end = System.currentTimeMillis();
-		logger.debug("Time taken to acquire data store handle:"+(end-start));
+		logger.debug("Time taken to acquire data store handle:"+(end-start)+" ms");
 		return mDstoreHandle;
 	}        
 
 	public static  String createLockReference(String lockName){
 		logger.info("Creating lock reference for lock name:"+lockName);
+		long start = System.currentTimeMillis();
 		String lockId = getLockingServiceHandle().createLockId("/"+lockName);
+		long end = System.currentTimeMillis();
+		logger.info("Time taken to create lock reference:"+(end-start)+" ms");
 		return lockId;
 	}
 
@@ -114,22 +117,26 @@ public class MusicCore {
 	}
 	
 	public static MusicLockState getMusicLockState(String key){
-	try{
-		String[] splitString = key.split("\\.");
-		String keyspaceName = splitString[0];
-		String tableName = splitString[1];
-		String primaryKey = splitString[2];
-		MusicLockState mls;
-		String lockName = keyspaceName+"."+tableName+"."+primaryKey;
-		mls = getLockingServiceHandle().getLockState(lockName);
-		return mls;
-	}catch (NullPointerException e) {
-		logger.debug("No lock object exists as of now..");
-	}
-		return null;
+		long start = System.currentTimeMillis();
+		try{
+			String[] splitString = key.split("\\.");
+			String keyspaceName = splitString[0];
+			String tableName = splitString[1];
+			String primaryKey = splitString[2];
+			MusicLockState mls;
+			String lockName = keyspaceName+"."+tableName+"."+primaryKey;
+			mls = getLockingServiceHandle().getLockState(lockName);
+			long end = System.currentTimeMillis();
+			logger.debug("Time taken to get lock state:"+(end-start)+" ms");
+			return mls;
+		}catch (NullPointerException e) {
+			logger.debug("No lock object exists as of now..");
+		}
+			return null;
 	}
 
 	public static boolean acquireLockWithLease(String key, String lockId, long leasePeriod){	
+		long start = System.currentTimeMillis();
 		/* check if the current lock has exceeded its lease and if yes, release that lock*/	
 		MusicLockState mls = getMusicLockState(key);
 		if(mls != null){
@@ -153,9 +160,14 @@ public class MusicCore {
 				mls.setLeasePeriod(leasePeriod);
 				getLockingServiceHandle().setLockState(key, mls);			
 			}		
+			long end = System.currentTimeMillis();
+			logger.info("Time taken to acquire leased lock:"+(end-start)+" ms");
 			return true;		
-		}else
+		}else{
+			long end = System.currentTimeMillis();
+			logger.info("Time taken to acquire leased lock:"+(end-start)+" ms");
 			return false; 
+		}
 	}
 
 	public static  boolean  acquireLock(String key, String lockId){
@@ -221,7 +233,10 @@ public class MusicCore {
 	}
 	
 	public static  String eventualPut(String query){
+		long start = System.currentTimeMillis();
 		getDSHandle().executePut(query, "eventual");
+		long end = System.currentTimeMillis();
+		logger.info("Time taken for the actual eventual put:"+(end-start)+" ms");
 		return true+"";
 	}
 	
@@ -266,6 +281,7 @@ public class MusicCore {
 	}
 
 	public static  String criticalPut(String keyspaceName, String tableName, String primaryKey, String query, String lockId, Condition conditionInfo){
+		long start = System.currentTimeMillis();
 		try {
 			MusicLockState mls = getLockingServiceHandle().getLockState(keyspaceName+"."+tableName+"."+primaryKey);
 			if(mls.getLockHolder().equals(lockId) == true){
@@ -273,6 +289,8 @@ public class MusicCore {
 					if(conditionInfo.testCondition() == false)
 						return "false -- you are the lock holder but the condition is not true"; 
 				getDSHandle().executePut(query,"critical");
+				long end = System.currentTimeMillis();
+				logger.info("Time taken for the critical put:"+(end-start)+" ms");
 				return "true -- update performed"; 
 			}
 			else 
@@ -285,6 +303,7 @@ public class MusicCore {
 	}
 
 	public static String atomicPut(String keyspaceName, String tableName, String primaryKey, String query, Condition conditionInfo){
+		long start = System.currentTimeMillis();
 		String key = keyspaceName+"."+tableName+"."+primaryKey;
 		String lockId = createLockReference(key);
 		long leasePeriod = MusicUtil.defaultLockLeasePeriod;
@@ -293,6 +312,8 @@ public class MusicCore {
 			String result = criticalPut(keyspaceName, tableName, primaryKey, query, lockId,conditionInfo);
 			boolean voluntaryRelease = true; 
 			releaseLock(lockId,voluntaryRelease);
+			long end = System.currentTimeMillis();
+			logger.info("Time taken for the atomic put:"+(end-start)+" ms");
 			return result;
 		}
 		else{
@@ -301,7 +322,24 @@ public class MusicCore {
 		}
 	}
 	
-	
+
+	public static ResultSet atomicGet(String keyspaceName, String tableName, String primaryKey, String query){
+		String key = keyspaceName+"."+tableName+"."+primaryKey;
+		String lockId = createLockReference(key);
+		long leasePeriod = MusicUtil.defaultLockLeasePeriod;
+		if(acquireLockWithLease(key, lockId, leasePeriod) == true){
+			logger.info("acquired lock with id "+lockId);
+			ResultSet result = criticalGet(keyspaceName, tableName, primaryKey, query, lockId);
+			boolean voluntaryRelease = true; 
+			releaseLock(lockId,voluntaryRelease);
+			return result;
+		}
+		else{
+			logger.info("unable to acquire lock, id "+lockId);
+			return null; 	
+		}
+	}
+
 	public static  ResultSet criticalGet(String keyspaceName, String tableName, String primaryKey, String query, String lockId){
 		ResultSet results = null;
 		try {
@@ -346,6 +384,7 @@ public class MusicCore {
 	}
 	
 	public static  MusicLockState  releaseLock(String lockId, boolean voluntaryRelease){
+		long start = System.currentTimeMillis();
 		getLockingServiceHandle().unlockAndDeleteId(lockId);
 		String lockName = getLockNameFromId(lockId);
 		MusicLockState mls;
@@ -360,6 +399,8 @@ public class MusicCore {
 			logger.info("In unlock: lock forcibly released for "+lockId);
 		}
 		getLockingServiceHandle().setLockState(lockName, mls);
+		long end = System.currentTimeMillis();			
+		logger.info("Time taken to release lock:"+(end-start)+" ms");
 		return mls;
 	}
 
@@ -425,10 +466,17 @@ public class MusicCore {
 	}
 	
 	public static void pureZkWrite(String nodeName, byte[] data){
+		long start = System.currentTimeMillis();
 		getLockingServiceHandle().getzkLockHandle().setNodeData(nodeName, data);
+		long end = System.currentTimeMillis();
+		logger.info("Time taken for the actual zk put:"+(end-start)+" ms");
 	}
 
 	public static byte[] pureZkRead(String nodeName){
-		return getLockingServiceHandle().getzkLockHandle().getNodeData(nodeName);
+		long start = System.currentTimeMillis();
+		byte[] data = getLockingServiceHandle().getzkLockHandle().getNodeData(nodeName);
+		long end = System.currentTimeMillis();
+		logger.info("Time taken for the actual zk put:"+(end-start)+" ms");
+		return data;
 	}
 }

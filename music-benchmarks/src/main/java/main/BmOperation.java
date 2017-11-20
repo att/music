@@ -91,14 +91,17 @@ public class BmOperation {
 	public static void main(String[] args){
 		String[] ipList = new String[1];
 		ipList[0] = "localhost";
+		System.out.println(System.currentTimeMillis());
+		System.out.println("31536000000");
 //		BmOperation opHandle = new BmOperation("music_ev_put", "-1", ipList, 1);
 //		BmOperation opHandle = new BmOperation("music_atomic_put", "-1", ipList, 1);
 //		BmOperation opHandle = new BmOperation("zk_normal_put", "-1", ipList, 1);
-		BmOperation opHandle = new BmOperation("zk_atomic_put", "-1", ipList, 1);
+//		BmOperation opHandle = new BmOperation("zk_atomic_put", "-1", ipList, 1);
 
 		int threadNum =1;	
 	//	opHandle.initialize(10);
-		opHandle.execute(threadNum);
+		
+//		opHandle.execute(threadNum);
 	}
 
 }

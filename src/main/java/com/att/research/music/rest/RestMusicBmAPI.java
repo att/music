@@ -22,6 +22,8 @@ import com.att.research.music.datastore.jsonobjects.JsonInsert;
 import com.att.research.music.datastore.jsonobjects.JsonUpdate;
 import com.att.research.music.main.MusicCore;
 import com.att.research.music.main.MusicUtil;
+import com.att.research.music.main.ResultType;
+import com.att.research.music.main.ReturnType;
 import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.TableMetadata;
@@ -68,12 +70,16 @@ public class RestMusicBmAPI {
 		long start = System.currentTimeMillis();
 		String lockId = MusicCore.createLockReference(lockName);
 		long leasePeriod = MusicUtil.defaultLockLeasePeriod;
-		if(MusicCore.acquireLockWithLease(lockName, lockId, leasePeriod) == true){
+		ReturnType lockAcqResult = MusicCore.acquireLockWithLease(lockName, lockId, leasePeriod);
+		if(lockAcqResult.getResult().equals(ResultType.SUCCESS)){
 			logger.info("acquired lock with id "+lockId);
 			MusicCore.pureZkWrite(nodeName, insObj.serialize());
 			boolean voluntaryRelease = true; 
 			MusicCore.releaseLock(lockId,voluntaryRelease);
+		}else{
+			MusicCore.destroyLockRef(lockId);
 		}
+		
 		long end = System.currentTimeMillis();
 		logger.info("Total time taken for Zk atomic update:"+(end-start)+" ms");
 	}
@@ -86,12 +92,16 @@ public class RestMusicBmAPI {
 		long start = System.currentTimeMillis();
 		String lockId = MusicCore.createLockReference(lockName);
 		long leasePeriod = MusicUtil.defaultLockLeasePeriod;
-		if(MusicCore.acquireLockWithLease(lockName, lockId, leasePeriod) == true){
+		ReturnType lockAcqResult = MusicCore.acquireLockWithLease(lockName, lockId, leasePeriod);
+		if(lockAcqResult.getResult().equals(ResultType.SUCCESS)){
 			logger.info("acquired lock with id "+lockId);
 			MusicCore.pureZkRead(nodeName);
 			boolean voluntaryRelease = true; 
 			MusicCore.releaseLock(lockId,voluntaryRelease);
+		}else{
+			MusicCore.destroyLockRef(lockId);
 		}
+
 		long end = System.currentTimeMillis();
 		logger.info("Total time taken for Zk atomic read:"+(end-start)+" ms");
 	}

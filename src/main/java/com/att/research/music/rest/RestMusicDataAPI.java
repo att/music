@@ -51,6 +51,7 @@ import com.att.research.music.datastore.jsonobjects.JsonUpdate;
 import com.att.research.music.main.MusicCore;
 import com.att.research.music.main.MusicCore.Condition;
 import com.att.research.music.main.MusicUtil;
+import com.att.research.music.main.ReturnType;
 import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.TableMetadata;
@@ -325,7 +326,7 @@ public class RestMusicDataAPI {
 		}
 
 
-		String operationResult = "";
+		ReturnType operationResult=null;
 		long jsonParseTime = System.currentTimeMillis();
 		logger.info("Time taken for json parsing:"+(jsonParseTime-startTime)+" ms");
 
@@ -340,7 +341,7 @@ public class RestMusicDataAPI {
 		}
 		long endTime = System.currentTimeMillis();
 		logger.info("Total time taken for Music "+consistency+" update:"+(endTime-startTime)+" ms");
-		return operationResult;
+		return operationResult.toString();
 	}
 	
 
@@ -391,19 +392,18 @@ public class RestMusicDataAPI {
 
 
 		String consistency = delObj.getConsistencyInfo().get("type");
-		String operationResult = "";
+		ReturnType operationResult=null;
 
-		
 		if(consistency.equalsIgnoreCase("eventual"))
 			operationResult = MusicCore.eventualPut(query);
 		else if(consistency.equalsIgnoreCase("critical")){
 			String lockId = delObj.getConsistencyInfo().get("lockId");
-			operationResult = MusicCore.criticalPut(keyspace,tablename,primaryKeyValue, query, lockId, conditionInfo);
+			operationResult = MusicCore.criticalPut(keyspace,tablename,rowId.primarKeyValue, query, lockId, conditionInfo);
 		}
 		else if(consistency.equalsIgnoreCase("atomic")){
-			operationResult = MusicCore.atomicPut(keyspace,tablename,primaryKeyValue, query, conditionInfo);
+			operationResult = MusicCore.atomicPut(keyspace,tablename,rowId.primarKeyValue, query,conditionInfo);
 		}
-		return operationResult;
+		return operationResult.toString();
 	}
 
 	@DELETE

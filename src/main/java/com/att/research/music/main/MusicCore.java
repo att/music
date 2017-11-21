@@ -22,6 +22,8 @@ stated inside of the file.
  */
 package com.att.research.music.main;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -37,6 +39,7 @@ import com.att.research.music.datastore.MusicDataStore;
 import com.att.research.music.datastore.jsonobjects.JsonKeySpace;
 import com.att.research.music.lockingservice.MusicLockState;
 import com.att.research.music.lockingservice.MusicLockingService;
+import com.att.research.music.lockingservice.MusicLockState.LockStatus;
 import com.datastax.driver.core.ColumnDefinitions;
 import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.ResultSet;
@@ -135,38 +138,51 @@ public class MusicCore {
 			return null;
 	}
 
-	public static boolean acquireLockWithLease(String key, String lockId, long leasePeriod){	
-		long start = System.currentTimeMillis();
-		/* check if the current lock has exceeded its lease and if yes, release that lock*/	
-		MusicLockState mls = getMusicLockState(key);
-		if(mls != null){
-			long currentLockPeriod = System.currentTimeMillis() - mls.getLeaseStartTime();
-			long currentLeasePeriod = mls.getLeasePeriod();
-			if(currentLockPeriod > currentLeasePeriod){
-					logger.info("Lock period "+currentLockPeriod+" has exceeded lease period "+currentLeasePeriod);
-					boolean voluntaryRelease = false;
-					String currentLockHolder = mls.getLockHolder();
-					mls = releaseLock(currentLockHolder,voluntaryRelease);
+	public static ReturnType acquireLockWithLease(String key, String lockId, long leasePeriod){	
+		try {
+			long start = System.currentTimeMillis();
+			/* check if the current lock has exceeded its lease and if yes, release that lock*/	
+			MusicLockState mls = getMusicLockState(key);
+			if(mls!= null){
+				if(mls.getLockStatus().equals(LockStatus.LOCKED)){
+					logger.info("The current lock holder for "+key+" is "+ mls.getLockHolder()+". Checking if it has exceeded lease");
+					long currentLockPeriod = System.currentTimeMillis() - mls.getLeaseStartTime();
+					long currentLeasePeriod = mls.getLeasePeriod();
+					if(currentLockPeriod > currentLeasePeriod){
+							logger.info("Lock period "+currentLockPeriod+" has exceeded lease period "+currentLeasePeriod);
+							boolean voluntaryRelease = false;
+							String currentLockHolder = mls.getLockHolder();
+							mls = releaseLock(currentLockHolder,voluntaryRelease);
+					}
+				}
 			}
-		}
-		
-		/* call the traditional acquire lock now and if the result returned is true, set the 
-		 *  begin time-stamp and lease period
-		 */
-		if(acquireLock(key, lockId) == true){
-			mls = getMusicLockState(key);//get latest state
-			if(mls.getLeaseStartTime() == -1){//set it again only if it is not set already
-				mls.setLeaseStartTime(System.currentTimeMillis());
-				mls.setLeasePeriod(leasePeriod);
-				getLockingServiceHandle().setLockState(key, mls);			
-			}		
-			long end = System.currentTimeMillis();
-			logger.info("Time taken to acquire leased lock:"+(end-start)+" ms");
-			return true;		
-		}else{
-			long end = System.currentTimeMillis();
-			logger.info("Time taken to acquire leased lock:"+(end-start)+" ms");
-			return false; 
+			else
+				logger.info("There is no lock state object for "+key);
+			
+			/* call the traditional acquire lock now and if the result returned is true, set the 
+			 *  begin time-stamp and lease period
+			 */
+			if(acquireLock(key, lockId) == true){
+				mls = getMusicLockState(key);//get latest state
+				if(mls.getLeaseStartTime() == -1){//set it again only if it is not set already
+					mls.setLeaseStartTime(System.currentTimeMillis());
+					mls.setLeasePeriod(leasePeriod);
+					getLockingServiceHandle().setLockState(key, mls);			
+				}		
+				long end = System.currentTimeMillis();
+				logger.info("Time taken to acquire leased lock:"+(end-start)+" ms");
+				return new ReturnType(ResultType.SUCCESS,"Accquired lock"); 
+			}else{
+				long end = System.currentTimeMillis();
+				logger.info("Time taken to fail to acquire leased lock:"+(end-start)+" ms");
+				return new ReturnType(ResultType.FAILURE,"Could not acquire lock"); 
+			}
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			StringWriter sw = new StringWriter();
+			e.printStackTrace(new PrintWriter(sw));
+			String exceptionAsString = sw.toString();
+			return new ReturnType(ResultType.FAILURE,"Exception thrown in acquireLockWithLease:\n"+exceptionAsString); 
 		}
 	}
 
@@ -232,12 +248,13 @@ public class MusicCore {
 		return true;
 	}
 	
-	public static  String eventualPut(String query){
+	public static  ReturnType eventualPut(String query){
 		long start = System.currentTimeMillis();
 		getDSHandle().executePut(query, "eventual");
 		long end = System.currentTimeMillis();
 		logger.info("Time taken for the actual eventual put:"+(end-start)+" ms");
-		return true+"";
+		return new ReturnType(ResultType.SUCCESS,""); 
+
 	}
 	
 	private static void syncQuorum(String key){
@@ -280,45 +297,49 @@ public class MusicCore {
 		getDSHandle().executePut(updateQuery, "critical");
 	}
 
-	public static  String criticalPut(String keyspaceName, String tableName, String primaryKey, String query, String lockId, Condition conditionInfo){
+	public static ReturnType criticalPut(String keyspaceName, String tableName, String primaryKey, String query, String lockId, Condition conditionInfo){
 		long start = System.currentTimeMillis();
 		try {
 			MusicLockState mls = getLockingServiceHandle().getLockState(keyspaceName+"."+tableName+"."+primaryKey);
 			if(mls.getLockHolder().equals(lockId) == true){
 				if(conditionInfo != null)//check if condition is true
 					if(conditionInfo.testCondition() == false)
-						return "false -- you are the lock holder but the condition is not true"; 
+						return new ReturnType(ResultType.FAILURE,"Lock acquired but the condition is not true"); 
 				getDSHandle().executePut(query,"critical");
 				long end = System.currentTimeMillis();
 				logger.info("Time taken for the critical put:"+(end-start)+" ms");
-				return "true -- update performed"; 
+				return new ReturnType(ResultType.SUCCESS,"Update performed"); 
 			}
 			else 
-				return "false -- you are not the lock holder"; 
+				return new ReturnType(ResultType.FAILURE,"Cannot perform operation since you are the not the lock holder"); 
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();
+			StringWriter sw = new StringWriter();
+			e.printStackTrace(new PrintWriter(sw));
+			String exceptionAsString = sw.toString();
+			return new ReturnType(ResultType.FAILURE,"Exception thrown while doing the critical put, check sanctity of the row/conditions:\n"+exceptionAsString); 
 		}
-		return "false -- something strange";
 	}
 
-	public static String atomicPut(String keyspaceName, String tableName, String primaryKey, String query, Condition conditionInfo){
+	public static ReturnType atomicPut(String keyspaceName, String tableName, String primaryKey, String query, Condition conditionInfo){
 		long start = System.currentTimeMillis();
 		String key = keyspaceName+"."+tableName+"."+primaryKey;
 		String lockId = createLockReference(key);
 		long leasePeriod = MusicUtil.defaultLockLeasePeriod;
-		if(acquireLockWithLease(key, lockId, leasePeriod) == true){
+		ReturnType lockAcqResult = acquireLockWithLease(key, lockId, leasePeriod);
+		if(lockAcqResult.getResult().equals(ResultType.SUCCESS)){
 			logger.info("acquired lock with id "+lockId);
-			String result = criticalPut(keyspaceName, tableName, primaryKey, query, lockId,conditionInfo);
+			ReturnType criticalPutResult = criticalPut(keyspaceName, tableName, primaryKey, query, lockId,conditionInfo);
 			boolean voluntaryRelease = true; 
 			releaseLock(lockId,voluntaryRelease);
 			long end = System.currentTimeMillis();
 			logger.info("Time taken for the atomic put:"+(end-start)+" ms");
-			return result;
+			return criticalPutResult;
 		}
 		else{
 			logger.info("unable to acquire lock, id "+lockId);
-			return "false--unable to obtain lock, try again later"; 	
+			destroyLockRef(lockId);
+			return lockAcqResult;	
 		}
 	}
 	
@@ -327,7 +348,8 @@ public class MusicCore {
 		String key = keyspaceName+"."+tableName+"."+primaryKey;
 		String lockId = createLockReference(key);
 		long leasePeriod = MusicUtil.defaultLockLeasePeriod;
-		if(acquireLockWithLease(key, lockId, leasePeriod) == true){
+		ReturnType lockAcqResult = acquireLockWithLease(key, lockId, leasePeriod);
+		if(lockAcqResult.getResult().equals(ResultType.SUCCESS)){
 			logger.info("acquired lock with id "+lockId);
 			ResultSet result = criticalGet(keyspaceName, tableName, primaryKey, query, lockId);
 			boolean voluntaryRelease = true; 
@@ -381,6 +403,13 @@ public class MusicCore {
 		StringTokenizer st = new StringTokenizer(lockId);
 		String lockName = st.nextToken("$");
 		return lockName;
+	}
+	
+	public static void destroyLockRef(String lockId){
+		long start = System.currentTimeMillis();
+		getLockingServiceHandle().unlockAndDeleteId(lockId);
+		long end = System.currentTimeMillis();			
+		logger.info("Time taken to destroy lock reference:"+(end-start)+" ms");
 	}
 	
 	public static  MusicLockState  releaseLock(String lockId, boolean voluntaryRelease){

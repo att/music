@@ -3,6 +3,7 @@ package com.att.research.music.rest;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
@@ -66,11 +67,18 @@ public class RestMusicBmAPI {
 	@Path("/purezk/atomic/{lockname}/{name}")
 	@Consumes(MediaType.APPLICATION_JSON)
 	public void pureZkAtomicPut(JsonInsert insObj,@PathParam("lockname") String lockName,@PathParam("name") String nodeName) throws Exception{
-		logger.info("--------------Zk atomic update-------------------------");
-		long start = System.currentTimeMillis();
+		long startTime = System.currentTimeMillis();
+		String operationId = UUID.randomUUID().toString();//just for debugging purposes. 
+		
+		logger.info("--------------Zookeeper atomic update-"+operationId+"-------------------------");
 		String lockId = MusicCore.createLockReference(lockName);
+		
 		long leasePeriod = MusicUtil.defaultLockLeasePeriod;
 		ReturnType lockAcqResult = MusicCore.acquireLockWithLease(lockName, lockId, leasePeriod);
+		
+		long lockAqCompletionTime = System.currentTimeMillis();
+		logger.info("Time taken for lock accquisition in update-"+operationId+":"+(lockAqCompletionTime-startTime)+" ms");
+
 		if(lockAcqResult.getResult().equals(ResultType.SUCCESS)){
 			logger.info("acquired lock with id "+lockId);
 			MusicCore.pureZkWrite(nodeName, insObj.serialize());
@@ -79,9 +87,11 @@ public class RestMusicBmAPI {
 		}else{
 			MusicCore.destroyLockRef(lockId);
 		}
+		long updateCompletionTime = System.currentTimeMillis();
+		logger.info("Time taken for performing the actual update-"+operationId+":"+(updateCompletionTime-lockAqCompletionTime)+" ms");
 		
-		long end = System.currentTimeMillis();
-		logger.info("Total time taken for Zk atomic update:"+(end-start)+" ms");
+		long endTime = System.currentTimeMillis();
+		logger.info("Total time taken for Zk atomic update-"+operationId+":"+(endTime-startTime)+" ms");
 	}
 
 	@GET

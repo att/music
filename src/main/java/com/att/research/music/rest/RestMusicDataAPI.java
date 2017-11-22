@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
@@ -275,9 +276,10 @@ public class RestMusicDataAPI {
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
 	public String updateTable(JsonUpdate updateObj, @PathParam("keyspace") String keyspace, @PathParam("tablename") String tablename, @Context UriInfo info) throws Exception{
-		String consistency = updateObj.getConsistencyInfo().get("type");
-		logger.info("--------------Music "+consistency+" update-------------------------");
 		long startTime = System.currentTimeMillis();
+		String operationId = UUID.randomUUID().toString();//just for debugging purposes. 
+		String consistency = updateObj.getConsistencyInfo().get("type");
+		logger.info("--------------Music "+consistency+" update-"+operationId+"-------------------------");
 		//obtain the field value pairs of the update
 		Map<String,Object> valuesMap =  updateObj.getValues();
 		TableMetadata tableInfo = MusicCore.returnColumnMetadata(keyspace, tablename);
@@ -327,8 +329,8 @@ public class RestMusicDataAPI {
 
 
 		ReturnType operationResult=null;
-		long jsonParseTime = System.currentTimeMillis();
-		logger.info("Time taken for json parsing:"+(jsonParseTime-startTime)+" ms");
+		long jsonParseCompletionTime = System.currentTimeMillis();
+		logger.info("Time taken for json parsing update-"+operationId+":"+(jsonParseCompletionTime-startTime)+" ms");
 
 		if(consistency.equalsIgnoreCase("eventual"))
 			operationResult = MusicCore.eventualPut(updateQuery);
@@ -339,8 +341,12 @@ public class RestMusicDataAPI {
 		else if(consistency.equalsIgnoreCase("atomic")){
 			operationResult = MusicCore.atomicPut(keyspace,tablename,rowId.primarKeyValue, updateQuery,conditionInfo);
 		}
+		long actualUpdateCompletionTime = System.currentTimeMillis();
+		logger.info("Time taken for performing the actual update-"+operationId+":"+(actualUpdateCompletionTime-jsonParseCompletionTime)+" ms");
+
 		long endTime = System.currentTimeMillis();
-		logger.info("Total time taken for Music "+consistency+" update:"+(endTime-startTime)+" ms");
+		//logger.info("Total time taken for Music "+consistency+" update:"+(endTime-startTime)+" ms");
+		logger.info("Total time taken for Music "+consistency+" update-"+operationId+":"+(endTime-startTime)+" ms");
 		return operationResult.toString();
 	}
 	

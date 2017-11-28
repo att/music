@@ -73,25 +73,33 @@ public class RestMusicBmAPI {
 		logger.info("--------------Zookeeper atomic update-"+operationId+"-------------------------");
 		String lockId = MusicCore.createLockReference(lockName);
 
+		long lockCreationTime = System.currentTimeMillis();
+
 		long leasePeriod = MusicUtil.defaultLockLeasePeriod;
 		ReturnType lockAcqResult = MusicCore.acquireLockWithLease(lockName, lockId, leasePeriod);
 
-		long lockAqCompletionTime = System.currentTimeMillis();
-		logger.info("Time taken for lock accquisition in update-"+operationId+":"+(lockAqCompletionTime-startTime)+" ms");
-
+		long lockAcqTime = System.currentTimeMillis();
+		long zkPutTime=0,lockReleaseTime=0;
 		if(lockAcqResult.getResult().equals(ResultType.SUCCESS)){
 			logger.info("acquired lock with id "+lockId);
 			MusicCore.pureZkWrite(nodeName, insObj.serialize());
+			zkPutTime = System.currentTimeMillis();
 			boolean voluntaryRelease = true; 
 			MusicCore.releaseLock(lockId,voluntaryRelease);
+			lockReleaseTime = System.currentTimeMillis();
 		}else{
 			MusicCore.destroyLockRef(lockId);
 		}
-		long updateCompletionTime = System.currentTimeMillis();
-		logger.info("Time taken for performing the actual update-"+operationId+":"+(updateCompletionTime-lockAqCompletionTime)+" ms");
 
 		long endTime = System.currentTimeMillis();
-		logger.info("Total time taken for Zk atomic update-"+operationId+":"+(endTime-startTime)+" ms");
+
+		String lockingInfo = "|lock creation time:"+(lockCreationTime-startTime)+"|lock accquire time:"+(lockAcqTime-lockCreationTime)+
+				"|zk put time:"+(zkPutTime-lockAcqTime)+"|lock release time:"+(lockReleaseTime-zkPutTime)+"|";
+
+		String timingString = "Time taken in ms for Zk atomic update-"+operationId+":"+"|total operation time:"+
+				(endTime-startTime)+lockingInfo;
+
+		logger.info(timingString);
 	}
 
 	@GET
@@ -178,16 +186,18 @@ public class RestMusicBmAPI {
 		query = query + " SET "+fieldValueString+" WHERE "+rowSpec+";";
 		
 		long jsonParseCompletionTime = System.currentTimeMillis();
-		logger.info("Time taken for json parsing update-"+operationId+":"+(jsonParseCompletionTime-startTime)+" ms");
 
 		boolean operationResult = true;	
 		MusicCore.getDSHandle().executePut(query, insObj.getConsistencyInfo().get("type"));
 		
 		long actualUpdateCompletionTime = System.currentTimeMillis();
-		logger.info("Time taken for performing the actual update-"+operationId+":"+(actualUpdateCompletionTime-jsonParseCompletionTime)+" ms");
 
 		long endTime = System.currentTimeMillis();
-		logger.info("Total time taken for Cassandra "+consistency+" update-"+operationId+":"+(endTime-startTime)+" ms");
+		
+		String timingString = "Time taken in ms for Cassandra "+consistency+" update-"+operationId+":"+"|total operation time:"+
+				(endTime-startTime)+"|json parsing time:"+(jsonParseCompletionTime-startTime)+"|update time:"+(actualUpdateCompletionTime-jsonParseCompletionTime)+"|";
+		logger.info(timingString);
+
 		return operationResult; 	
 	}
 

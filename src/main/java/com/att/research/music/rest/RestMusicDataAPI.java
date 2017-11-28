@@ -330,7 +330,6 @@ public class RestMusicDataAPI {
 
 		ReturnType operationResult=null;
 		long jsonParseCompletionTime = System.currentTimeMillis();
-		logger.info("Time taken for json parsing update-"+operationId+":"+(jsonParseCompletionTime-startTime)+" ms");
 
 		if(consistency.equalsIgnoreCase("eventual"))
 			operationResult = MusicCore.eventualPut(updateQuery);
@@ -342,11 +341,16 @@ public class RestMusicDataAPI {
 			operationResult = MusicCore.atomicPut(keyspace,tablename,rowId.primarKeyValue, updateQuery,conditionInfo);
 		}
 		long actualUpdateCompletionTime = System.currentTimeMillis();
-		logger.info("Time taken for performing the actual update-"+operationId+":"+(actualUpdateCompletionTime-jsonParseCompletionTime)+" ms");
 
 		long endTime = System.currentTimeMillis();
-		//logger.info("Total time taken for Music "+consistency+" update:"+(endTime-startTime)+" ms");
-		logger.info("Total time taken for Music "+consistency+" update-"+operationId+":"+(endTime-startTime)+" ms");
+		String timingString = "Time taken in ms for Music "+consistency+" update-"+operationId+":"+"|total operation time:"+
+			(endTime-startTime)+"|json parsing time:"+(jsonParseCompletionTime-startTime)+"|update time:"+(actualUpdateCompletionTime-jsonParseCompletionTime)+"|";
+		
+		if(operationResult.getTimingInfo() != null){
+			String lockManagementTime = operationResult.getTimingInfo();
+			timingString = timingString+lockManagementTime;
+		}
+		logger.info(timingString);
 		return operationResult.toString();
 	}
 	

@@ -325,15 +325,19 @@ public class MusicCore {
 		long start = System.currentTimeMillis();
 		String key = keyspaceName+"."+tableName+"."+primaryKey;
 		String lockId = createLockReference(key);
+		long lockCreationTime = System.currentTimeMillis();
 		long leasePeriod = MusicUtil.defaultLockLeasePeriod;
 		ReturnType lockAcqResult = acquireLockWithLease(key, lockId, leasePeriod);
+		long lockAcqTime = System.currentTimeMillis();
 		if(lockAcqResult.getResult().equals(ResultType.SUCCESS)){
 			logger.info("acquired lock with id "+lockId);
 			ReturnType criticalPutResult = criticalPut(keyspaceName, tableName, primaryKey, query, lockId,conditionInfo);
+			long criticalPutTime = System.currentTimeMillis();
 			boolean voluntaryRelease = true; 
 			releaseLock(lockId,voluntaryRelease);
-			long end = System.currentTimeMillis();
-			logger.info("Time taken for the atomic put:"+(end-start)+" ms");
+			long lockReleaseTime = System.currentTimeMillis();
+			String timingInfo = "|lock creation time:"+(lockCreationTime-start)+"|lock accquire time:"+(lockAcqTime-lockCreationTime)+"|critical put time:"+(criticalPutTime-lockAcqTime)+"|lock release time:"+(lockReleaseTime-criticalPutTime)+"|";
+			criticalPutResult.setTimingInfo(timingInfo);
 			return criticalPutResult;
 		}
 		else{

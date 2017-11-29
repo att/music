@@ -334,9 +334,9 @@ public class MusicCore {
 			ReturnType criticalPutResult = criticalPut(keyspaceName, tableName, primaryKey, query, lockId,conditionInfo);
 			long criticalPutTime = System.currentTimeMillis();
 			boolean voluntaryRelease = true; 
-			releaseLock(lockId,voluntaryRelease);
-			long lockReleaseTime = System.currentTimeMillis();
-			String timingInfo = "|lock creation time:"+(lockCreationTime-start)+"|lock accquire time:"+(lockAcqTime-lockCreationTime)+"|critical put time:"+(criticalPutTime-lockAcqTime)+"|lock release time:"+(lockReleaseTime-criticalPutTime)+"|";
+			deleteLock(key);
+			long lockDeleteTime = System.currentTimeMillis();
+			String timingInfo = "|lock creation time:"+(lockCreationTime-start)+"|lock accquire time:"+(lockAcqTime-lockCreationTime)+"|critical put time:"+(criticalPutTime-lockAcqTime)+"|lock delete time:"+(lockDeleteTime-criticalPutTime)+"|";
 			criticalPutResult.setTimingInfo(timingInfo);
 			return criticalPutResult;
 		}

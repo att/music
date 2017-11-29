@@ -351,6 +351,7 @@ public class RestMusicDataAPI {
 			timingString = timingString+lockManagementTime;
 		}
 		logger.info(timingString);
+		//System.out.println(timingString);
 		return operationResult.toString();
 	}
 	

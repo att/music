@@ -85,16 +85,17 @@ public class RestMusicBmAPI {
 			MusicCore.pureZkWrite(nodeName, insObj.serialize());
 			zkPutTime = System.currentTimeMillis();
 			boolean voluntaryRelease = true; 
-			MusicCore.releaseLock(lockId,voluntaryRelease);
+			//MusicCore.releaseLock(lockId,voluntaryRelease);
+			MusicCore.deleteLock(lockName);
 			lockReleaseTime = System.currentTimeMillis();
 		}else{
 			MusicCore.destroyLockRef(lockId);
 		}
-
+	
 		long endTime = System.currentTimeMillis();
 
 		String lockingInfo = "|lock creation time:"+(lockCreationTime-startTime)+"|lock accquire time:"+(lockAcqTime-lockCreationTime)+
-				"|zk put time:"+(zkPutTime-lockAcqTime)+"|lock release time:"+(lockReleaseTime-zkPutTime)+"|";
+				"|zk put time:"+(zkPutTime-lockAcqTime)+"|lock delete time:"+(lockReleaseTime-zkPutTime)+"|";
 
 		String timingString = "Time taken in ms for Zk atomic update-"+operationId+":"+"|total operation time:"+
 				(endTime-startTime)+lockingInfo;

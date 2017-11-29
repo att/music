@@ -46,7 +46,7 @@ public class MusicUtil {
 	public static final String version = "2.2.9";
 	public static final String musicRestIp = "localhost";
 	public static final String musicPropertiesFilePath="/etc/music/music.properties";
-	public static final long defaultLockLeasePeriod = 5000;
+	public static final long defaultLockLeasePeriod = 6000;
 	
 	public static String getVersion(){
 /*       Model model;

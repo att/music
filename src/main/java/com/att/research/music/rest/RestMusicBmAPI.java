@@ -71,18 +71,22 @@ public class RestMusicBmAPI {
 		String operationId = UUID.randomUUID().toString();//just for debugging purposes. 
 
 		logger.info("--------------Zookeeper atomic update-"+operationId+"-------------------------");
+		
+		byte[] data = insObj.serialize();
+		long jsonParseCompletionTime = System.currentTimeMillis();
+
 		String lockId = MusicCore.createLockReference(lockName);
 
 		long lockCreationTime = System.currentTimeMillis();
 
 		long leasePeriod = MusicUtil.defaultLockLeasePeriod;
 		ReturnType lockAcqResult = MusicCore.acquireLockWithLease(lockName, lockId, leasePeriod);
-
 		long lockAcqTime = System.currentTimeMillis();
 		long zkPutTime=0,lockReleaseTime=0;
+
 		if(lockAcqResult.getResult().equals(ResultType.SUCCESS)){
 			logger.info("acquired lock with id "+lockId);
-			MusicCore.pureZkWrite(nodeName, insObj.serialize());
+			MusicCore.pureZkWrite(nodeName, data);
 			zkPutTime = System.currentTimeMillis();
 			boolean voluntaryRelease = true; 
 			//MusicCore.releaseLock(lockId,voluntaryRelease);
@@ -94,11 +98,11 @@ public class RestMusicBmAPI {
 	
 		long endTime = System.currentTimeMillis();
 
-		String lockingInfo = "|lock creation time:"+(lockCreationTime-startTime)+"|lock accquire time:"+(lockAcqTime-lockCreationTime)+
+		String lockingInfo = "|lock creation time:"+(lockCreationTime-jsonParseCompletionTime)+"|lock accquire time:"+(lockAcqTime-lockCreationTime)+
 				"|zk put time:"+(zkPutTime-lockAcqTime)+"|lock delete time:"+(lockReleaseTime-zkPutTime)+"|";
 
 		String timingString = "Time taken in ms for Zk atomic update-"+operationId+":"+"|total operation time:"+
-				(endTime-startTime)+lockingInfo;
+				(endTime-startTime)+"|json parsing time:"+(jsonParseCompletionTime-startTime)+lockingInfo;
 
 		logger.info(timingString);
 	}

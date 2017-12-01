@@ -1,0 +1,57 @@
+#!/bin/bash
+#
+#  mk_jboss_module -- This script builds a JBoss module for MDBC.  It should be run directly
+#  in the directory containing the MDBC code.  It will build the MDBC jar file (under
+#  target/mdbc-jboss-module.tar), and then construct a tar file containing MDBC and all of
+#  its dependencies, as well as other files needed for a JBoss module.
+#
+#  To install the module: untar the tar file on the server in the JBOSS_DIR/modules directory.
+#
+
+if [ ! -f pom.xml ]
+then
+	echo mk_jboss_module: Where is pom.xml?
+	exit 1
+fi
+
+mvn -Dmaven.test.skip=true package
+if [ $? != 0 ]
+then
+	echo mk_jboss_module: maven failed...
+	exit 1
+fi
+
+T=/tmp/mk_jboss_module$$
+T2=$T/com/att/research/mdbc/main
+MODULE=$T2/module.xml
+TARGET=`pwd`/target/mdbc-jboss-module.tar
+JARS=$( mvn dependency:build-classpath | grep -v INFO | tr : '\012' )
+
+mkdir -p $T2
+cp $JARS $T2
+cp target/mdbc-0.0.1-SNAPSHOT.jar $T2
+JAR2=$( cd $T2; ls *.jar )
+
+cat > $MODULE <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Note: This module includes a copy of the H2 database, rather than depending on the
+  com.h2database.h2 module included with JBoss, because I could not get that copy to work.
+-->
+<module xmlns="urn:jboss:module:1.1" name="com.att.research.mdbc">
+  <resources>
+EOF
+for i in $JAR2; do echo "    <resource-root path=\"$i\"/>"; done >> $MODULE
+cat >> $MODULE <<EOF
+  </resources>
+  <dependencies>
+    <module name="javax.api"/>
+    <module name="sun.jdk"/>
+  </dependencies>
+</module>
+EOF
+chmod 444 $T2/*.jar $MODULE
+
+mkdir -p target
+(cd $T; tar cf $TARGET com )
+rm -fr $T

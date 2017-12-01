@@ -1,0 +1,37 @@
+<!DOCTYPE HTML>
+<html>
+<body>
+
+<p>
+MDBC is a JDBC driver that provides an application programmer a way to automatically copy
+data to and from a running copy of MUSIC/Cassandra.
+The driver does this by intercepting all DELETES, INSERTS, SELECTS, and UPDATES and copying
+modified table rows to and from Cassandra.
+</p>
+<p>
+MDBC can automatically adopt to the database in use, as well as the style of MUSIC interaction,
+by the use of "mixins".  Each JDBC Connection via MDBC specifies two mixins to use:
+</p>
+<ul>
+<li>a Mixin that conforms to the {@link com.att.research.mdbc.mixins.MusicInterface} specification
+for communicating with MUSIC/Cassandra.</li>
+<li>a Mixin that conforms to the {@link com.att.research.mdbc.mixins.DBInterface} specification
+for communicating with the underlying database in use.</li>
+</ul>
+<p>
+More details are provided on the package pages for 
+<code>com.att.research.mdbc</code> and 
+<code>com.att.research.mdbc.mixins</code>.
+</p>
+<h2>Limitations</h2>
+There are several limitations to the use of MDBC:
+<ul>
+<li>The <code>java.sql.Statement.executeBatch()</code> method is not supported by MDBC.
+It is not prohibited either; your results will be unpredictable.</li>
+<li>When used with a DB server, there is some delay as dirty row information is copied
+from a table in the database, to the dirty table in Cassandra.  This opens a window
+during which all sorts of mischief may occur.</li>
+</ul>
+
+</body>
+</html>

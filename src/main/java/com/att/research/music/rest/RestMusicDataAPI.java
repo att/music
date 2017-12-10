@@ -337,6 +337,9 @@ public class RestMusicDataAPI {
 			String lockId = updateObj.getConsistencyInfo().get("lockId");
 			operationResult = MusicCore.criticalPut(keyspace,tablename,rowId.primarKeyValue, updateQuery, lockId, conditionInfo);
 		}
+		else if(consistency.equalsIgnoreCase("atomic_delete_lock")){//this function is mainly for the benchmarks
+			operationResult = MusicCore.atomicPutWithDeleteLock(keyspace,tablename,rowId.primarKeyValue, updateQuery,conditionInfo);
+		}
 		else if(consistency.equalsIgnoreCase("atomic")){
 			operationResult = MusicCore.atomicPut(keyspace,tablename,rowId.primarKeyValue, updateQuery,conditionInfo);
 		}

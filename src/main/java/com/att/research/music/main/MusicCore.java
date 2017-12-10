@@ -258,7 +258,7 @@ public class MusicCore {
 	}
 	
 	private static void syncQuorum(String key){
-		
+		logger.info("Performing sync operation---");
 		String[] splitString = key.split("\\.");
 		String keyspaceName = splitString[0];
 		String tableName = splitString[1];
@@ -334,9 +334,9 @@ public class MusicCore {
 			ReturnType criticalPutResult = criticalPut(keyspaceName, tableName, primaryKey, query, lockId,conditionInfo);
 			long criticalPutTime = System.currentTimeMillis();
 			boolean voluntaryRelease = true; 
-			deleteLock(key);
+			releaseLock(lockId, voluntaryRelease);
 			long lockDeleteTime = System.currentTimeMillis();
-			String timingInfo = "|lock creation time:"+(lockCreationTime-start)+"|lock accquire time:"+(lockAcqTime-lockCreationTime)+"|critical put time:"+(criticalPutTime-lockAcqTime)+"|lock delete time:"+(lockDeleteTime-criticalPutTime)+"|";
+			String timingInfo = "|lock creation time:"+(lockCreationTime-start)+"|lock accquire time:"+(lockAcqTime-lockCreationTime)+"|critical put time:"+(criticalPutTime-lockAcqTime)+"|lock release time:"+(lockDeleteTime-criticalPutTime)+"|";
 			criticalPutResult.setTimingInfo(timingInfo);
 			return criticalPutResult;
 		}
@@ -347,6 +347,32 @@ public class MusicCore {
 		}
 	}
 	
+	
+	//this function is mainly for the benchmarks to see the effect of lock deletion.
+	public static ReturnType atomicPutWithDeleteLock(String keyspaceName, String tableName, String primaryKey, String query, Condition conditionInfo){
+		long start = System.currentTimeMillis();
+		String key = keyspaceName+"."+tableName+"."+primaryKey;
+		String lockId = createLockReference(key);
+		long lockCreationTime = System.currentTimeMillis();
+		long leasePeriod = MusicUtil.defaultLockLeasePeriod;
+		ReturnType lockAcqResult = acquireLockWithLease(key, lockId, leasePeriod);
+		long lockAcqTime = System.currentTimeMillis();
+		if(lockAcqResult.getResult().equals(ResultType.SUCCESS)){
+			logger.info("acquired lock with id "+lockId);
+			ReturnType criticalPutResult = criticalPut(keyspaceName, tableName, primaryKey, query, lockId,conditionInfo);
+			long criticalPutTime = System.currentTimeMillis();
+			deleteLock(key);
+			long lockDeleteTime = System.currentTimeMillis();
+			String timingInfo = "|lock creation time:"+(lockCreationTime-start)+"|lock accquire time:"+(lockAcqTime-lockCreationTime)+"|critical put time:"+(criticalPutTime-lockAcqTime)+"|lock delete time:"+(lockDeleteTime-criticalPutTime)+"|";
+			criticalPutResult.setTimingInfo(timingInfo);
+			return criticalPutResult;
+		}
+		else{
+			logger.info("unable to acquire lock, id "+lockId);
+			deleteLock(key);
+			return lockAcqResult;	
+		}
+	}
 
 	public static ResultSet atomicGet(String keyspaceName, String tableName, String primaryKey, String query){
 		String key = keyspaceName+"."+tableName+"."+primaryKey;

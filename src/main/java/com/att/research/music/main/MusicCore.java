@@ -464,8 +464,12 @@ public class MusicCore {
 	}
 
 	public static  void deleteLock(String lockName){
+		long start = System.currentTimeMillis();
 		logger.info("Deleting lock for "+lockName);
 		getLockingServiceHandle().deleteLock("/"+lockName);
+		long end = System.currentTimeMillis();			
+		logger.info("Time taken to delete lock:"+(end-start)+" ms");
+
 	}
 
 	//this is mainly for some  functions like keyspace creation etc which does not

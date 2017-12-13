@@ -69,8 +69,9 @@ public class RestMusicBmAPI {
 	public void pureZkAtomicPut(JsonInsert updateObj,@PathParam("lockname") String lockname) throws Exception{
 		long startTime = System.currentTimeMillis();
 		String operationId = UUID.randomUUID().toString();//just for debugging purposes. 
+		String consistency = updateObj.getConsistencyInfo().get("type");
 
-		logger.info("--------------Zookeeper atomic update-"+operationId+"-------------------------");
+		logger.info("--------------Zookeeper "+consistency+" update-"+operationId+"-------------------------");
 		
 		byte[] data = updateObj.serialize();
 		long jsonParseCompletionTime = System.currentTimeMillis();
@@ -89,7 +90,6 @@ public class RestMusicBmAPI {
 			MusicCore.pureZkWrite(lockname, data);
 			zkPutTime = System.currentTimeMillis();
 			boolean voluntaryRelease = true; 
-			String consistency = updateObj.getConsistencyInfo().get("type");
 			if(consistency.equals("atomic"))
 				MusicCore.releaseLock(lockId,voluntaryRelease);
 			else 
@@ -99,14 +99,23 @@ public class RestMusicBmAPI {
 		}else{
 			MusicCore.destroyLockRef(lockId);
 		}
+		
+		long actualUpdateCompletionTime = System.currentTimeMillis();
+
 	
 		long endTime = System.currentTimeMillis();
 
 		String lockingInfo = "|lock creation time:"+(lockCreationTime-jsonParseCompletionTime)+"|lock accquire time:"+(lockAcqTime-lockCreationTime)+
-				"|zk put time:"+(zkPutTime-lockAcqTime)+"|lock delete/release time:"+(lockReleaseTime-zkPutTime)+"|";
+				"|zk put time:"+(zkPutTime-lockAcqTime);
+		
+		if(consistency.equals("atomic"))
+			lockingInfo = lockingInfo+	"|lock release time:"+(lockReleaseTime-zkPutTime)+"|";
+		else 
+		if(consistency.equals("atomic_delete_lock"))
+			lockingInfo = lockingInfo+	"|lock delete time:"+(lockReleaseTime-zkPutTime)+"|";
 
-		String timingString = "Time taken in ms for Zk atomic update-"+operationId+":"+"|total operation time:"+
-				(endTime-startTime)+"|json parsing time:"+(jsonParseCompletionTime-startTime)+lockingInfo;
+		String timingString = "Time taken in ms for Zookeeper "+consistency+" update-"+operationId+":"+"|total operation time:"+
+				(endTime-startTime)+"|json parsing time:"+(jsonParseCompletionTime-startTime)+"|update time:"+(actualUpdateCompletionTime-jsonParseCompletionTime)+lockingInfo;
 
 		logger.info(timingString);
 	}

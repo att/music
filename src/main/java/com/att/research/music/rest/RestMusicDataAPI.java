@@ -27,6 +27,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+//import java.util.logging.Level;
+
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
@@ -42,6 +44,9 @@ import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.UriInfo;
 
 import org.apache.log4j.Logger;
+
+
+
 
 import com.att.research.music.datastore.jsonobjects.JsonDelete;
 import com.att.research.music.datastore.jsonobjects.JsonInsert;
@@ -353,7 +358,7 @@ public class RestMusicDataAPI {
 			String lockManagementTime = operationResult.getTimingInfo();
 			timingString = timingString+lockManagementTime;
 		}
-		logger.info(timingString);
+		logger.info(timingString);	
 		//System.out.println(timingString);
 		return operationResult.toString();
 	}

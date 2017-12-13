@@ -157,7 +157,7 @@ public class MusicCore {
 				}
 			}
 			else
-				logger.info("There is no lock state object for "+key);
+				logger.debug("There is no lock state object for "+key);
 			
 			/* call the traditional acquire lock now and if the result returned is true, set the 
 			 *  begin time-stamp and lease period
@@ -530,7 +530,9 @@ public class MusicCore {
 	
 	public static void pureZkWrite(String nodeName, byte[] data){
 		long start = System.currentTimeMillis();
+		logger.info("Performing zookeeper write to "+nodeName);
 		getLockingServiceHandle().getzkLockHandle().setNodeData(nodeName, data);
+		logger.info("Performed zookeeper write to "+nodeName);
 		long end = System.currentTimeMillis();
 		logger.info("Time taken for the actual zk put:"+(end-start)+" ms");
 	}

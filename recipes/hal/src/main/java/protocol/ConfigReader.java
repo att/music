@@ -69,6 +69,11 @@ public class ConfigReader {
 		String value = (String)getJsonHandle().get(key);
 		return value; 
 	}
+	
+	public static String getConfigAttribute(String key, String defaultValue){
+		String toReturn = getConfigAttribute(key);
+		return (toReturn!=null) ? toReturn : defaultValue;
+	}
 
 	public static ArrayList<String> getExeCommandWithParams(String key){
 		String script = (String)getJsonHandle().get(key);

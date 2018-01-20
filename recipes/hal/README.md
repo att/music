@@ -18,10 +18,10 @@ Often we wish to deploy service replicas in an active-passive mode where there i
 		
 		{
 		    "appName":"votingAppBharath",
-		    "start-active-0":"false",
-		    "start-active-1":"true",
-		    "start-active-2":"false",
-		    "start-active-3":"false",
+		    "start-as-active-0":"false",
+		    "start-as-active-1":"true",
+		    "start-as-active-2":"false",
+		    "start-as-active-3":"false",
 		    "ensure-active-0":"/home/ubuntu/votingapp/ensureVotingAppRunning.sh 0 active",
 		    "ensure-active-1":"/home/ubuntu/votingapp/ensureVotingAppRunning.sh 1 active",
 		    "ensure-active-2":"/home/ubuntu/votingapp/ensureVotingAppRunning.sh 2 active",
@@ -34,8 +34,9 @@ Often we wish to deploy service replicas in an active-passive mode where there i
 		    "restart-hal-1":"ssh -i /home/ubuntu/votingapp/bharath_cirrus101.pem ubuntu@135.197.240.158 /home/ubuntu/votingapp/restartHalIfDead.sh 1",
 		    "restart-hal-2":"ssh -i /home/ubuntu/votingapp/bharath_bigsite.pem ubuntu@135.197.226.68 /home/ubuntu/votingapp/restartHalIfDead.sh 2",
 		    "restart-hal-3":"ssh -i /home/ubuntu/votingapp/bharath_bigsite.pem ubuntu@135.197.226.49 /home/ubuntu/votingapp/restartHalIfDead.sh 3",
-		    "timeout":"50000",
-		    "restart-timeout":"1000",
+		    "hal-timeout":"50000",
+		    "restart-backoff-time":"1000",
+		    "core-monitor-sleep-time":"1000",
 		    "noOfRetryAttempts":"3",
 		    "replicaIdList":["0","1","2","3"]
 		    "musicLocation":"localhost"
@@ -48,10 +49,11 @@ Often we wish to deploy service replicas in an active-passive mode where there i
 	
 	The *restart-hal-i* scripts are used by the hal daemons running along with 	each replica to restart each other. Since the hal daemons reside on 	different nodes, they will need ssh (and associated keys) to communicate 	with each other. 
 	
-	The *timeout* field decides the time after which one of the passive hals 	will take-over as leader after the current leader stops updating MUSIC with 	its health. The *noOfRetryAttempts* is used by hal to decide how many times 	it wants to try and start the local service replica in either active or 	passive mode (by calling the ensure- scripts). The *replicaIdList* is a 	comma separated list of the replica 	ids. Finally, the *musicLocation* should 	contain the public IP of the MUSIC 	node this hal daemon wants to talk to. 	Typically this is localhost if MUSIC is co-located on the same node as the 	hal deamon and service replica. 
+	The *hal-timeout* field decides the time in ms after which one of the passive hals 	will take-over as leader after the current leader stops updating MUSIC with 	its health. The *noOfRetryAttempts* is used by hal to decide how many times 	it wants to try and start the local service replica in either active or 	passive mode (by calling the ensure- scripts). The *replicaIdList* is a 	comma separated list of the replica 	ids. Finally, the *musicLocation* should 	contain the public IP of the MUSIC 	node this hal daemon wants to talk to. 	Typically this is localhost if MUSIC is co-located on the same node as the 	hal deamon and service replica. Note: HAL somewhat relies on system clocks for this timeout. In order to make sure your system is closely synchronized, consider using NTP or similar.
 	
-	The *restart-timeout* backs off for the set amount of time if the restart script fails. If configured, this will allow the site time to recover before trying to restart again. This is an optional parameter (default to immediate retry).
+	The *restart-backoff-time* backs off for the set amount of time in ms if the restart script fails. If configured, this will allow the site time to recover before trying to restart again. This is an optional parameter (default to immediate retry).
 	
+	The *core-monitor-sleep-time* is describes the time in ms between checking if the HAL site is active. Default is 0.
 		
 - Once the config.json has been placed on all nodes in the same location as the hal.jar and the restartHalIfDead.sh, on one of the nodes (typically the one that you want as active), run the command:
 

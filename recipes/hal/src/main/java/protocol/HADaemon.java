@@ -70,6 +70,7 @@ public class HADaemon {
 	}
 	
 	private void createLockRefIfDoesNotExist(){
+		//is this to ensure preference to a previously acquired
 		System.out.println("Checking if any lock reference already exists for this object in MUSIC...");
 		String oldLockRef = getLockRef(this.id);
 		if((oldLockRef == null) || (oldLockRef.equals(""))){
@@ -109,38 +110,57 @@ public class HADaemon {
 	}
 	
 	//the main startup function for each daemon
-	private void startHAFlow(){	
-		if(isActiveLockHolder())
-			activeFlow();
-		else
-			passiveFlow();
+	private void startHAFlow(){
+		if (!Boolean.parseBoolean(ConfigReader.getConfigAttribute("start-as-active-"+id, "true"))) {
+			//wait for active to start
+			System.out.println("Checking to see if active has started");
+			Map<String, Object> active = getActiveDetails();
+			while (active==null || active.isEmpty()) {
+				//spin
+				System.out.println("Looking to start in passive mode. Waiting for active to start");
+			}
+		}
+		
+		while (true) {
+			if (isActiveLockHolder()) {
+				activeFlow();
+			}
+			else {
+				passiveFlow();
+			}
+		}
 	}
-	
 	
 	private ScriptResult tryToEnsureCoreFunctioning(String id,CoreState mode, int noOfAttempts){
 		ArrayList<String> script =null;
 		ScriptResult result = ScriptResult.FAIL_RESTART;
 
-		if(mode.equals(CoreState.ACTIVE))	
+		if (mode.equals(CoreState.ACTIVE)) {
 			script = ConfigReader.getExeCommandWithParams("ensure-active-"+id);
-		else if(mode.equals(CoreState.PASSIVE))
+		} else if (mode.equals(CoreState.PASSIVE)) {
 			script = ConfigReader.getExeCommandWithParams("ensure-passive-"+id);
+		}
 		
-		while(noOfAttempts > 0){
+		while (noOfAttempts > 0) {			
 			result = HalUtil.executeBashScriptWithParams(script);
-			if(result == ScriptResult.ALREADY_RUNNING){
+			if (result == ScriptResult.ALREADY_RUNNING) {
 				System.out.println("Executed core script, the core was already running");
 				return result;
-			}else
-			if(result == ScriptResult.SUCCESS_RESTART){
-				noOfAttempts--;
-				System.out.println("Executed core script, the core had to be restarted, retry attempts left ="+noOfAttempts);
+			} else if (result == ScriptResult.SUCCESS_RESTART) {
+				//we can now handle being after, put yourself back in queue
+				lockRef = MusicHandle.createLockRef(lockName);
+				System.out.println("Executed core script, the core had to be restarted");
 				return result;
-			}else
-			if(result == ScriptResult.FAIL_RESTART){
+			} else if(result == ScriptResult.FAIL_RESTART) {
 				noOfAttempts--;
 				System.out.println("Executed core script, the core could not be re-started, retry attempts left ="+noOfAttempts);
-			}			
+			}
+			//backoff period in between restart attempts
+			try {
+				Thread.sleep(Long.parseLong(ConfigReader.getConfigAttribute("restart-backoff-time", "0")));
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
 		}
 		return result;
 	}
@@ -161,14 +181,19 @@ public class HADaemon {
 	private boolean isReplicaAlive(String id){	
 		Map<String,Object> valueMap = MusicHandle.readSpecificRow(coreName, "Replicas", "id", id);
 		System.out.println("Checking health of hal-d "+id+"...");
-		if(valueMap == null){
+		if (valueMap == null) {
 			System.out.println("No entry showing...");
 			return false; 
+		}
+		
+		if (!valueMap.containsKey("timeoflastupdate")) {
+			System.out.println("No 'timeoflastupdate' entry showing...");
+			return false;
 		}
 
 		long lastUpdate = (Long)valueMap.get("timeoflastupdate");
 		System.out.println("time of last update:"+lastUpdate);
-	    long timeOutPeriod = Long.parseLong(ConfigReader.getConfigAttribute("timeout"));
+	    long timeOutPeriod = Long.parseLong(ConfigReader.getConfigAttribute("hal-timeout"));
 	    long currentTime = System.currentTimeMillis();
 		System.out.println("current time:"+currentTime);
 	    long timeSinceUpdate = currentTime-lastUpdate; 
@@ -222,7 +247,10 @@ public class HADaemon {
 				if(isReplicaAlive(replicaId) == false){
 					//restart if suspected dead
 					//releaseLock(replicaId);
-					restartHALDaemon(replicaId, 2);
+					//Don't hold up main thread for restart
+					Runnable restartThread = new RestartThread(replicaId);
+					new Thread(restartThread).start();
+					
 					System.out.println(lockRef + " status: "+MusicHandle.acquireLock(lockRef));
 				}
 			}
@@ -233,7 +261,9 @@ public class HADaemon {
 		System.out.println("***Hal Daemon--"+replicaId+"---needs to be restarted***");
 
 		ArrayList<String> restartScript = ConfigReader.getExeCommandWithParams("restart-hal-"+replicaId);
-		HalUtil.executeBashScriptWithParams(restartScript);
+		if (restartScript!=null && restartScript.size()>0 && restartScript.get(0).length()>0) {
+			HalUtil.executeBashScriptWithParams(restartScript);
+		}
 		return true;//need to find a way to check if the script is running. Just check if process is running maybe? 
 /*
 		boolean result = false;
@@ -249,13 +279,13 @@ public class HADaemon {
 */	}
 	
 	private void takeOverFromCurrentActive(String currentActiveId){
-		
+
 		//try to restart the corresponding HAL daemon so that it starts the core in passive mode
-		restartHALDaemon(currentActiveId,3);
+		//restartHALDaemon(currentActiveId,3);
 		
 		boolean oldIdStillActive = true;
 		long startTime = System.currentTimeMillis();
-		long restartTimeout = Long.parseLong(ConfigReader.getConfigAttribute("timeout"));
+		long restartTimeout = Long.parseLong(ConfigReader.getConfigAttribute("hal-timeout"));
 		while(true){
 			Map<String,Object> replicaDetails = MusicHandle.readSpecificRow(coreName, "Replicas", "id", currentActiveId);
 			oldIdStillActive  = (Boolean)replicaDetails.get("isactive");
@@ -273,18 +303,18 @@ public class HADaemon {
 		System.out.println("***Old Active has now become passive, so starting active flow ***");
 
 		//now you can take over as active! 
-		activeFlow();
+		//activeFlow();
 	}
 	
 	
 	private void activeFlow(){
 		
-		while(true){
+		while (true) {
 			updateHealth(id, CoreState.ACTIVE);
 			if(MusicHandle.acquireLock(lockRef) == false){
 				System.out.println("******I no longer have the lock!Make myself passive*******");
 				lockRef = MusicHandle.createLockRef(lockName);//put yourself back in the queue
-				passiveFlow();
+				return;
 			}
 			int noOfAttempts = Integer.parseInt(ConfigReader.getConfigAttribute("noOfRetryAttempts"));
 			ScriptResult result = tryToEnsureCoreFunctioning(id, CoreState.ACTIVE,noOfAttempts);
@@ -292,8 +322,7 @@ public class HADaemon {
 			if(result == ScriptResult.FAIL_RESTART){//unable to start core, just give up and become passive
 				System.out.println("Tried enough times and still unable to start the core, giving up lock and starting passive flow..");
 				MusicHandle.unlock(lockRef);
-				lockRef = MusicHandle.createLockRef(lockName);//put yourself back in the queue
-				passiveFlow();
+				return;
 			}
 			
 			System.out.println("--(Active) Hal Daemon--"+id+"---CORE ACTIVE---Lock Ref:"+lockRef);
@@ -304,6 +333,16 @@ public class HADaemon {
 			System.out.println(lockRef + " status: "+MusicHandle.acquireLock(lockRef));
 			System.out.println("--(Active) Hal Daemon--"+id+"---PEERS CHECKED---");
 
+			//back off if needed
+			try {
+				Long sleeptime = Long.parseLong(ConfigReader.getConfigAttribute("core-monitor-sleep-time", "0"));
+				if (sleeptime>0) {
+					System.out.println("Sleeping for " + sleeptime + " seconds");
+					Thread.sleep(sleeptime);
+				}
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
 		}
 	}
 	
@@ -324,16 +363,37 @@ public class HADaemon {
 			String activeId = (String)activeDetails.get("id");
 			
 			Boolean isAlive = isReplicaAlive(activeId);
-			if(isAlive == false){
+			if(isAlive == false || isActiveLockHolder()){
 				System.out.println("*** ACTIVE "+"("+ activeId+") *** SUSPECTED DEAD!!");
 				releaseLock(activeId);
-				if(isActiveLockHolder()){
+				if (isActiveLockHolder()) {
 					System.out.println("***I am the next in line, so taking over from active***");
 					takeOverFromCurrentActive(activeId);
+					return;
 				}
 			}
 			System.out.println("--{Passive} Hal Daemon--"+id+"---ACTIVE  ALIVE---");
 
+			//back off if needed
+			try {
+				Long sleeptime = Long.parseLong(ConfigReader.getConfigAttribute("core-monitor-sleep-time", "0"));
+				if (sleeptime>0) {
+					System.out.println("Sleeping for " + sleeptime + "seconds");
+					Thread.sleep(sleeptime);
+				}
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+	}
+	
+	private class RestartThread implements Runnable{
+		String replicaId;
+		public RestartThread(String replicaId) {
+			this.replicaId = replicaId;
+		}
+		public void run() {
+			restartHALDaemon(this.replicaId, 1);
 		}
 	}
 	

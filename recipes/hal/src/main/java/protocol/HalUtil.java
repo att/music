@@ -38,7 +38,7 @@ import musicinterface.MusicHandle;
 
 
 public class HalUtil {
-	public static String version="1.1.0";
+	public static String version="2.0.0";
 	private static String getMusicNodeIp(){
 		return ConfigReader.getConfigAttribute("musicLocation");
 /*		String serverAddress;

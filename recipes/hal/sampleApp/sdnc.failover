@@ -1,0 +1,12 @@
+#!/bin/sh
+
+#
+# SDNC Resiliency project
+# SHELL script to execute the SDNC cluster failover tasks
+#
+#  return values:
+#         SUCCESS - failover tasks were executed successfully
+#         FAILURE - failover tasks failed
+# 
+
+echo "SUCCESS"

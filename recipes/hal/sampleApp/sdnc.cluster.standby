@@ -1,0 +1,10 @@
+#!/bin/sh
+#
+# SDNC Resiliency project
+# SHELL script to determine whether cluster is the active SDNC cluster or the GeoR Stanby SDNC cluster.
+#  The status of the cluster is determined by examining the response data obtained from jolokia calls to the ODL nodes.
+#  return values:
+#         ACTIVE - cluster is the active cluster
+#         STANDBY - cluster is the standby cluster
+#
+echo "STANDBY"

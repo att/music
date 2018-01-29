@@ -114,6 +114,18 @@ public class RestMusicDataAPI {
 		long end = System.currentTimeMillis();
 		logger.debug("Time taken for setting up query in create keyspace:"+ (end-start));
 		MusicCore.nonKeyRelatedPut(query, consistency);
+		
+		String internalKpQuery = "CREATE KEYSPACE IF NOT EXISTS music_internal WITH replication = " + 
+				repString;
+		if(kspObject.getDurabilityOfWrites() != null)
+			internalKpQuery = internalKpQuery +" AND durable_writes = " + kspObject.getDurabilityOfWrites() ;
+		internalKpQuery = internalKpQuery + ";";
+
+		MusicCore.nonKeyRelatedPut(internalKpQuery, consistency);
+		String internalTabQuery = "CREATE TABLE IF NOT EXISTS music_internal.unsynced_keys (key text PRIMARY KEY);";
+		
+		MusicCore.nonKeyRelatedPut(internalTabQuery, consistency);
+
 	}
 
 	@DELETE

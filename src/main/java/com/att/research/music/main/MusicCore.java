@@ -68,7 +68,7 @@ public class MusicCore {
 			return getDSHandle().doesRowSatisfyCondition(row, conditions);
 		}
 	}
-	
+
 	public static MusicLockingService getLockingServiceHandle(){
 		logger.debug("Acquiring lock store handle");
 		long start = System.currentTimeMillis();
@@ -103,11 +103,7 @@ public class MusicCore {
 	}        
 
 	public static  String createLockReference(String lockName){
-		logger.info("Creating lock reference for lock name:"+lockName);
-		long start = System.currentTimeMillis();
 		String lockId = getLockingServiceHandle().createLockId("/"+lockName);
-		long end = System.currentTimeMillis();
-		logger.info("Time taken to create lock reference:"+(end-start)+" ms");
 		return lockId;
 	}
 
@@ -118,136 +114,32 @@ public class MusicCore {
 		else
 			return true;
 	}
-	
-	public static MusicLockState getMusicLockState(String key){
-		long start = System.currentTimeMillis();
-		try{
-			String[] splitString = key.split("\\.");
-			String keyspaceName = splitString[0];
-			String tableName = splitString[1];
-			String primaryKey = splitString[2];
-			MusicLockState mls;
-			String lockName = keyspaceName+"."+tableName+"."+primaryKey;
-			mls = getLockingServiceHandle().getLockState(lockName);
-			long end = System.currentTimeMillis();
-			logger.debug("Time taken to get lock state:"+(end-start)+" ms");
-			return mls;
-		}catch (NullPointerException e) {
-			logger.debug("No lock object exists as of now..");
-		}
-			return null;
-	}
 
-	public static ReturnType acquireLockWithLease(String key, String lockId, long leasePeriod){	
-		try {
-			long start = System.currentTimeMillis();
-			/* check if the current lock has exceeded its lease and if yes, release that lock*/	
-			MusicLockState mls = getMusicLockState(key);
-			if(mls!= null){
-				if(mls.getLockStatus().equals(LockStatus.LOCKED)){
-					logger.info("The current lock holder for "+key+" is "+ mls.getLockHolder()+". Checking if it has exceeded lease");
-					long currentLockPeriod = System.currentTimeMillis() - mls.getLeaseStartTime();
-					long currentLeasePeriod = mls.getLeasePeriod();
-					if(currentLockPeriod > currentLeasePeriod){
-							logger.info("Lock period "+currentLockPeriod+" has exceeded lease period "+currentLeasePeriod);
-							boolean voluntaryRelease = false;
-							String currentLockHolder = mls.getLockHolder();
-							mls = releaseLock(currentLockHolder,voluntaryRelease);
-					}
-				}
-			}
-			else
-				logger.debug("There is no lock state object for "+key);
-			
-			/* call the traditional acquire lock now and if the result returned is true, set the 
-			 *  begin time-stamp and lease period
-			 */
-			if(acquireLock(key, lockId) == true){
-				mls = getMusicLockState(key);//get latest state
-				if(mls.getLeaseStartTime() == -1){//set it again only if it is not set already
-					mls.setLeaseStartTime(System.currentTimeMillis());
-					mls.setLeasePeriod(leasePeriod);
-					getLockingServiceHandle().setLockState(key, mls);			
-				}		
-				long end = System.currentTimeMillis();
-				logger.info("Time taken to acquire leased lock:"+(end-start)+" ms");
-				return new ReturnType(ResultType.SUCCESS,"Accquired lock"); 
-			}else{
-				long end = System.currentTimeMillis();
-				logger.info("Time taken to fail to acquire leased lock:"+(end-start)+" ms");
-				return new ReturnType(ResultType.FAILURE,"Could not acquire lock"); 
-			}
-		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			StringWriter sw = new StringWriter();
-			e.printStackTrace(new PrintWriter(sw));
-			String exceptionAsString = sw.toString();
-			return new ReturnType(ResultType.FAILURE,"Exception thrown in acquireLockWithLease:\n"+exceptionAsString); 
-		}
-	}
 
-	public static  boolean  acquireLock(String key, String lockId){
-		/* first check if I am on top. Since ids are not reusable there is no need to check lockStatus
-		 * If the status is unlocked, then the above
-		call will automatically return false.*/
+	public static  ReturnType  acquireLock(String key, String lockId){
 		Boolean result = getLockingServiceHandle().isMyTurn(lockId);	
 		if(result == false){
-			logger.info("In acquire lock: Not your turn, someone else has the lock");
-			return false;
+			return new ReturnType(ResultType.FAILURE,"You are the not the lock holder"); 
 		}
-		
-		
-		//this is for backward compatibility where locks could also be acquired on just
-		//keyspaces or tables.
-		if(isTableOrKeySpaceLock(key) == true){
-			logger.info("In acquire lock: A table or keyspace lock so no need to perform sync...so returning true");
-			return true; 
-		}
-		
-		//read the lock name corresponding to the key and if the status is locked or being locked, then return false
-		MusicLockState currentMls=null, newMls;
-		try{
-			currentMls = getMusicLockState(key);
-			String currentLockHolder = currentMls.getLockHolder();
-			if(lockId.equals(currentLockHolder)){
-				logger.info("In acquire lock: You already have the lock!");
-				return true;
-			}
-		}catch (NullPointerException e) {
-			logger.debug("In acquire lock:No one has tried to acquire the lock yet..");
-		}
-		
-		//change status to "being locked". This state transition is necessary to ensure syncing before granting the lock
-		String lockHolder = null;
-		boolean needToSyncQuorum = false; 
-		if(currentMls != null)
-			needToSyncQuorum = currentMls.isNeedToSyncQuorum();
-			
-			
-		newMls = new MusicLockState(MusicLockState.LockStatus.BEING_LOCKED, lockHolder,needToSyncQuorum);
-		getLockingServiceHandle().setLockState(key, newMls);
-		logger.debug("In acquire lock: Set lock state to being_locked");
-		
-		//do syncing if this was a forced lock release
-		if(needToSyncQuorum){
+
+		//check to see if the key is in an unsynced state
+		String query = "select * from music_internal.unsynced_keys where key='"+key+"';";
+		ResultSet results = getDSHandle().executeCriticalGet(query);
+		if (results.all().size() != 0) {
 			logger.info("In acquire lock: Since there was a forcible release, need to sync quorum!");
 			syncQuorum(key);
+			String cleanQuery = "delete * from music_internal.unsynced_keys where key='"+key+"';";
+			getDSHandle().executePut(cleanQuery, "critical");
 		}
-		
-		//change status to locked
-		lockHolder = lockId;
-		needToSyncQuorum = false;
-		newMls = new MusicLockState(MusicLockState.LockStatus.LOCKED, lockHolder,needToSyncQuorum);
-		getLockingServiceHandle().setLockState(key, newMls);
-		logger.info("In acquire lock: Set lock state to locked and assigned current lock ref "+ lockId+" as holder");
-		return result;
+
+		return new ReturnType(ResultType.SUCCESS,"You are the lock holder"); 
 	}
 
-	
+
 	public boolean createKeyspace(String keyspaceName, JsonKeySpace kspObject) throws Exception {
 		return true;
 	}
-	
+
 	public static  ReturnType eventualPut(String query){
 		long start = System.currentTimeMillis();
 		getDSHandle().executePut(query, "eventual");
@@ -256,24 +148,24 @@ public class MusicCore {
 		return new ReturnType(ResultType.SUCCESS,""); 
 
 	}
-	
+
 	private static void syncQuorum(String key){
 		logger.info("Performing sync operation---");
 		String[] splitString = key.split("\\.");
 		String keyspaceName = splitString[0];
 		String tableName = splitString[1];
 		String primaryKeyValue = splitString[2];
-		
+
 		//get the primary key d
 		TableMetadata tableInfo = returnColumnMetadata(keyspaceName, tableName);
 		String primaryKeyName = tableInfo.getPrimaryKey().get(0).getName();//we only support single primary key
 		DataType primaryKeyType = tableInfo.getPrimaryKey().get(0).getType();
 		String cqlFormattedPrimaryKeyValue = convertToCQLDataType(primaryKeyType, primaryKeyValue);
-		
+
 		//get the row of data from a quorum
 		String selectQuery =  "SELECT *  FROM "+keyspaceName+"."+tableName+ " WHERE "+primaryKeyName+"="+cqlFormattedPrimaryKeyValue+";"; 
 		ResultSet results = getDSHandle().executeCriticalGet(selectQuery);
-		
+
 		//write it back to a quorum
 		Row row = results.one();
 		ColumnDefinitions colInfo = row.getColumnDefinitions();
@@ -292,32 +184,30 @@ public class MusicCore {
 				fieldValueString = fieldValueString+",";
 			counter = counter +1;
 		}
-		
+
 		String updateQuery =  "UPDATE "+keyspaceName+"."+tableName+" SET "+fieldValueString+" WHERE "+primaryKeyName+"="+cqlFormattedPrimaryKeyValue+";";
 		getDSHandle().executePut(updateQuery, "critical");
 	}
 
 	public static ReturnType criticalPut(String keyspaceName, String tableName, String primaryKey, String query, String lockId, Condition conditionInfo){
-		long start = System.currentTimeMillis();
+
+		Boolean result = getLockingServiceHandle().isMyTurn(lockId);	
+		if(result == false)
+			return new ReturnType(ResultType.FAILURE,"Cannot perform operation since you are the not the lock holder"); 
+
+		if(conditionInfo != null)//check if condition is true
+			if(conditionInfo.testCondition() == false)
+				return new ReturnType(ResultType.FAILURE,"Lock acquired but the condition is not true"); 
+
 		try {
-			MusicLockState mls = getLockingServiceHandle().getLockState(keyspaceName+"."+tableName+"."+primaryKey);
-			if(mls.getLockHolder().equals(lockId) == true){
-				if(conditionInfo != null)//check if condition is true
-					if(conditionInfo.testCondition() == false)
-						return new ReturnType(ResultType.FAILURE,"Lock acquired but the condition is not true"); 
-				getDSHandle().executePut(query,"critical");
-				long end = System.currentTimeMillis();
-				logger.info("Time taken for the critical put:"+(end-start)+" ms");
-				return new ReturnType(ResultType.SUCCESS,"Update performed"); 
-			}
-			else 
-				return new ReturnType(ResultType.FAILURE,"Cannot perform operation since you are the not the lock holder"); 
-		} catch (Exception e) {
+			getDSHandle().executePut(query,"critical");
+			return new ReturnType(ResultType.SUCCESS,"Update performed"); 
+		}catch (Exception e) {
 			// TODO Auto-generated catch block
 			StringWriter sw = new StringWriter();
 			e.printStackTrace(new PrintWriter(sw));
 			String exceptionAsString = sw.toString();
-			return new ReturnType(ResultType.FAILURE,"Exception thrown while doing the critical put, check sanctity of the row/conditions:\n"+exceptionAsString); 
+			return new ReturnType(ResultType.FAILURE,"Exception thrown while doing the critical put, either you are not connected to a quorum or the condition is wrong:\n"+exceptionAsString); 
 		}
 	}
 
@@ -326,39 +216,33 @@ public class MusicCore {
 		String key = keyspaceName+"."+tableName+"."+primaryKey;
 		String lockId = createLockReference(key);
 		long lockCreationTime = System.currentTimeMillis();
-		long leasePeriod = MusicUtil.defaultLockLeasePeriod;
-		ReturnType lockAcqResult = acquireLockWithLease(key, lockId, leasePeriod);
+		ReturnType lockAcqResult = acquireLock(key, lockId);
 		long lockAcqTime = System.currentTimeMillis();
 		if(lockAcqResult.getResult().equals(ResultType.SUCCESS)){
-			logger.info("acquired lock with id "+lockId);
 			ReturnType criticalPutResult = criticalPut(keyspaceName, tableName, primaryKey, query, lockId,conditionInfo);
 			long criticalPutTime = System.currentTimeMillis();
-			boolean voluntaryRelease = true; 
-			releaseLock(lockId, voluntaryRelease);
+			voluntaryReleaseLock(lockId);
 			long lockDeleteTime = System.currentTimeMillis();
 			String timingInfo = "|lock creation time:"+(lockCreationTime-start)+"|lock accquire time:"+(lockAcqTime-lockCreationTime)+"|critical put time:"+(criticalPutTime-lockAcqTime)+"|lock release time:"+(lockDeleteTime-criticalPutTime)+"|";
 			criticalPutResult.setTimingInfo(timingInfo);
 			return criticalPutResult;
 		}
 		else{
-			logger.info("unable to acquire lock, id "+lockId);
 			destroyLockRef(lockId);
 			return lockAcqResult;	
 		}
 	}
-	
-	
+
+
 	//this function is mainly for the benchmarks to see the effect of lock deletion.
 	public static ReturnType atomicPutWithDeleteLock(String keyspaceName, String tableName, String primaryKey, String query, Condition conditionInfo){
 		long start = System.currentTimeMillis();
 		String key = keyspaceName+"."+tableName+"."+primaryKey;
 		String lockId = createLockReference(key);
 		long lockCreationTime = System.currentTimeMillis();
-		long leasePeriod = MusicUtil.defaultLockLeasePeriod;
-		ReturnType lockAcqResult = acquireLockWithLease(key, lockId, leasePeriod);
+		ReturnType lockAcqResult = acquireLock(key, lockId);
 		long lockAcqTime = System.currentTimeMillis();
 		if(lockAcqResult.getResult().equals(ResultType.SUCCESS)){
-			logger.info("acquired lock with id "+lockId);
 			ReturnType criticalPutResult = criticalPut(keyspaceName, tableName, primaryKey, query, lockId,conditionInfo);
 			long criticalPutTime = System.currentTimeMillis();
 			deleteLock(key);
@@ -368,22 +252,117 @@ public class MusicCore {
 			return criticalPutResult;
 		}
 		else{
-			logger.info("unable to acquire lock, id "+lockId);
 			deleteLock(key);
 			return lockAcqResult;	
 		}
 	}
 
+	public static  ResultSet get(String query){
+		ResultSet results = getDSHandle().executeEventualGet(query);
+		return results;
+	}
+
+	public static  ResultSet quorumGet(String query){
+		ResultSet results = getDSHandle().executeCriticalGet(query);
+		return results;
+
+	}
+
+	public static  Map<String, HashMap<String, Object>> marshallResults(ResultSet results){
+		Map<String, HashMap<String, Object>> marshalledResults = getDSHandle().marshalData(results);
+		return marshalledResults;
+	}
+
+	public static  String whoseTurnIsIt(String lockName){
+		String currentHolder = getLockingServiceHandle().whoseTurnIsIt("/"+lockName)+"";
+		return currentHolder;
+	}
+
+	public static String getLockNameFromId(String lockId){
+		StringTokenizer st = new StringTokenizer(lockId);
+		String lockName = st.nextToken("$");
+		return lockName;
+	}
+
+	public static void destroyLockRef(String lockId){
+		long start = System.currentTimeMillis();
+		getLockingServiceHandle().unlockAndDeleteId(lockId);
+		long end = System.currentTimeMillis();			
+		logger.info("Time taken to destroy lock reference:"+(end-start)+" ms");
+	}
+
+	public static  void  voluntaryReleaseLock(String lockId){
+		getLockingServiceHandle().unlockAndDeleteId(lockId);
+	}
+
+	public static  void  forcedReleaseLock(String lockId, boolean voluntaryRelease){
+		getLockingServiceHandle().unlockAndDeleteId(lockId);
+	}
+
+	public static  void deleteLock(String lockName){
+		getLockingServiceHandle().deleteLock("/"+lockName);
+	}
+
+	//this is mainly for some  functions like keyspace creation etc which does not
+	//really need the bells and whistles of Music locking. 
+	public static  void nonKeyRelatedPut(String query, String consistency) throws Exception{
+		getDSHandle().executePut(query,consistency);
+	}
+
+	public static TableMetadata returnColumnMetadata(String keyspace, String tablename){
+		return getDSHandle().returnColumnMetadata(keyspace, tablename);
+	}
+
+	public static String convertToCQLDataType(DataType type,Object valueObj){
+		String value ="";
+		switch (type.getName()) {
+		case UUID:
+			value = valueObj+"";
+			break;
+		case TEXT: case VARCHAR:
+			String valueString = valueObj+"";
+			valueString = valueString.replace("'", "''");
+			value = "'"+valueString+"'";
+			break;
+		case MAP:{
+			Map<String,Object> otMap = (Map<String,Object>)valueObj;
+			value = "{"+jsonMaptoSqlString(otMap, ",")+"}";
+			break;
+		}	
+		default:
+			value = valueObj+"";
+			break;
+		}
+		return value;
+	}
+
+	//utility function to parse json map into sql like string
+	public static String jsonMaptoSqlString(Map<String, Object> jMap, String lineDelimiter){
+		String sqlString="";
+		int counter =0;
+		for (Map.Entry<String, Object> entry : jMap.entrySet())
+		{
+			Object ot = entry.getValue();
+			String value = ot+"";
+			if(ot instanceof String){
+				value = "'"+value.replace("'", "''")+"'";
+			}
+			sqlString = sqlString+"'"+entry.getKey()+"':"+ value+"";
+			if(counter!=jMap.size()-1)
+				sqlString = sqlString+lineDelimiter;
+			counter = counter +1;
+		}	
+		return sqlString;	
+	}
+
 	public static ResultSet atomicGet(String keyspaceName, String tableName, String primaryKey, String query){
 		String key = keyspaceName+"."+tableName+"."+primaryKey;
 		String lockId = createLockReference(key);
-		long leasePeriod = MusicUtil.defaultLockLeasePeriod;
-		ReturnType lockAcqResult = acquireLockWithLease(key, lockId, leasePeriod);
+		ReturnType lockAcqResult = acquireLock(key, lockId);
 		if(lockAcqResult.getResult().equals(ResultType.SUCCESS)){
 			logger.info("acquired lock with id "+lockId);
 			ResultSet result = criticalGet(keyspaceName, tableName, primaryKey, query, lockId);
-			boolean voluntaryRelease = true; 
-			releaseLock(lockId,voluntaryRelease);
+			voluntaryReleaseLock(lockId);
 			return result;
 		}
 		else{
@@ -408,133 +387,16 @@ public class MusicCore {
 		return results;
 	}
 
-	public static  ResultSet get(String query){
-		ResultSet results = getDSHandle().executeEventualGet(query);
-		return results;
-	}
-	
-	public static  ResultSet quorumGet(String query){
-		ResultSet results = getDSHandle().executeCriticalGet(query);
-		return results;
-
-	}
-	
-	public static  Map<String, HashMap<String, Object>> marshallResults(ResultSet results){
-		Map<String, HashMap<String, Object>> marshalledResults = getDSHandle().marshalData(results);
-		return marshalledResults;
-	}
-	
-	public static  String whoseTurnIsIt(String lockName){
-		String currentHolder = getLockingServiceHandle().whoseTurnIsIt("/"+lockName)+"";
-		return currentHolder;
-	}
-
-	public static String getLockNameFromId(String lockId){
-		StringTokenizer st = new StringTokenizer(lockId);
-		String lockName = st.nextToken("$");
-		return lockName;
-	}
-	
-	public static void destroyLockRef(String lockId){
-		long start = System.currentTimeMillis();
-		getLockingServiceHandle().unlockAndDeleteId(lockId);
-		long end = System.currentTimeMillis();			
-		logger.info("Time taken to destroy lock reference:"+(end-start)+" ms");
-	}
-	
-	public static  MusicLockState  releaseLock(String lockId, boolean voluntaryRelease){
-		long start = System.currentTimeMillis();
-		getLockingServiceHandle().unlockAndDeleteId(lockId);
-		String lockName = getLockNameFromId(lockId);
-		MusicLockState mls;
-		String lockHolder = null;
-		if(voluntaryRelease){
-			mls = new MusicLockState(MusicLockState.LockStatus.UNLOCKED, lockHolder);
-			logger.info("In unlock: lock voluntarily released for "+lockId);
-		}
-		else{
-			boolean needToSyncQuorum = true; 
-			mls = new MusicLockState(MusicLockState.LockStatus.UNLOCKED, lockHolder,needToSyncQuorum);
-			logger.info("In unlock: lock forcibly released for "+lockId);
-		}
-		getLockingServiceHandle().setLockState(lockName, mls);
-		long end = System.currentTimeMillis();			
-		logger.info("Time taken to release lock:"+(end-start)+" ms");
-		return mls;
-	}
-
-	public static  void deleteLock(String lockName){
-		long start = System.currentTimeMillis();
-		logger.info("Deleting lock for "+lockName);
-		getLockingServiceHandle().deleteLock("/"+lockName);
-		long end = System.currentTimeMillis();			
-		logger.info("Time taken to delete lock:"+(end-start)+" ms");
-
-	}
-
-	//this is mainly for some  functions like keyspace creation etc which does not
-	//really need the bells and whistles of Music locking. 
-	public static  void nonKeyRelatedPut(String query, String consistency) throws Exception{
-			getDSHandle().executePut(query,consistency);
-	}
-
-	public static TableMetadata returnColumnMetadata(String keyspace, String tablename){
-		return getDSHandle().returnColumnMetadata(keyspace, tablename);
-	}
-	
-	public static String convertToCQLDataType(DataType type,Object valueObj){
-		String value ="";
-		switch (type.getName()) {
-		case UUID:
-			value = valueObj+"";
-			break;
-		case TEXT: case VARCHAR:
-			String valueString = valueObj+"";
-			valueString = valueString.replace("'", "''");
-			value = "'"+valueString+"'";
-			break;
-		case MAP:{
-			Map<String,Object> otMap = (Map<String,Object>)valueObj;
-			value = "{"+jsonMaptoSqlString(otMap, ",")+"}";
-			break;
-		}	
-		default:
-			value = valueObj+"";
-			break;
-		}
-		return value;
-	}
-	
-	//utility function to parse json map into sql like string
-	public static String jsonMaptoSqlString(Map<String, Object> jMap, String lineDelimiter){
-		String sqlString="";
-		int counter =0;
-		for (Map.Entry<String, Object> entry : jMap.entrySet())
-		{
-			Object ot = entry.getValue();
-			String value = ot+"";
-			if(ot instanceof String){
-				value = "'"+value.replace("'", "''")+"'";
-			}
-			sqlString = sqlString+"'"+entry.getKey()+"':"+ value+"";
-			if(counter!=jMap.size()-1)
-				sqlString = sqlString+lineDelimiter;
-			counter = counter +1;
-		}	
-		return sqlString;	
-	}
-	
 	public static void pureZkCreate(String nodeName){
 		getLockingServiceHandle().getzkLockHandle().createNode(nodeName);
 	}
-	
+
 	public static void pureZkWrite(String nodeName, byte[] data){
 		long start = System.currentTimeMillis();
-		logger.info("Performing zookeeper write to "+nodeName);
 		getLockingServiceHandle().getzkLockHandle().setNodeData(nodeName, data);
 		logger.info("Performed zookeeper write to "+nodeName);
 		long end = System.currentTimeMillis();
-		logger.info("Time taken for the actual zk put:"+(end-start)+" ms");
+		//logger.info("Time taken for the actual zk put:"+(end-start)+" ms");
 	}
 
 	public static byte[] pureZkRead(String nodeName){

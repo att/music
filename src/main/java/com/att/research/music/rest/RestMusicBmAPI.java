@@ -80,18 +80,15 @@ public class RestMusicBmAPI {
 
 		long lockCreationTime = System.currentTimeMillis();
 
-		long leasePeriod = MusicUtil.defaultLockLeasePeriod;
-		ReturnType lockAcqResult = MusicCore.acquireLockWithLease(lockname, lockId, leasePeriod);
+		ReturnType lockAcqResult = MusicCore.acquireLock(lockname, lockId);
 		long lockAcqTime = System.currentTimeMillis();
 		long zkPutTime=0,lockReleaseTime=0;
 
 		if(lockAcqResult.getResult().equals(ResultType.SUCCESS)){
-			logger.info("acquired lock with id "+lockId);
 			MusicCore.pureZkWrite(lockname, data);
 			zkPutTime = System.currentTimeMillis();
-			boolean voluntaryRelease = true; 
 			if(consistency.equals("atomic"))
-				MusicCore.releaseLock(lockId,voluntaryRelease);
+				MusicCore.voluntaryReleaseLock(lockId);
 			else 
 			if(consistency.equals("atomic_delete_lock"))
 				MusicCore.deleteLock(lockname);
@@ -127,13 +124,11 @@ public class RestMusicBmAPI {
 		logger.info("--------------Zk atomic read-------------------------");
 		long start = System.currentTimeMillis();
 		String lockId = MusicCore.createLockReference(lockName);
-		long leasePeriod = MusicUtil.defaultLockLeasePeriod;
-		ReturnType lockAcqResult = MusicCore.acquireLockWithLease(lockName, lockId, leasePeriod);
+		ReturnType lockAcqResult = MusicCore.acquireLock(lockName, lockId);
 		if(lockAcqResult.getResult().equals(ResultType.SUCCESS)){
 			logger.info("acquired lock with id "+lockId);
 			MusicCore.pureZkRead(nodeName);
-			boolean voluntaryRelease = true; 
-			MusicCore.releaseLock(lockId,voluntaryRelease);
+			MusicCore.voluntaryReleaseLock(lockId);
 		}else{
 			MusicCore.destroyLockRef(lockId);
 		}

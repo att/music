@@ -9,6 +9,9 @@ public class ReturnType {
 		this.message = message;
 	}
 
+	public ResultType getResultType() {
+		return result;
+	}
 	public String getTimingInfo() {
 		return timingInfo;
 	}

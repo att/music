@@ -71,15 +71,6 @@ public class MusicLockingService implements Watcher {
 		}
 	}
 
-	public void createLockaIfItDoesNotExist(String lockName){
-		if(zkLockHandle.checkIfLockExists(lockName) == false){
-			String lockHolder = null;
-			MusicLockState ml = new MusicLockState(MusicLockState.LockStatus.UNLOCKED, lockHolder);
-			byte[] data = ml.serialize();
-			zkLockHandle.createLock(lockName, data);
-		}
-	}
-	
 	public void setLockState(String lockName, MusicLockState mls){
 		byte[] data = mls.serialize();
 		zkLockHandle.setNodeData(lockName, data);

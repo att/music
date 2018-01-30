@@ -463,8 +463,9 @@ public class TestMusicE2E {
 	}
 	public static void main(String[] args) {	
 		long start = System.currentTimeMillis();
-			for(int i =0; i < 2;++i){
-				TestMusicE2E vHandle = new TestMusicE2E(args);
+		String[] musicIps = args;
+			for(int i =0; i < 1;++i){
+				TestMusicE2E vHandle = new TestMusicE2E(musicIps);
 				vHandle.overAllTests();
 
 				System.out.println("=====================================");

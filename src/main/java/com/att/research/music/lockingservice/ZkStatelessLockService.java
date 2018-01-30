@@ -295,7 +295,7 @@ public class ZkStatelessLockService extends ProtocolSupport{
 						LOG.warn("No children in: " + dir + " when we've just " +
 								"created one! Lets recreate it...");
 						// lets force the recreation of the id
-						id = null;
+						return Boolean.FALSE;
 					} else {
 						// lets sort them explicitly (though they do seem to come back in order ususally :)
 						ZNodeName idName = new ZNodeName(id);

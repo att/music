@@ -14,6 +14,8 @@ import org.apache.log4j.Logger;
 import com.att.research.music.datastore.jsonobjects.JsonLeasedLock;
 import com.att.research.music.lockingservice.MusicLockState;
 import com.att.research.music.main.MusicCore;
+import com.att.research.music.main.ResultType;
+import com.att.research.music.main.ReturnType;
 
 
 @Path("/locks/")
@@ -34,8 +36,11 @@ public class RestMusicLocksAPI {
 	@Produces(MediaType.TEXT_PLAIN)	
 	public String accquireLock(@PathParam("lockreference") String lockId){
 		String lockName = lockId.substring(lockId.indexOf("$")+1, lockId.lastIndexOf("$"));
-		String result = MusicCore.acquireLock(lockName,lockId)+"";
-		return result; 
+		ReturnType result = MusicCore.acquireLock(lockName,lockId);
+		if(result.getResultType().equals(ResultType.SUCCESS))
+			return "true"; 
+		else 
+			return "false";
 	}
 	
 	@POST
@@ -45,8 +50,11 @@ public class RestMusicLocksAPI {
 	public String accquireLockWithLease(JsonLeasedLock lockObj, @PathParam("lockreference") String lockId){
 		String lockName = lockId.substring(lockId.indexOf("$")+1, lockId.lastIndexOf("$"));
 		//lockName is the "key" of the form keyspaceName.tableName.rowId
-		String result = MusicCore.acquireLockWithLease(lockName, lockId, lockObj.getLeasePeriod())+"";
-		return result; 
+		ReturnType result = MusicCore.acquireLock(lockName,lockId);
+		if(result.getResultType().equals(ResultType.SUCCESS))
+			return "true"; 
+		else 
+			return "false";
 	} 
 	
 
@@ -57,22 +65,12 @@ public class RestMusicLocksAPI {
 		return MusicCore.whoseTurnIsIt(lockName);
 	}
 
-	@GET
-	@Path("/{lockname}")
-	@Produces(MediaType.TEXT_PLAIN)	
-	public String currentLockState(@PathParam("lockname") String lockName){
-		MusicLockState mls = MusicCore.getMusicLockState(lockName);
-		if(mls == null)
-			return "No lock object created yet..";
-		return mls.getLockStatus()+"|"+mls.getLockHolder();
-	}
 
 	//deletes the process from the zk queue
 	@DELETE
 	@Path("/release/{lockreference}")
 	public void unLock(@PathParam("lockreference") String lockId){
-		boolean voluntaryRelease = true; 
-		MusicCore.releaseLock(lockId,voluntaryRelease);
+		MusicCore.voluntaryReleaseLock(lockId);
 	}
 
 	@DELETE

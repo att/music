@@ -61,11 +61,6 @@ stated inside of the file.
          <version>1.9</version>
       </dependency>
       <dependency>
-         <groupId>com.sun.jersey</groupId>
-         <artifactId>jersey-bundle</artifactId>
-         <version>1.18</version>
-      </dependency>
-      <dependency>
          <groupId>com.googlecode.json-simple</groupId>
          <artifactId>json-simple</artifactId>
          <version>1.1</version>
@@ -77,31 +72,30 @@ stated inside of the file.
       </dependency>
    </dependencies>
    <build>
-      <plugins>
-        <plugin>
-          <groupId>org.apache.maven.plugins</groupId>
-          <artifactId>maven-assembly-plugin</artifactId>
-          <configuration>
-            <archive>
-              <manifest>
-                <mainClass>protocol.HADaemon</mainClass>
-              </manifest>
-            </archive>
-            <descriptorRefs>
-              <descriptorRef>jar-with-dependencies</descriptorRef>
-            </descriptorRefs>
-          </configuration>
-          <executions>
-              <execution>
-                <id>make-assembly</id> <!-- this is used for inheritance merges -->
-                <phase>package</phase> <!-- bind to the packaging phase -->
-                <goals>
-                  <goal>single</goal>
-                </goals>
-              </execution>
-            </executions>
-        </plugin>
-      </plugins>
+     <finalName>hal</finalName>
+     <plugins>
+       <plugin>
+         <groupId>org.apache.maven.plugins</groupId>
+         <artifactId>maven-shade-plugin</artifactId>
+         <version>3.1.0</version>
+         <configuration>
+           <transformers>
+             <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+             <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+               <mainClass>protocol.HADaemon</mainClass>
+             </transformer>
+           </transformers>
+         </configuration>
+         <executions>
+           <execution>
+             <phase>package</phase>
+             <goals>
+               <goal>shade</goal>
+             </goals>
+           </execution>
+         </executions>
+       </plugin>
+     </plugins>
    </build>
 </project>
 

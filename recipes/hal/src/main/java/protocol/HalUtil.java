@@ -28,9 +28,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.InetAddress;
+import java.net.URL;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Map;
+import java.util.Properties;
 
 import protocol.HADaemon.ScriptResult;
 import musicinterface.MusicHandle;
@@ -38,7 +40,19 @@ import musicinterface.MusicHandle;
 
 
 public class HalUtil {
-	public static String version="2.0.1";
+
+	public static String version;
+	static {
+		try {
+			final Properties properties = new Properties();
+			System.err.println("hi" + HalUtil.class.getClassLoader().getResourceAsStream("project.properties"));			
+			properties.load(HalUtil.class.getClassLoader().getResourceAsStream("project.properties"));
+			version = properties.getProperty("version");
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
 	private static String getMusicNodeIp(){
 		return ConfigReader.getConfigAttribute("musicLocation");
 /*		String serverAddress;

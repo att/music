@@ -1,6 +1,5 @@
  {
      "appName":"sdnc",
-     "start-as-active-0": "false",
      "ensure-active-0": "/home/bt054f/hal/ensureSdncActive.sh",
      "ensure-active-1": "/home/bt054f/hal/ensureSdncActive.sh",
      "ensure-passive-0":"/home/bt054f/hal/ensureSdncStandby.sh",

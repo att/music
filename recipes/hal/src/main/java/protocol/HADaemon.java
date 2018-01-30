@@ -28,45 +28,62 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
+
 import musicinterface.MusicHandle;
+
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
+
 
 public class HADaemon {
 	String id;
 	String lockName,lockRef;
 	public  enum CoreState {PASSIVE, ACTIVE};
 	public  enum ScriptResult {ALREADY_RUNNING, SUCCESS_RESTART, FAIL_RESTART};
-	String coreName;
+	String keyspaceName;
+	String tableName;
+	
 	public HADaemon(String id){
 		this.id = id; 
 		bootStrap();
 	}
 	
 	private void bootStrap(){
-		coreName = "hal_"+ConfigReader.getConfigAttribute("appName");
-		String keyspaceName=coreName;
+		keyspaceName = "hal_"+ConfigReader.getConfigAttribute("appName");
 		MusicHandle.createKeyspaceEventual(keyspaceName);
 		
-		String tableName = "Replicas";
+		tableName = "Replicas";
 		Map<String,String> replicaFields = new HashMap<String,String>();
 		replicaFields.put("id", "text");
-		replicaFields.put("isActive", "boolean");
-		replicaFields.put("TimeOfLastUpdate", "varint");
-		replicaFields.put("lockRef", "text");
+		replicaFields.put("isactive", "boolean");
+		replicaFields.put("timeoflastupdate", "varint");
+		replicaFields.put("lockref", "text");
 		replicaFields.put("PRIMARY KEY", "(id)");
 
 		MusicHandle.createTableEventual(keyspaceName, tableName, replicaFields);	
+		MusicHandle.createIndexInTable(keyspaceName, tableName, "lockref");
 		
-		String activeTableName = "ActiveDetails";
+		Map<String,Object> values = new HashMap<String,Object>();
+		values.put("isactive","false");
+		values.put("id",this.id);
+		MusicHandle.insertIntoTableEventual(keyspaceName, tableName, values);
+		MusicHandle.insertIntoTableEventual(keyspaceName, tableName, values);
+		
+		/*String activeTableName = "ActiveDetails";
 		Map<String,String> activeTableFields = new HashMap<String,String>();
 		activeTableFields.put("active", "text");
 		activeTableFields.put("id", "text");
 		activeTableFields.put("PRIMARY KEY", "(active)");
 		MusicHandle.createTableEventual(keyspaceName, activeTableName, activeTableFields);	
+		*/
 		
-		
-		lockName = coreName+".active";
+		lockName = keyspaceName+".active";
 		createLockRefIfDoesNotExist();
-
 	}
 	
 	private void createLockRefIfDoesNotExist(){
@@ -76,18 +93,17 @@ public class HADaemon {
 		if((oldLockRef == null) || (oldLockRef.equals(""))){
 			System.out.println("No prior lock reference..");
 			lockRef = MusicHandle.createLockRef(lockName);
-			updateHealth(this.id, CoreState.PASSIVE);
+			updateHealth();
 		}
 		else{
 			System.out.println("Lock reference already exists");
 			lockRef = oldLockRef;
 		}
-		
 	}
 	
 	private String getLockRef(String replicaId){	
 		//first check if a lock reference exists for this id..
-		Map<String,Object> replicaDetails = MusicHandle.readSpecificRow(coreName, "Replicas", "id", replicaId); 
+		Map<String,Object> replicaDetails = MusicHandle.readSpecificRow(keyspaceName, tableName, "id", replicaId); 
 		if(replicaDetails == null){
 			System.out.println("No entry found in MUSIC Replicas table for this daemon...");
 			return null; 
@@ -96,29 +112,38 @@ public class HADaemon {
 		return (String)replicaDetails.get("lockref");
 	}
 	
-	//this function maintains the key invariant that it will return true for only one id
+	
+	/**
+	 * This function maintains the key invariant that it will return true for only one id
+	 * @return true if this replica is current lock holder
+	 */
 	private boolean isActiveLockHolder(){
 		boolean isLockHolder = MusicHandle.acquireLock(lockRef);
-		if(isLockHolder){//update active table
+		if (isLockHolder) {//update active table
 			System.out.println("Daemon is the current lock holder!...");
 			Map<String,Object> values = new HashMap<String,Object>();
-			values.put("active","active");
+			values.put("isactive","true");
 			values.put("id",this.id);
-			MusicHandle.insertIntoTableEventual(coreName, "ActiveDetails", values);
-		}		
+			MusicHandle.insertIntoTableEventual(keyspaceName, tableName, values);
+		}
 		return isLockHolder;
 	}
 	
-	//the main startup function for each daemon
-	private void startHAFlow(){
-		if (!Boolean.parseBoolean(ConfigReader.getConfigAttribute("start-as-active-"+id, "true"))) {
+
+	/**
+	 * The main startup function for each daemon
+	 * @param startPassive dictates whether the node should start in an passive mode
+	 */
+	private void startHAFlow(boolean startPassive){
+		if (startPassive) {
 			//wait for active to start
-			System.out.println("Checking to see if active has started");
+			System.out.println("Starting in 'passive mode'. Checking to see if active has started");
 			Map<String, Object> active = getActiveDetails();
 			while (active==null || active.isEmpty()) {
 				//spin
-				System.out.println("Looking to start in passive mode. Waiting for active to start");
+				System.out.println("Active site not yet started.");
 			}
+			System.out.println("Active site has started. Continuing in passive mode");
 		}
 		
 		while (true) {
@@ -164,22 +189,17 @@ public class HADaemon {
 		}
 		return result;
 	}
-
-	private void updateHealth(String replicaId, CoreState mode){
-		//create entry in passive table
+	
+	private void updateHealth() {
 		Map<String,Object> values = new HashMap<String,Object>();
-		values.put("id",replicaId);
-		if(mode.equals(CoreState.ACTIVE))
-			values.put("isActive",true);	
-		else
-			values.put("isActive",false);		
-		values.put("TimeOfLastUpdate", System.currentTimeMillis());
-		values.put("lockRef", this.lockRef);
-		MusicHandle.insertIntoTableEventual(coreName, "Replicas", values);
+		values.put("id",this.id);
+		values.put("timeoflastupdate", System.currentTimeMillis());
+		values.put("lockref", this.lockRef);
+		MusicHandle.insertIntoTableEventual(keyspaceName, tableName, values);
 	}
 	
 	private boolean isReplicaAlive(String id){	
-		Map<String,Object> valueMap = MusicHandle.readSpecificRow(coreName, "Replicas", "id", id);
+		Map<String,Object> valueMap = MusicHandle.readSpecificRow(keyspaceName, tableName, "id", id);
 		System.out.println("Checking health of hal-d "+id+"...");
 		if (valueMap == null) {
 			System.out.println("No entry showing...");
@@ -205,14 +225,14 @@ public class HADaemon {
 	}
 	
 	private Map<String, Object> getActiveDetails(){
-		Map<String,Object> results = MusicHandle.readAllRows(coreName, "ActiveDetails");
-		for (Map.Entry<String, Object> entry : results.entrySet()){
-			Map<String, Object> valueMap = (Map<String, Object>)entry.getValue();
-			return valueMap;
-		}
-		return null;
+		String lockref = MusicHandle.whoIsLockHolder(lockName);
+		return MusicHandle.readSpecificRow(keyspaceName, tableName, "lockref", lockref);
 	}
 
+	/**
+	 * Releases lock and sets replica id's 'isactive' state to false
+	 * @param replicaId
+	 */
 	private void releaseLock(String replicaId){
 		String lockRef = getLockRef(replicaId);
 		
@@ -232,11 +252,9 @@ public class HADaemon {
 		
 		//create entry in replicas table
 		Map<String,Object> values = new HashMap<String,Object>();
-//		values.put("id",replicaId);
-		values.put("isActive",false);		
-//		values.put("TimeOfLastUpdate", System.currentTimeMillis());
-		values.put("lockRef", "");
-		MusicHandle.updateTableEventual(coreName, "Replicas", "id", replicaId, values);
+		values.put("isactive",false);		
+		values.put("lockref", "");
+		MusicHandle.updateTableEventual(keyspaceName, tableName, "id", replicaId, values);
 	}
 	
 	private void tryToEnsurePeerHealth(){
@@ -278,24 +296,35 @@ public class HADaemon {
 		return result; 
 */	}
 	
+	/**
+	 * Give current active sufficient time (as defined by configured 'hal-timeout' value) to become passive.
+	 * If current active does not become passive in the configured amount of time, the current active site
+	 * is forcibly reset to a passive state.
+	 * 
+	 * This method should only be called after the lock of the active is released.
+	 * 
+	 * @param currentActiveId
+	 */
 	private void takeOverFromCurrentActive(String currentActiveId){
-
-		//try to restart the corresponding HAL daemon so that it starts the core in passive mode
-		//restartHALDaemon(currentActiveId,3);
+		if (currentActiveId==null) {
+			return;
+		}
 		
 		boolean oldIdStillActive = true;
 		long startTime = System.currentTimeMillis();
 		long restartTimeout = Long.parseLong(ConfigReader.getConfigAttribute("hal-timeout"));
 		while(true){
-			Map<String,Object> replicaDetails = MusicHandle.readSpecificRow(coreName, "Replicas", "id", currentActiveId);
+			Map<String,Object> replicaDetails = MusicHandle.readSpecificRow(keyspaceName, tableName, "id", currentActiveId);
 			oldIdStillActive  = (Boolean)replicaDetails.get("isactive");
 			if(oldIdStillActive == false)
 				break;
 			
 			//waited long enough..just make the old active passive yourself
-			if((System.currentTimeMillis() - startTime) > restartTimeout){
+			if ((System.currentTimeMillis() - startTime) > restartTimeout) {
 				System.out.println("***Old Active not responding..resetting Music state of old active to passive myself***");
-				updateHealth(currentActiveId, CoreState.PASSIVE);
+				Map<String, Object> removeActive = new HashMap<String,Object>();
+				removeActive.put("isactive", false);
+				MusicHandle.updateTableEventual(keyspaceName, tableName, "id", currentActiveId, removeActive);
 				break;
 			}
 		}
@@ -303,25 +332,23 @@ public class HADaemon {
 		System.out.println("***Old Active has now become passive, so starting active flow ***");
 
 		//now you can take over as active! 
-		//activeFlow();
 	}
 	
 	
 	private void activeFlow(){
-		
 		while (true) {
-			updateHealth(id, CoreState.ACTIVE);
 			if(MusicHandle.acquireLock(lockRef) == false){
 				System.out.println("******I no longer have the lock!Make myself passive*******");
 				lockRef = MusicHandle.createLockRef(lockName);//put yourself back in the queue
 				return;
 			}
+			updateHealth();
 			int noOfAttempts = Integer.parseInt(ConfigReader.getConfigAttribute("noOfRetryAttempts"));
-			ScriptResult result = tryToEnsureCoreFunctioning(id, CoreState.ACTIVE,noOfAttempts);
+			ScriptResult result = tryToEnsureCoreFunctioning(id, CoreState.ACTIVE, noOfAttempts);
 
 			if(result == ScriptResult.FAIL_RESTART){//unable to start core, just give up and become passive
 				System.out.println("Tried enough times and still unable to start the core, giving up lock and starting passive flow..");
-				MusicHandle.unlock(lockRef);
+				releaseLock(id);
 				return;
 			}
 			
@@ -337,7 +364,7 @@ public class HADaemon {
 			try {
 				Long sleeptime = Long.parseLong(ConfigReader.getConfigAttribute("core-monitor-sleep-time", "0"));
 				if (sleeptime>0) {
-					System.out.println("Sleeping for " + sleeptime + " seconds");
+					System.out.println("Sleeping for " + sleeptime + " ms");
 					Thread.sleep(sleeptime);
 				}
 			} catch (Exception e) {
@@ -349,29 +376,43 @@ public class HADaemon {
 	private void passiveFlow(){
 		while(true){
 			//update own health in music
-			updateHealth(this.id, CoreState.PASSIVE);
+			updateHealth();
 			System.out.println("--{Passive} Hal Daemon--"+id+"---HEALTH  UPDATED---");
 	
 			int noOfAttempts = Integer.parseInt(ConfigReader.getConfigAttribute("noOfRetryAttempts"));
 			tryToEnsureCoreFunctioning(id, CoreState.PASSIVE,noOfAttempts);
 			System.out.println("-- {Passive} Hal Daemon--"+id+"---CORE PASSIVE---Lock Ref:"+lockRef);
 
-
-			//check if active is alive
 			Map<String, Object> activeDetails =  getActiveDetails();
-			//obtain active lock id
-			String activeId = (String)activeDetails.get("id");
+			//obtain active lock holder's id
+			Boolean activeIsAlive = false;
+			String activeId = null;
+			if (activeDetails!=null) {
+				activeId = (String)activeDetails.get("id");
+				activeIsAlive = isReplicaAlive(activeId);
+			}
 			
-			Boolean isAlive = isReplicaAlive(activeId);
-			if(isAlive == false || isActiveLockHolder()){
-				System.out.println("*** ACTIVE "+"("+ activeId+") *** SUSPECTED DEAD!!");
-				releaseLock(activeId);
+			if (activeIsAlive == false || isActiveLockHolder()) {
+				if (activeId==null) {
+					//no reference to the current lock, probably corrupt/stale data
+					System.out.println("*** UNKNOWN ACTIVE LOCKHOLDER. RELEASING CURRENT LOCK.");
+					MusicHandle.unlock(MusicHandle.whoIsLockHolder(lockName));
+				} else {
+					System.out.println("*** ACTIVE "+"("+ activeId+") *** SUSPECTED DEAD!!");
+					releaseLock(activeId);
+				}
 				if (isActiveLockHolder()) {
 					System.out.println("***I am the next in line, so taking over from active***");
 					takeOverFromCurrentActive(activeId);
 					return;
 				}
 			}
+			/*
+			 * 1. If manual override triggered (REST/properties file)
+			 * 2. release lock.active_id
+			 * 3. 
+			 */
+			
 			System.out.println("--{Passive} Hal Daemon--"+id+"---ACTIVE  ALIVE---");
 
 			//back off if needed
@@ -398,11 +439,41 @@ public class HADaemon {
 	}
 	
 	public static void main(String[] args){
-		String id = args[0];
-		ConfigReader.setConfigLocation(args[1]);
-		System.out.println("--Hal Daemon version "+HalUtil.version+"--replica id "+id+"---START---");
+		Options opts = new Options();
+		
+		Option idOpt = new Option("i", "id", true, "hal identifier number");
+		idOpt.setRequired(true);
+		opts.addOption(idOpt);
+		
+		Option passive = new Option("p", "passive", false, "start hal in passive mode (default false)");
+		opts.addOption(passive);
+		
+		Option config = new Option("c", "config", true, "location of config.json file (default hal directory)");
+		config.setRequired(true);
+		opts.addOption(config);
+		
+		CommandLineParser parser = new DefaultParser();
+		HelpFormatter formatter = new HelpFormatter();
+		CommandLine cmd;
+		try {
+			cmd = parser.parse(opts, args);
+		} catch (ParseException e) {
+			e.printStackTrace();
+			formatter.printHelp("hal", opts);
+			System.exit(1);
+			return;
+		}
+		
+		String id = cmd.getOptionValue("id");
+		boolean startPassive = false;
+		if (cmd.hasOption("passive")) {
+			startPassive = true;
+		}
+		ConfigReader.setConfigLocation(cmd.getOptionValue("c"));
+
+		System.out.println("--Hal Daemon version "+HalUtil.version+"--replica id "+id+"---START---"+(startPassive?"passive":"active"));
 		HADaemon hd = new HADaemon(id);
-		hd.startHAFlow();
+		hd.startHAFlow(startPassive);
 	}
 
 }

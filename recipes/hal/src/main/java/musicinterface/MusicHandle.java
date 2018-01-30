@@ -93,6 +93,20 @@ public class MusicHandle {
 			throw new RuntimeException("Failed : HTTP error code : "+ response.getStatus());
 
 	}
+	
+	public static void createIndexInTable(String keyspaceName, String tableName, String colName) {
+		Client client = Client.create();
+		WebResource webResource = client.resource(HalUtil.getMusicNodeURL()
+									+"/keyspaces/"+keyspaceName+"/tables/"+tableName+"/index/"+colName);
+
+		ClientResponse response = webResource.accept("application/json").post(ClientResponse.class);
+
+		if (response.getStatus() != 200 && response.getStatus() != 204) {
+			throw new RuntimeException("Failed : HTTP error code : "
+					+ response.getStatus());
+		}
+
+	}
 
 	public static void insertIntoTableEventual(String keyspaceName, String tableName, Map<String,Object> values){
 		Map<String,String> consistencyInfo= new HashMap<String, String>();
@@ -256,6 +270,7 @@ public class MusicHandle {
 
 		String output = response.getEntity(String.class);
 
+		System.out.println("Created lockRef " + output);
 		return output;
 	}
 	
@@ -275,8 +290,8 @@ public class MusicHandle {
 
 		String output = response.getEntity(String.class);
 		Boolean status = Boolean.parseBoolean(output);
-	//	System.out.println("Server response .... \n");
-	//	System.out.println(output);
+		System.out.println("acquiringLock for " + lockId + ". Returning " + output);
+		System.out.println(output);
 		return status;
 	}
 

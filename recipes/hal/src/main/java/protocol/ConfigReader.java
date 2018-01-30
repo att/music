@@ -76,7 +76,7 @@ public class ConfigReader {
 	}
 
 	public static ArrayList<String> getExeCommandWithParams(String key){
-		String script = (String)getJsonHandle().get(key);
+		String script = (String)getJsonHandle().getOrDefault(key, "");
 		String[] scriptParts = script.split(" ");
 		ArrayList<String> scriptWithPrams = new ArrayList<String>();
 		for(int i=0; i < scriptParts.length;i++)

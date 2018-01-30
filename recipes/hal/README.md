@@ -3,6 +3,8 @@
 
 Often we wish to deploy service replicas in an active-passive mode where there is only one active service and if that fails, one of the passives takes over as the new active. The trouble is, to implement this, the writer of the service has to worry about challenging distributed systems concepts like group membership, failure detection, leader election, split-brain problems and so on. HAL addresses this issue, by providing a library that services can simply configure and deploy as a companion daemon to their service replicas, that will handle all distributed systems issues highlighted above. 
 
+Note: HAL relies on system clocks for this timeout to detect failure. In order to make sure your system is closely synchronized, consider using NTP or similar.
+
 
 <a name="local-install"> 
 
@@ -49,7 +51,7 @@ Often we wish to deploy service replicas in an active-passive mode where there i
 	
 	The *restart-hal-i* scripts are used by the hal daemons running along with 	each replica to restart each other. Since the hal daemons reside on 	different nodes, they will need ssh (and associated keys) to communicate 	with each other. 
 	
-	The *hal-timeout* field decides the time in ms after which one of the passive hals 	will take-over as leader after the current leader stops updating MUSIC with 	its health. The *noOfRetryAttempts* is used by hal to decide how many times 	it wants to try and start the local service replica in either active or 	passive mode (by calling the ensure- scripts). The *replicaIdList* is a 	comma separated list of the replica 	ids. Finally, the *musicLocation* should 	contain the public IP of the MUSIC 	node this hal daemon wants to talk to. 	Typically this is localhost if MUSIC is co-located on the same node as the 	hal deamon and service replica. Note: HAL somewhat relies on system clocks for this timeout. In order to make sure your system is closely synchronized, consider using NTP or similar.
+	The *hal-timeout* field decides the time in ms after which one of the passive hals 	will take-over as leader after the current leader stops updating MUSIC with 	its health. The *noOfRetryAttempts* is used by hal to decide how many times 	it wants to try and start the local service replica in either active or 	passive mode (by calling the ensure- scripts). The *replicaIdList* is a 	comma separated list of the replica 	ids. Finally, the *musicLocation* should 	contain the public IP of the MUSIC 	node this hal daemon wants to talk to. 	Typically this is localhost if MUSIC is co-located on the same node as the 	hal deamon and service replica. 
 	
 	The *restart-backoff-time* backs off for the set amount of time in ms if the restart script fails. If configured, this will allow the site time to recover before trying to restart again. This is an optional parameter (default to immediate retry).
 	

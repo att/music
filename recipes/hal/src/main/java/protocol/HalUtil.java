@@ -38,7 +38,7 @@ import musicinterface.MusicHandle;
 
 
 public class HalUtil {
-	public static String version="2.0.0";
+	public static String version="2.0.1";
 	private static String getMusicNodeIp(){
 		return ConfigReader.getConfigAttribute("musicLocation");
 /*		String serverAddress;
@@ -103,10 +103,9 @@ public class HalUtil {
 				return ScriptResult.SUCCESS_RESTART;
 
 		} catch (IOException e) {
-			e.printStackTrace();
+			System.err.println("HALUtil executingBashScript: " + e.getMessage());
 		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			System.err.println("HALUtil executingBashScript: " + e.getMessage());
 		}
 		return ScriptResult.FAIL_RESTART;
 	}

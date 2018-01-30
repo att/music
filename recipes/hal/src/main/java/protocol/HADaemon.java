@@ -448,8 +448,7 @@ public class HADaemon {
 		Option passive = new Option("p", "passive", false, "start hal in passive mode (default false)");
 		opts.addOption(passive);
 		
-		Option config = new Option("c", "config", true, "location of config.json file (default hal directory)");
-		config.setRequired(true);
+		Option config = new Option("c", "config", true, "location of config.json file (default same directory as hal jar)");
 		opts.addOption(config);
 		
 		CommandLineParser parser = new DefaultParser();
@@ -469,7 +468,9 @@ public class HADaemon {
 		if (cmd.hasOption("passive")) {
 			startPassive = true;
 		}
-		ConfigReader.setConfigLocation(cmd.getOptionValue("c"));
+		if (cmd.hasOption("c")) {
+			ConfigReader.setConfigLocation(cmd.getOptionValue("c"));
+		}
 
 		System.out.println("--Hal Daemon version "+HalUtil.version+"--replica id "+id+"---START---"+(startPassive?"passive":"active"));
 		HADaemon hd = new HADaemon(id);

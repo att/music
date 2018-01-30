@@ -35,7 +35,7 @@ import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 
 public class ConfigReader {
-	private static String configLocation = null;
+	private static String configLocation = "config.json";
 	
 	public static void setConfigLocation(String pathToFile){
 		configLocation = pathToFile+"/config.json";

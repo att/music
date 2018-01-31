@@ -21,7 +21,7 @@ if [ -z "${halId}" ]; then
 fi
 sleep 3
 ps aux > $dir/HalLog$1.out
-halId=`grep "hal.jar $1" $dir/HalLog$1.out | awk '{ print $2 }'`
+halId=`grep "hal.jar" $dir/HalLog$1.out | awk '{ print $2 }'`
 if [ -z "${halId}" ]; then
     echo "NotRunning"
 else 

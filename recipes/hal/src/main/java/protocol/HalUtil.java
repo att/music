@@ -45,7 +45,6 @@ public class HalUtil {
 	static {
 		try {
 			final Properties properties = new Properties();
-			System.err.println("hi" + HalUtil.class.getClassLoader().getResourceAsStream("project.properties"));			
 			properties.load(HalUtil.class.getClassLoader().getResourceAsStream("project.properties"));
 			version = properties.getProperty("version");
 		} catch (IOException e) {

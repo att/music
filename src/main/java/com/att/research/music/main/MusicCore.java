@@ -116,10 +116,10 @@ public class MusicCore {
 	}
 
 
-	public static  ReturnType  acquireLock(String key, String lockId){
+	public static  WriteReturnType  acquireLock(String key, String lockId){
 		Boolean result = getLockingServiceHandle().isMyTurn(lockId);	
 		if(result == false){
-			return new ReturnType(ResultType.FAILURE,"You are the not the lock holder"); 
+			return new WriteReturnType(ResultType.FAILURE,"You are the not the lock holder"); 
 		}
 
 		//check to see if the key is in an unsynced state
@@ -132,7 +132,7 @@ public class MusicCore {
 			getDSHandle().executePut(cleanQuery, "critical");
 		}
 
-		return new ReturnType(ResultType.SUCCESS,"You are the lock holder"); 
+		return new WriteReturnType(ResultType.SUCCESS,"You are the lock holder"); 
 	}
 
 
@@ -140,12 +140,12 @@ public class MusicCore {
 		return true;
 	}
 
-	public static  ReturnType eventualPut(String query){
+	public static  WriteReturnType eventualPut(String query){
 		long start = System.currentTimeMillis();
 		getDSHandle().executePut(query, "eventual");
 		long end = System.currentTimeMillis();
 		logger.info("Time taken for the actual eventual put:"+(end-start)+" ms");
-		return new ReturnType(ResultType.SUCCESS,""); 
+		return new WriteReturnType(ResultType.SUCCESS,""); 
 
 	}
 
@@ -189,37 +189,37 @@ public class MusicCore {
 		getDSHandle().executePut(updateQuery, "critical");
 	}
 
-	public static ReturnType criticalPut(String keyspaceName, String tableName, String primaryKey, String query, String lockId, Condition conditionInfo){
+	public static WriteReturnType criticalPut(String keyspaceName, String tableName, String primaryKey, String query, String lockId, Condition conditionInfo){
 
 		Boolean result = getLockingServiceHandle().isMyTurn(lockId);	
 		if(result == false)
-			return new ReturnType(ResultType.FAILURE,"Cannot perform operation since you are the not the lock holder"); 
+			return new WriteReturnType(ResultType.FAILURE,"Cannot perform operation since you are the not the lock holder"); 
 
 		if(conditionInfo != null)//check if condition is true
 			if(conditionInfo.testCondition() == false)
-				return new ReturnType(ResultType.FAILURE,"Lock acquired but the condition is not true"); 
+				return new WriteReturnType(ResultType.FAILURE,"Lock acquired but the condition is not true"); 
 
 		try {
 			getDSHandle().executePut(query,"critical");
-			return new ReturnType(ResultType.SUCCESS,"Update performed"); 
+			return new WriteReturnType(ResultType.SUCCESS,"Update performed"); 
 		}catch (Exception e) {
 			// TODO Auto-generated catch block
 			StringWriter sw = new StringWriter();
 			e.printStackTrace(new PrintWriter(sw));
 			String exceptionAsString = sw.toString();
-			return new ReturnType(ResultType.FAILURE,"Exception thrown while doing the critical put, either you are not connected to a quorum or the condition is wrong:\n"+exceptionAsString); 
+			return new WriteReturnType(ResultType.FAILURE,"Exception thrown while doing the critical put, either you are not connected to a quorum or the condition is wrong:\n"+exceptionAsString); 
 		}
 	}
 
-	public static ReturnType atomicPut(String keyspaceName, String tableName, String primaryKey, String query, Condition conditionInfo){
+	public static WriteReturnType atomicPut(String keyspaceName, String tableName, String primaryKey, String query, Condition conditionInfo){
 		long start = System.currentTimeMillis();
 		String key = keyspaceName+"."+tableName+"."+primaryKey;
 		String lockId = createLockReference(key);
 		long lockCreationTime = System.currentTimeMillis();
-		ReturnType lockAcqResult = acquireLock(key, lockId);
+		WriteReturnType lockAcqResult = acquireLock(key, lockId);
 		long lockAcqTime = System.currentTimeMillis();
 		if(lockAcqResult.getResult().equals(ResultType.SUCCESS)){
-			ReturnType criticalPutResult = criticalPut(keyspaceName, tableName, primaryKey, query, lockId,conditionInfo);
+			WriteReturnType criticalPutResult = criticalPut(keyspaceName, tableName, primaryKey, query, lockId,conditionInfo);
 			long criticalPutTime = System.currentTimeMillis();
 			voluntaryReleaseLock(lockId);
 			long lockDeleteTime = System.currentTimeMillis();
@@ -233,17 +233,39 @@ public class MusicCore {
 		}
 	}
 
-
-	//this function is mainly for the benchmarks to see the effect of lock deletion.
-	public static ReturnType atomicPutWithDeleteLock(String keyspaceName, String tableName, String primaryKey, String query, Condition conditionInfo){
+	
+	public static ReadReturnType atomicGet(String keyspaceName, String tableName, String primaryKey, String query){
 		long start = System.currentTimeMillis();
 		String key = keyspaceName+"."+tableName+"."+primaryKey;
 		String lockId = createLockReference(key);
 		long lockCreationTime = System.currentTimeMillis();
-		ReturnType lockAcqResult = acquireLock(key, lockId);
+		WriteReturnType lockAcqResult = acquireLock(key, lockId);
 		long lockAcqTime = System.currentTimeMillis();
 		if(lockAcqResult.getResult().equals(ResultType.SUCCESS)){
-			ReturnType criticalPutResult = criticalPut(keyspaceName, tableName, primaryKey, query, lockId,conditionInfo);
+			ReadReturnType criticalGetResult = criticalGet(keyspaceName, tableName, primaryKey, query, lockId);
+			long criticalGetTime = System.currentTimeMillis();
+			voluntaryReleaseLock(lockId);
+			long lockDeleteTime = System.currentTimeMillis();
+			String timingInfo = "|lock creation time:"+(lockCreationTime-start)+"|lock accquire time:"+(lockAcqTime-lockCreationTime)+"|critical get time:"+(criticalGetTime-lockAcqTime)+"|lock release time:"+(lockDeleteTime-criticalGetTime)+"|";
+			criticalGetResult.setTimingInfo(timingInfo);
+			return criticalGetResult;
+		}
+		else{
+			destroyLockRef(lockId);
+			return new ReadReturnType(lockAcqResult.getResultType(),lockAcqResult.getMessage(),null);	
+		}
+	}
+
+	//this function is mainly for the benchmarks to see the effect of lock deletion.
+	public static WriteReturnType atomicPutWithDeleteLock(String keyspaceName, String tableName, String primaryKey, String query, Condition conditionInfo){
+		long start = System.currentTimeMillis();
+		String key = keyspaceName+"."+tableName+"."+primaryKey;
+		String lockId = createLockReference(key);
+		long lockCreationTime = System.currentTimeMillis();
+		WriteReturnType lockAcqResult = acquireLock(key, lockId);
+		long lockAcqTime = System.currentTimeMillis();
+		if(lockAcqResult.getResult().equals(ResultType.SUCCESS)){
+			WriteReturnType criticalPutResult = criticalPut(keyspaceName, tableName, primaryKey, query, lockId,conditionInfo);
 			long criticalPutTime = System.currentTimeMillis();
 			deleteLock(key);
 			long lockDeleteTime = System.currentTimeMillis();
@@ -254,6 +276,28 @@ public class MusicCore {
 		else{
 			deleteLock(key);
 			return lockAcqResult;	
+		}
+	}
+	
+	public static ReadReturnType atomicGetWithDeleteLock(String keyspaceName, String tableName, String primaryKey, String query){
+		long start = System.currentTimeMillis();
+		String key = keyspaceName+"."+tableName+"."+primaryKey;
+		String lockId = createLockReference(key);
+		long lockCreationTime = System.currentTimeMillis();
+		WriteReturnType lockAcqResult = acquireLock(key, lockId);
+		long lockAcqTime = System.currentTimeMillis();
+		if(lockAcqResult.getResult().equals(ResultType.SUCCESS)){
+			ReadReturnType criticalPutResult = criticalGet(keyspaceName, tableName, primaryKey, query, lockId);
+			long criticalPutTime = System.currentTimeMillis();
+			deleteLock(key);
+			long lockDeleteTime = System.currentTimeMillis();
+			String timingInfo = "|lock creation time:"+(lockCreationTime-start)+"|lock accquire time:"+(lockAcqTime-lockCreationTime)+"|critical get time:"+(criticalPutTime-lockAcqTime)+"|lock delete time:"+(lockDeleteTime-criticalPutTime)+"|";
+			criticalPutResult.setTimingInfo(timingInfo);
+			return criticalPutResult;
+		}
+		else{
+			deleteLock(key);
+			return new ReadReturnType(lockAcqResult.getResultType(),lockAcqResult.getMessage(),null);	
 		}
 	}
 
@@ -355,36 +399,13 @@ public class MusicCore {
 		return sqlString;	
 	}
 
-	public static ResultSet atomicGet(String keyspaceName, String tableName, String primaryKey, String query){
-		String key = keyspaceName+"."+tableName+"."+primaryKey;
-		String lockId = createLockReference(key);
-		ReturnType lockAcqResult = acquireLock(key, lockId);
-		if(lockAcqResult.getResult().equals(ResultType.SUCCESS)){
-			logger.info("acquired lock with id "+lockId);
-			ResultSet result = criticalGet(keyspaceName, tableName, primaryKey, query, lockId);
-			voluntaryReleaseLock(lockId);
-			return result;
-		}
-		else{
-			logger.info("unable to acquire lock, id "+lockId);
-			return null; 	
-		}
-	}
 
-	public static  ResultSet criticalGet(String keyspaceName, String tableName, String primaryKey, String query, String lockId){
-		ResultSet results = null;
-		try {
-			MusicLockState mls = getLockingServiceHandle().getLockState(keyspaceName+"."+tableName+"."+primaryKey);
-			if(mls.getLockHolder().equals(lockId)){
-				results = getDSHandle().executeCriticalGet(query);
-//				getDSHandle(MusicUtil.myCassaHost).close();
-			}else
-				throw new Exception("YOU DO NOT HAVE THE LOCK");
-		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		return results;
+	public static  ReadReturnType criticalGet(String keyspaceName, String tableName, String primaryKey, String query, String lockId){	
+		Boolean result = getLockingServiceHandle().isMyTurn(lockId);	
+		if(result == false)
+			return new ReadReturnType(ResultType.FAILURE,"Cannot perform operation since you are the not the lock holder",null); 
+		ResultSet dataReturned = getDSHandle().executeCriticalGet(query);			
+		return new ReadReturnType(ResultType.SUCCESS,"Select performed", dataReturned); 
 	}
 
 	public static void pureZkCreate(String nodeName){

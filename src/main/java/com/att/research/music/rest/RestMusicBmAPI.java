@@ -24,7 +24,7 @@ import com.att.research.music.datastore.jsonobjects.JsonUpdate;
 import com.att.research.music.main.MusicCore;
 import com.att.research.music.main.MusicUtil;
 import com.att.research.music.main.ResultType;
-import com.att.research.music.main.ReturnType;
+import com.att.research.music.main.WriteReturnType;
 import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.TableMetadata;
@@ -80,7 +80,7 @@ public class RestMusicBmAPI {
 
 		long lockCreationTime = System.currentTimeMillis();
 
-		ReturnType lockAcqResult = MusicCore.acquireLock(lockname, lockId);
+		WriteReturnType lockAcqResult = MusicCore.acquireLock(lockname, lockId);
 		long lockAcqTime = System.currentTimeMillis();
 		long zkPutTime=0,lockReleaseTime=0;
 
@@ -124,7 +124,7 @@ public class RestMusicBmAPI {
 		logger.info("--------------Zk atomic read-------------------------");
 		long start = System.currentTimeMillis();
 		String lockId = MusicCore.createLockReference(lockName);
-		ReturnType lockAcqResult = MusicCore.acquireLock(lockName, lockId);
+		WriteReturnType lockAcqResult = MusicCore.acquireLock(lockName, lockId);
 		if(lockAcqResult.getResult().equals(ResultType.SUCCESS)){
 			logger.info("acquired lock with id "+lockId);
 			MusicCore.pureZkRead(nodeName);

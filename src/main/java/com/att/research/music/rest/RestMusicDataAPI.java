@@ -57,7 +57,8 @@ import com.att.research.music.datastore.jsonobjects.JsonUpdate;
 import com.att.research.music.main.MusicCore;
 import com.att.research.music.main.MusicCore.Condition;
 import com.att.research.music.main.MusicUtil;
-import com.att.research.music.main.ReturnType;
+import com.att.research.music.main.ReadReturnType;
+import com.att.research.music.main.WriteReturnType;
 import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.TableMetadata;
@@ -345,7 +346,7 @@ public class RestMusicDataAPI {
 		}
 
 
-		ReturnType operationResult=null;
+		WriteReturnType operationResult=null;
 		long jsonParseCompletionTime = System.currentTimeMillis();
 
 		if(consistency.equalsIgnoreCase("eventual"))
@@ -423,7 +424,7 @@ public class RestMusicDataAPI {
 
 
 		String consistency = delObj.getConsistencyInfo().get("type");
-		ReturnType operationResult=null;
+		WriteReturnType operationResult=null;
 
 		if(consistency.equalsIgnoreCase("eventual"))
 			operationResult = MusicCore.eventualPut(query);
@@ -486,23 +487,45 @@ public class RestMusicDataAPI {
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)	
 	public Map<String, HashMap<String, Object>> selectCritical(JsonSelect selObj,@PathParam("keyspace") String keyspace, @PathParam("tablename") String tablename, @Context UriInfo info){
+		long startTime = System.currentTimeMillis();
+		String operationId = UUID.randomUUID().toString();//just for debugging purposes. 
+		String consistency = selObj.getConsistencyInfo().get("type");
+		logger.info("--------------Music "+consistency+" select-"+operationId+"-------------------------");
+
 		String lockId = selObj.getConsistencyInfo().get("lockId");
 
 		RowIdentifier rowId = getRowIdentifier(keyspace, tablename,  info.getQueryParameters());
 
 		String selectQuery =  "SELECT *  FROM "+keyspace+"."+tablename+ " WHERE "+rowId.rowIdString+";"; 
 
-		ResultSet results=null;
 		
-		String consistency = selObj.getConsistencyInfo().get("type");
-		
+		long jsonParseCompletionTime = System.currentTimeMillis();
+
+		ReadReturnType operationResult =null;
 		if(consistency.equalsIgnoreCase("critical")){
-			results =  MusicCore.criticalGet(keyspace, tablename, rowId.primarKeyValue, selectQuery, lockId);
+			operationResult =  MusicCore.criticalGet(keyspace, tablename, rowId.primarKeyValue, selectQuery, lockId);
 		}
 		else if(consistency.equalsIgnoreCase("atomic")){
-			results = MusicCore.atomicGet(keyspace,tablename,rowId.primarKeyValue, selectQuery);
+			operationResult = MusicCore.atomicGet(keyspace,tablename,rowId.primarKeyValue, selectQuery);
 		}
-		return MusicCore.marshallResults(results);
+		else if(consistency.equalsIgnoreCase("atomic_delete_lock")){
+			operationResult = MusicCore.atomicGetWithDeleteLock(keyspace,tablename,rowId.primarKeyValue, selectQuery);
+		}
+
+		long actualSelectTime = System.currentTimeMillis();
+		
+		long endTime = System.currentTimeMillis();
+		String timingString = "Time taken in ms for Music "+consistency+" select-"+operationId+":"+"|total operation time:"+
+			(endTime-startTime)+"|json parsing time:"+(jsonParseCompletionTime-startTime)+"|select time:"+(actualSelectTime-jsonParseCompletionTime)+"|";
+		
+		if(operationResult.getTimingInfo() != null){
+			String lockManagementTime = operationResult.getTimingInfo();
+			timingString = timingString+lockManagementTime;
+		}
+		logger.info(timingString);	
+
+
+		return MusicCore.marshallResults(operationResult.getPayload());
 	}
 
 
@@ -510,6 +533,10 @@ public class RestMusicDataAPI {
 	@Path("/keyspaces/{keyspace}/tables/{tablename}/rows")
 	@Produces(MediaType.APPLICATION_JSON)	
 	public Map<String, HashMap<String, Object>> select(@PathParam("keyspace") String keyspace, @PathParam("tablename") String tablename, @Context UriInfo info){
+		long startTime = System.currentTimeMillis();
+		String operationId = UUID.randomUUID().toString();//just for debugging purposes. 
+		logger.info("--------------Music eventual select-"+operationId+"-------------------------");
+
 		String query ="";
 		if(info.getQueryParameters().isEmpty())//select all
 			query =  "SELECT *  FROM "+keyspace+"."+tablename+ ";"; 
@@ -517,7 +544,17 @@ public class RestMusicDataAPI {
 			int limit =-1; //do not limit the number of results
 			query = selectSpecificQuery(keyspace,tablename,info,limit);
 		}
+		long jsonParseCompletionTime = System.currentTimeMillis();
+
 		ResultSet results = MusicCore.get(query);
+		
+		long actualSelectTime = System.currentTimeMillis();
+		
+		long endTime = System.currentTimeMillis();
+		String timingString = "Time taken in ms for Music eventual select-"+operationId+":"+"|total operation time:"+
+			(endTime-startTime)+"|json parsing time:"+(jsonParseCompletionTime-startTime)+"|select time:"+(actualSelectTime-jsonParseCompletionTime)+"|";
+		logger.info(query);
+		logger.info(timingString);	
 		return MusicCore.marshallResults(results);
 	} 
 	

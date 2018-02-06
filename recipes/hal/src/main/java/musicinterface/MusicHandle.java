@@ -270,11 +270,13 @@ public class MusicHandle {
 
 		String output = response.getEntity(String.class);
 
-		System.out.println("Created lockRef " + output);
 		return output;
 	}
 	
 	public  static boolean acquireLock(String lockId){
+		//FIXME: should be fixed in MUSIC, but putting patch here too
+		if (lockId==null) { return false; }
+		
 		Client client = Client.create();
 		WebResource webResource = client.resource(HalUtil.getMusicNodeURL()+"/locks/acquire/"+lockId);
 
@@ -290,8 +292,6 @@ public class MusicHandle {
 
 		String output = response.getEntity(String.class);
 		Boolean status = Boolean.parseBoolean(output);
-		System.out.println("acquiringLock for " + lockId + ". Returning " + output);
-		System.out.println(output);
 		return status;
 	}
 
@@ -320,7 +320,6 @@ public class MusicHandle {
 		WebResource webResource = client.resource(HalUtil.getMusicNodeURL()+"/locks/release/"+lockId);
 
 		ClientResponse response = webResource.delete(ClientResponse.class);
-
 
 		if (response.getStatus() != 204) {
 			throw new RuntimeException("Failed : HTTP error code : "

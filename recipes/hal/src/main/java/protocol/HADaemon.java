@@ -227,7 +227,7 @@ public class HADaemon {
 			return false; 
 		}
 		
-		if (!valueMap.containsKey("timeoflastupdate")) {
+		if (!valueMap.containsKey("timeoflastupdate") || valueMap.get("timeoflastupdate")==null) {
 			System.out.println("No 'timeoflastupdate' entry showing...");
 			return false;
 		}

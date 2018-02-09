@@ -295,7 +295,7 @@ public class MusicHandle {
 		return status;
 	}
 
-	public  static String whoIsLockHolder(String lockName){
+	public static String whoIsLockHolder(String lockName){
 		Client client = Client.create();
 		WebResource webResource = client.resource(HalUtil.getMusicNodeURL()+"/locks/enquire/"+lockName);
 
@@ -310,8 +310,9 @@ public class MusicHandle {
 		}
 
 		String output = response.getEntity(String.class);
-	//	System.out.println("Server response .... \n");
-	//	System.out.println(output);
+		if (output.equals("No lock holder!")) {
+			output = null;
+		}
 		return output;
 	}
 

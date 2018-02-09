@@ -76,16 +76,7 @@ public class HADaemon {
 		MusicHandle.insertIntoTableEventual(keyspaceName, tableName, values);
 		MusicHandle.insertIntoTableEventual(keyspaceName, tableName, values);
 		
-		/*String activeTableName = "ActiveDetails";
-		Map<String,String> activeTableFields = new HashMap<String,String>();
-		activeTableFields.put("active", "text");
-		activeTableFields.put("id", "text");
-		activeTableFields.put("PRIMARY KEY", "(active)");
-		MusicHandle.createTableEventual(keyspaceName, activeTableName, activeTableFields);	
-		*/
-		
 		lockName = keyspaceName+".active";
-		lockRef = MusicHandle.createLockRef(lockName);		
 	}
 	
 	/**
@@ -144,6 +135,8 @@ public class HADaemon {
 			startAsPassiveReplica();
 		}
 		
+		lockRef = MusicHandle.createLockRef(lockName);	
+
 		while (true) {
 			if (isActiveLockHolder()) {
 				activeFlow();
@@ -171,31 +164,30 @@ public class HADaemon {
 		System.out.println("Active site id=" + active.get("id") + " has started. Continuing in passive mode");
 	}
 	
-	private ScriptResult tryToEnsureCoreFunctioning(String id,CoreState mode, int noOfAttempts){
-		ArrayList<String> script =null;
+	/**
+	 * Make sure that the replica you are monitoring is running by running
+	 * the script provided.
+	 * 
+	 * Try to run the script noOfRetryAttempts times, as defined by the HAL configuration.
+	 * This function will wait in between retry attempts, as determined by 'restart-backoff-time' 
+	 * defined in HAL configuration file (immediate retry is default, if no value is provided)
+	 * 
+	 * @param script script to be run
+	 * @return ScriptResult based off scripts response
+	 */
+	private ScriptResult tryToEnsureCoreFunctioning(ArrayList<String> script){
+		int noOfAttempts = Integer.parseInt(ConfigReader.getConfigAttribute("noOfRetryAttempts"));
 		ScriptResult result = ScriptResult.FAIL_RESTART;
-
-		if (mode.equals(CoreState.ACTIVE)) {
-			script = ConfigReader.getExeCommandWithParams("ensure-active-"+id);
-		} else if (mode.equals(CoreState.PASSIVE)) {
-			script = ConfigReader.getExeCommandWithParams("ensure-passive-"+id);
-		}
 		
 		while (noOfAttempts > 0) {			
 			result = HalUtil.executeBashScriptWithParams(script);
 			if (result == ScriptResult.ALREADY_RUNNING) {
 				System.out.println("Executed core script, the core was already running");
-				if (lockRef==null) {
-					System.out.println("Replica does not have a lock, but is running. Getting a lock now");
-					lockRef = MusicHandle.createLockRef(lockName);
-				}
 				return result;
 			} else if (result == ScriptResult.SUCCESS_RESTART) {
-				//we can now handle being after, put yourself back in queue
-				lockRef = MusicHandle.createLockRef(lockName);
 				System.out.println("Executed core script, the core had to be restarted");
 				return result;
-			} else if(result == ScriptResult.FAIL_RESTART) {
+			} else if (result == ScriptResult.FAIL_RESTART) {
 				noOfAttempts--;
 				System.out.println("Executed core script, the core could not be re-started, retry attempts left ="+noOfAttempts);
 			}
@@ -206,6 +198,8 @@ public class HADaemon {
 				e.printStackTrace();
 			}
 		}
+		
+		System.out.println("Tried enough times and still unable to start the core, giving up lock and starting passive flow..");
 		return result;
 	}
 	
@@ -256,7 +250,7 @@ public class HADaemon {
 	}
 
 	/**
-	 * Releases lock and sets replica id's 'isactive' state to false
+	 * Releases lock and ensures replica id's 'isactive' state to false
 	 * @param lockRef
 	 */
 	private void releaseLock(String lockRef){	
@@ -378,15 +372,18 @@ public class HADaemon {
 				lockRef = MusicHandle.createLockRef(lockName);//put yourself back in the queue
 				return;
 			}
-			updateHealth();
-			int noOfAttempts = Integer.parseInt(ConfigReader.getConfigAttribute("noOfRetryAttempts"));
-			ScriptResult result = tryToEnsureCoreFunctioning(id, CoreState.ACTIVE, noOfAttempts);
-
-			if(result == ScriptResult.FAIL_RESTART){//unable to start core, just give up and become passive
-				System.out.println("Tried enough times and still unable to start the core, giving up lock and starting passive flow..");
+			
+			ScriptResult result = tryToEnsureCoreFunctioning(ConfigReader.getExeCommandWithParams("ensure-active-"+id));
+			if (result == ScriptResult.ALREADY_RUNNING) {
+				//do nothing
+			} else if (result == ScriptResult.SUCCESS_RESTART) {
+				//do nothing
+			} else if (result == ScriptResult.FAIL_RESTART) {//unable to start core, just give up and become passive
 				releaseLock(lockRef);
 				return;
 			}
+			
+			updateHealth();
 			
 			System.out.println("--(Active) Hal Daemon--"+id+"---CORE ACTIVE---Lock Ref:"+lockRef);
 			
@@ -411,12 +408,22 @@ public class HADaemon {
 	
 	private void passiveFlow(){
 		while(true){
+			ScriptResult result = tryToEnsureCoreFunctioning(ConfigReader.getExeCommandWithParams("ensure-passive-"+id));		
+			if (result == ScriptResult.ALREADY_RUNNING) {
+				if (lockRef==null) {
+					System.out.println("Replica does not have a lock, but is running. Getting a lock now");
+					lockRef = MusicHandle.createLockRef(lockName);
+				}
+			} else if (result ==ScriptResult.SUCCESS_RESTART) {
+				//we can now handle being after, put yourself back in queue
+				lockRef = MusicHandle.createLockRef(lockName);
+			} else if (result == ScriptResult.FAIL_RESTART) {
+				releaseLock(lockRef);
+			}
+			
 			//update own health in music
 			updateHealth();
-			System.out.println("--{Passive} Hal Daemon--"+id+"---HEALTH  UPDATED---");
-
-			int noOfAttempts = Integer.parseInt(ConfigReader.getConfigAttribute("noOfRetryAttempts"));
-			tryToEnsureCoreFunctioning(id, CoreState.PASSIVE,noOfAttempts);
+			
 			System.out.println("-- {Passive} Hal Daemon--"+id+"---CORE PASSIVE---Lock Ref:"+lockRef);
 
 			//obtain active lock holder's id

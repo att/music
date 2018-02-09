@@ -277,6 +277,10 @@ public class HADaemon {
 		if (replicaId.equals(this.id)) { //if unlocking myself, remove reference to lockref
 			this.lockRef=null;
 		}
+		
+		if (replicaId.equals("UNKNOWN")) {
+			return;
+		}
 		//create entry in replicas table
 		Map<String,Object> values = new HashMap<String,Object>();
 		values.put("isactive",false);		

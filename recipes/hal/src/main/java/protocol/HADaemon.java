@@ -82,21 +82,6 @@ public class HADaemon {
 	/**
 	 * @deprecated
 	 */
-	private void createLockRefIfDoesNotExist(){
-		//is this to ensure preference to a previously acquired
-		System.out.println("Checking if any lock reference already exists for this object in MUSIC...");
-		String oldLockRef = getLockRef(this.id);
-		if((oldLockRef == null) || (oldLockRef.equals(""))){
-			System.out.println("No prior lock reference..");
-			lockRef = MusicHandle.createLockRef(lockName);
-			updateHealth();
-		}
-		else{
-			System.out.println("Lock reference already exists");
-			lockRef = oldLockRef;
-		}
-	}
-	
 	private String getLockRef(String replicaId){	
 		//first check if a lock reference exists for this id..
 		Map<String,Object> replicaDetails = MusicHandle.readSpecificRow(keyspaceName, tableName, "id", replicaId); 
@@ -114,7 +99,7 @@ public class HADaemon {
 	 * @return true if this replica is current lock holder
 	 */
 	private boolean isActiveLockHolder(){
-		boolean isLockHolder = MusicHandle.acquireLock(lockRef);
+		boolean isLockHolder = acquireLock();
 		if (isLockHolder) {//update active table
 			System.out.println("Daemon is the current lock holder!...");
 			Map<String,Object> values = new HashMap<String,Object>();
@@ -125,7 +110,26 @@ public class HADaemon {
 		return isLockHolder;
 	}
 	
-
+	/**
+	 * tries to acquire lockRef
+	 * if lockRef no longer exists creates a new lock and updates locally
+	 * @return true if active lock holder, false otherwise
+	 */
+	private boolean acquireLock() {
+		if (lockRef==null) return false;
+		Map<String, Object> result = MusicHandle.acquireLock(lockRef);
+		Map<String, Object> lockMap = (Map<String, Object>) result.get("lock");
+		if (lockMap.getOrDefault("message", "Lockid doesn't exist").equals("Lockid doesn't exist")) {
+			System.out.println("Lockref " + lockRef + " doesn't exist, getting new lockref");
+			lockRef = MusicHandle.createLockRef(lockName);
+			System.out.println("This site's new reference is " + lockRef);
+			result = MusicHandle.acquireLock(lockRef);
+			System.out.println("$$$$ New result: " + result);
+		}
+		return (result.get("status").equals("SUCCESS")?true:false);
+	}
+	
+	
 	/**
 	 * The main startup function for each daemon
 	 * @param startPassive dictates whether the node should start in an passive mode
@@ -206,11 +210,12 @@ public class HADaemon {
 	/**
 	 * Update this replica's lockRef and update the heartbeat in replica table
 	 */
-	private void updateHealth() {
+	private void updateHealth(CoreState isactive) {
 		Map<String,Object> values = new HashMap<String,Object>();
 		values.put("id",this.id);
 		values.put("timeoflastupdate", System.currentTimeMillis());
 		values.put("lockref", this.lockRef);
+		values.put("isactive",isactive==CoreState.ACTIVE?true:false);
 		MusicHandle.insertIntoTableEventual(keyspaceName, tableName, values);
 	}
 	
@@ -360,7 +365,7 @@ public class HADaemon {
 				break;
 			}
 			//make sure we don't time out while we wait
-			updateHealth();
+			updateHealth(CoreState.PASSIVE);
 		}
 
 		System.out.println("***Old Active has now become passive, so starting active flow ***");
@@ -371,9 +376,8 @@ public class HADaemon {
 	
 	private void activeFlow(){
 		while (true) {
-			if(MusicHandle.acquireLock(lockRef) == false){
+			if(acquireLock() == false){
 				System.out.println("******I no longer have the lock! Make myself passive*******");
-				lockRef = MusicHandle.createLockRef(lockName);//put yourself back in the queue
 				return;
 			}
 			
@@ -387,7 +391,7 @@ public class HADaemon {
 				return;
 			}
 			
-			updateHealth();
+			updateHealth(CoreState.ACTIVE);
 			
 			System.out.println("--(Active) Hal Daemon--"+id+"---CORE ACTIVE---Lock Ref:"+lockRef);
 			
@@ -426,7 +430,7 @@ public class HADaemon {
 			}
 			
 			//update own health in music
-			updateHealth();
+			updateHealth(CoreState.PASSIVE);
 			
 			System.out.println("-- {Passive} Hal Daemon--"+id+"---CORE PASSIVE---Lock Ref:"+lockRef);
 

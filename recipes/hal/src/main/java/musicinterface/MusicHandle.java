@@ -273,26 +273,28 @@ public class MusicHandle {
 		return output;
 	}
 	
-	public  static boolean acquireLock(String lockId){
+	public  static Map<String,Object> acquireLock(String lockId){
 		//FIXME: should be fixed in MUSIC, but putting patch here too
-		if (lockId==null) { return false; }
+		if (lockId==null) {
+			Map<String,Object> fail = new HashMap<String, Object>();
+			fail.put("status", "FAILURE");
+			return fail;
+		}
 		
 		Client client = Client.create();
 		WebResource webResource = client.resource(HalUtil.getMusicNodeURL()+"/locks/acquire/"+lockId);
 
-
-		WebResource.Builder wb = webResource.accept(MediaType.TEXT_PLAIN);
-
-		ClientResponse response = wb.get(ClientResponse.class);
+		ClientResponse response = webResource.accept(MediaType.APPLICATION_JSON).get(ClientResponse.class);
 
 		if (response.getStatus() != 200) {
 			throw new RuntimeException("Failed : HTTP error code : "
 					+ response.getStatus());
 		}
+		
+		Map<String,Object> output = response.getEntity(Map.class);
+		
+		return output;
 
-		String output = response.getEntity(String.class);
-		Boolean status = Boolean.parseBoolean(output);
-		return status;
 	}
 
 	public static String whoIsLockHolder(String lockName){
@@ -300,7 +302,7 @@ public class MusicHandle {
 		WebResource webResource = client.resource(HalUtil.getMusicNodeURL()+"/locks/enquire/"+lockName);
 
 
-		WebResource.Builder wb = webResource.accept(MediaType.TEXT_PLAIN);
+		WebResource.Builder wb = webResource.accept(MediaType.APPLICATION_JSON);
 
 		ClientResponse response = wb.get(ClientResponse.class);
 
@@ -309,11 +311,11 @@ public class MusicHandle {
 					+ response.getStatus());
 		}
 
-		String output = response.getEntity(String.class);
-		if (output.equals("No lock holder!")) {
-			output = null;
+		Map<String,String> lockoutput = (Map<String, String>) response.getEntity(Map.class).get("lock");
+		if (lockoutput.get("lock-holder").equals("No lock holder!")) {
+			return null;
 		}
-		return output;
+		return (String) lockoutput.get("lock-holder");
 	}
 
 	public  static void unlock(String lockId){

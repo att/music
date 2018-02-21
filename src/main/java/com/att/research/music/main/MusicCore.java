@@ -119,19 +119,25 @@ public class MusicCore {
 	public static  WriteReturnType  acquireLock(String key, String lockId){
 		Boolean result = getLockingServiceHandle().isMyTurn(lockId);	
 		if(result == false){
+			if (!getLockingServiceHandle().lockIdExists(lockId)) {
+				return new WriteReturnType(ResultType.FAILURE, "Lockid doesn't exist");
+			}
 			return new WriteReturnType(ResultType.FAILURE,"You are the not the lock holder"); 
 		}
 
-		//check to see if the key is in an unsynced state
-		String query = "select * from music_internal.unsynced_keys where key='"+key+"';";
-		ResultSet results = getDSHandle().executeCriticalGet(query);
-		if (results.all().size() != 0) {
-			logger.info("In acquire lock: Since there was a forcible release, need to sync quorum!");
-			syncQuorum(key);
-			String cleanQuery = "delete * from music_internal.unsynced_keys where key='"+key+"';";
-			getDSHandle().executePut(cleanQuery, "critical");
-		}
 
+	    if (key.split("\\.").length > 2) { // key is table key
+			//check to see if the key is in an unsynced state
+			String query = "select * from music_internal.unsynced_keys where key='"+key+"';";
+			ResultSet results = getDSHandle().executeCriticalGet(query);
+			if (results.all().size() != 0) {
+				logger.info("In acquire lock: Since there was a forcible release, need to sync quorum!");
+				syncQuorum(key);
+				String cleanQuery = "delete * from music_internal.unsynced_keys where key='"+key+"';";
+				getDSHandle().executePut(cleanQuery, "critical");
+			}
+	    }
+	    
 		return new WriteReturnType(ResultType.SUCCESS,"You are the lock holder"); 
 	}
 

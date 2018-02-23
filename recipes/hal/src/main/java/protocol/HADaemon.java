@@ -172,9 +172,19 @@ public class HADaemon {
 		
 		while (active==null || !(Boolean)active.getOrDefault("isactive", "false")
 				 || !isReplicaAlive((String)active.get("id"))) {
-			//spin
 			activeLockRef = MusicHandle.whoIsLockHolder(lockName);
 			active = getReplicaDetails(activeLockRef);
+			//back off if needed
+			try {
+				Long sleeptime = Long.parseLong(ConfigReader.getConfigAttribute("core-monitor-sleep-time", "1000"));
+				if (sleeptime>0) {
+					logger.info(EELFLoggerDelegate.applicationLogger, "Sleeping for " + sleeptime + " ms");
+					Thread.sleep(sleeptime);
+				}
+			} catch (Exception e) {
+					logger.error(e.getMessage());
+			}
+			
 		}
 		logger.info(EELFLoggerDelegate.applicationLogger, 
 				"Active site id=" + active.get("id") + " has started. Continuing in passive mode");
@@ -430,7 +440,7 @@ public class HADaemon {
 					Thread.sleep(sleeptime);
 				}
 			} catch (Exception e) {
-				e.printStackTrace();
+					logger.error(e.getMessage());
 			}
 		}
 	}
@@ -482,7 +492,7 @@ public class HADaemon {
 					Thread.sleep(sleeptime);
 				}
 			} catch (Exception e) {
-				e.printStackTrace();
+				logger.error(e.getMessage());
 			}
 		}
 	}

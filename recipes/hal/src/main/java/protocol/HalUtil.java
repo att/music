@@ -34,12 +34,15 @@ import java.util.ArrayList;
 import java.util.Map;
 import java.util.Properties;
 
+import com.att.eelf.logging.EELFLoggerDelegate;
+
 import protocol.HADaemon.ScriptResult;
 import musicinterface.MusicHandle;
 
 
 
 public class HalUtil {
+	private static EELFLoggerDelegate logger = EELFLoggerDelegate.getLogger(HADaemon.class);
 
 	public static String version;
 	static {
@@ -47,8 +50,9 @@ public class HalUtil {
 			final Properties properties = new Properties();
 			properties.load(HalUtil.class.getClassLoader().getResourceAsStream("project.properties"));
 			version = properties.getProperty("version");
+			logger.info(EELFLoggerDelegate.applicationLogger, "Hal version " + version);
 		} catch (IOException e) {
-			e.printStackTrace();
+			logger.error(e.getMessage());
 		}
 	}
 	
@@ -82,17 +86,17 @@ public class HalUtil {
 			InetAddress inet = InetAddress.getByName(serverAddress);
 			isUp = inet.isReachable(1000);	
 		} catch (UnknownHostException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			logger.error(e.getMessage());
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();
+			logger.error(e.getMessage());
 		}
 	    return isUp;
 	}
 	
 	
 	public static ScriptResult executeBashScriptWithParams(ArrayList<String> script){
+		logger.info(EELFLoggerDelegate.applicationLogger, "executeBashScript");
 		try {
 			ProcessBuilder pb = new ProcessBuilder(script);
 			final Process process = pb.start();
@@ -106,19 +110,17 @@ public class HalUtil {
             			errorOutput.append(line + "\n");
             }
             System.out.print(errorOutput);
-			if(exitCode == 0)
+			if (exitCode == 0)
 				return ScriptResult.ALREADY_RUNNING;
-			else
-			if(exitCode == 1)
+			else if (exitCode == 1)
 				return ScriptResult.FAIL_RESTART;
-			else
-			if(exitCode == 2)
+			else if (exitCode == 2)
 				return ScriptResult.SUCCESS_RESTART;
 
 		} catch (IOException e) {
-			System.err.println("HALUtil executingBashScript: " + e.getMessage());
+			logger.error("HALUtil executingBashScript: " + e.getMessage());
 		} catch (InterruptedException e) {
-			System.err.println("HALUtil executingBashScript: " + e.getMessage());
+			logger.error("HALUtil executingBashScript: " + e.getMessage());
 		}
 		return ScriptResult.FAIL_RESTART;
 	}

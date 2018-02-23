@@ -39,8 +39,13 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
+import com.att.eelf.logging.EELFLoggerDelegate;
+
 
 public class HADaemon {
+	
+	private static EELFLoggerDelegate logger = EELFLoggerDelegate.getLogger(HADaemon.class);
+	
 	String id;
 	String lockName,lockRef;
 	public  enum CoreState {PASSIVE, ACTIVE};
@@ -54,6 +59,7 @@ public class HADaemon {
 	}
 	
 	private void bootStrap(){
+		logger.info(EELFLoggerDelegate.applicationLogger, "Bootstrapping this site daemon");
 		keyspaceName = "hal_"+ConfigReader.getConfigAttribute("appName");
 		MusicHandle.createKeyspaceEventual(keyspaceName);
 		
@@ -86,10 +92,10 @@ public class HADaemon {
 		//first check if a lock reference exists for this id..
 		Map<String,Object> replicaDetails = MusicHandle.readSpecificRow(keyspaceName, tableName, "id", replicaId); 
 		if(replicaDetails == null){
-			System.out.println("No entry found in MUSIC Replicas table for this daemon...");
+			logger.info(EELFLoggerDelegate.applicationLogger, "No entry found in MUSIC Replicas table for this daemon...");
 			return null; 
 		}
-		System.out.println("Entry found:"+replicaDetails.get("lockref"));
+		logger.info(EELFLoggerDelegate.applicationLogger, "Entry found:"+replicaDetails.get("lockref"));
 		return (String)replicaDetails.get("lockref");
 	}
 	
@@ -99,9 +105,10 @@ public class HADaemon {
 	 * @return true if this replica is current lock holder
 	 */
 	private boolean isActiveLockHolder(){
+		logger.info(EELFLoggerDelegate.applicationLogger, "isActiveLockHolder");
 		boolean isLockHolder = acquireLock();
 		if (isLockHolder) {//update active table
-			System.out.println("Daemon is the current lock holder!...");
+			logger.info(EELFLoggerDelegate.applicationLogger, "Daemon is the current activeLockHolder");
 			Map<String,Object> values = new HashMap<String,Object>();
 			values.put("isactive","true");
 			values.put("id",this.id);
@@ -116,16 +123,18 @@ public class HADaemon {
 	 * @return true if active lock holder, false otherwise
 	 */
 	private boolean acquireLock() {
+		logger.info(EELFLoggerDelegate.applicationLogger, "acquireLock");
 		if (lockRef==null) return false;
 		Map<String, Object> result = MusicHandle.acquireLock(lockRef);
 		Map<String, Object> lockMap = (Map<String, Object>) result.get("lock");
 		if (lockMap.getOrDefault("message", "Lockid doesn't exist").equals("Lockid doesn't exist")) {
-			System.out.println("Lockref " + lockRef + " doesn't exist, getting new lockref");
+			logger.info(EELFLoggerDelegate.applicationLogger,
+					"Lockref " + lockRef + " doesn't exist, getting new lockref");
 			lockRef = MusicHandle.createLockRef(lockName);
-			System.out.println("This site's new reference is " + lockRef);
+			logger.info(EELFLoggerDelegate.applicationLogger, "This site's new reference is " + lockRef);
 			result = MusicHandle.acquireLock(lockRef);
-			System.out.println("$$$$ New result: " + result);
 		}
+		logger.info(EELFLoggerDelegate.applicationLogger, "result of acquiring lock " + result.get("status"));
 		return (result.get("status").equals("SUCCESS")?true:false);
 	}
 	
@@ -135,6 +144,7 @@ public class HADaemon {
 	 * @param startPassive dictates whether the node should start in an passive mode
 	 */
 	private void startHAFlow(boolean startPassive){
+		logger.info(EELFLoggerDelegate.applicationLogger, "startHAFlow"+startPassive);
 		if (startPassive) {
 			startAsPassiveReplica();
 		}
@@ -155,7 +165,8 @@ public class HADaemon {
 	 * Waits until there is an active, running replica
 	 */
 	private void startAsPassiveReplica() {
-		System.out.println("Starting in 'passive mode'. Checking to see if active has started");
+		logger.info(EELFLoggerDelegate.applicationLogger,
+				"Starting in 'passive mode'. Checking to see if active has started");
 		String activeLockRef = MusicHandle.whoIsLockHolder(lockName);
 		Map<String,Object> active = getReplicaDetails(activeLockRef);
 		
@@ -165,7 +176,8 @@ public class HADaemon {
 			activeLockRef = MusicHandle.whoIsLockHolder(lockName);
 			active = getReplicaDetails(activeLockRef);
 		}
-		System.out.println("Active site id=" + active.get("id") + " has started. Continuing in passive mode");
+		logger.info(EELFLoggerDelegate.applicationLogger, 
+				"Active site id=" + active.get("id") + " has started. Continuing in passive mode");
 	}
 	
 	/**
@@ -180,20 +192,24 @@ public class HADaemon {
 	 * @return ScriptResult based off scripts response
 	 */
 	private ScriptResult tryToEnsureCoreFunctioning(ArrayList<String> script){
+		logger.info(EELFLoggerDelegate.applicationLogger, "tryToEnsureCoreFunctioning");
 		int noOfAttempts = Integer.parseInt(ConfigReader.getConfigAttribute("noOfRetryAttempts"));
 		ScriptResult result = ScriptResult.FAIL_RESTART;
 		
 		while (noOfAttempts > 0) {			
 			result = HalUtil.executeBashScriptWithParams(script);
 			if (result == ScriptResult.ALREADY_RUNNING) {
-				System.out.println("Executed core script, the core was already running");
+				logger.info(EELFLoggerDelegate.applicationLogger,
+						"Executed core script, the core was already running");
 				return result;
 			} else if (result == ScriptResult.SUCCESS_RESTART) {
-				System.out.println("Executed core script, the core had to be restarted");
+				logger.info(EELFLoggerDelegate.applicationLogger, 
+						"Executed core script, the core had to be restarted");
 				return result;
 			} else if (result == ScriptResult.FAIL_RESTART) {
 				noOfAttempts--;
-				System.out.println("Executed core script, the core could not be re-started, retry attempts left ="+noOfAttempts);
+				logger.info(EELFLoggerDelegate.applicationLogger, 
+						"Executed core script, the core could not be re-started, retry attempts left ="+noOfAttempts);
 			}
 			//backoff period in between restart attempts
 			try {
@@ -202,8 +218,8 @@ public class HADaemon {
 				e.printStackTrace();
 			}
 		}
-		
-		System.out.println("Tried enough times and still unable to start the core, giving up lock and starting passive flow..");
+		logger.info(EELFLoggerDelegate.applicationLogger,
+				"Tried enough times and still unable to start the core, giving up lock and starting passive flow..");
 		return result;
 	}
 	
@@ -211,6 +227,7 @@ public class HADaemon {
 	 * Update this replica's lockRef and update the heartbeat in replica table
 	 */
 	private void updateHealth(CoreState isactive) {
+		logger.info(EELFLoggerDelegate.applicationLogger, "updateHealth " +isactive);
 		Map<String,Object> values = new HashMap<String,Object>();
 		values.put("id",this.id);
 		values.put("timeoflastupdate", System.currentTimeMillis());
@@ -224,26 +241,26 @@ public class HADaemon {
 	 * @param id the id of the replica to check if is alive
 	 * @return
 	 */
-	private boolean isReplicaAlive(String id){	
+	private boolean isReplicaAlive(String id){
+		logger.info(EELFLoggerDelegate.applicationLogger, "isReplicaAlive " + id);
 		Map<String,Object> valueMap = MusicHandle.readSpecificRow(keyspaceName, tableName, "id", id);
-		System.out.println("Checking health of hal-d "+id+"...");
 		if (valueMap == null) {
-			System.out.println("No entry showing...");
+			logger.info(EELFLoggerDelegate.applicationLogger, "No entry showing...");
 			return false; 
 		}
 		
 		if (!valueMap.containsKey("timeoflastupdate") || valueMap.get("timeoflastupdate")==null) {
-			System.out.println("No 'timeoflastupdate' entry showing...");
+			logger.info(EELFLoggerDelegate.applicationLogger, "No 'timeoflastupdate' entry showing...");
 			return false;
 		}
 
 		long lastUpdate = (Long)valueMap.get("timeoflastupdate");
-		System.out.println("time of last update:"+lastUpdate);
+		logger.info(EELFLoggerDelegate.applicationLogger, "time of last update:"+lastUpdate);
 	    long timeOutPeriod = Long.parseLong(ConfigReader.getConfigAttribute("hal-timeout"));
 	    long currentTime = System.currentTimeMillis();
-		System.out.println("current time:"+currentTime);
+	    logger.info(EELFLoggerDelegate.applicationLogger, "current time:"+currentTime);
 	    long timeSinceUpdate = currentTime-lastUpdate; 
-		System.out.println("time since update:"+timeSinceUpdate);
+	    logger.info(EELFLoggerDelegate.applicationLogger, "time since update:"+timeSinceUpdate);
 	    if(timeSinceUpdate > timeOutPeriod)
 	    	return false;
 	    else
@@ -258,14 +275,15 @@ public class HADaemon {
 	 * Releases lock and ensures replica id's 'isactive' state to false
 	 * @param lockRef
 	 */
-	private void releaseLock(String lockRef){	
+	private void releaseLock(String lockRef){
+		logger.info(EELFLoggerDelegate.applicationLogger, "releaseLock " + lockRef);
 		if(lockRef == null){
-			System.out.println("There is no lock entry..");
+			logger.info(EELFLoggerDelegate.applicationLogger, "There is no lock entry..");
 			return;
 		}
 			
 		if(lockRef.equals("")){
-			System.out.println("Already unlocked..");
+			logger.info(EELFLoggerDelegate.applicationLogger, "Already unlocked..");
 			return;
 		}
 		
@@ -276,9 +294,9 @@ public class HADaemon {
 		}
 		
 		
-		System.out.println("Unlocking hal "+replicaId + " with lockref"+ lockRef);
+		logger.info(EELFLoggerDelegate.applicationLogger, "Unlocking hal "+replicaId + " with lockref"+ lockRef);
 		MusicHandle.unlock(lockRef);
-		System.out.println("Unlocked hal "+replicaId);
+		logger.info(EELFLoggerDelegate.applicationLogger, "Unlocked hal "+replicaId);
 		if (replicaId.equals(this.id)) { //if unlocking myself, remove reference to lockref
 			this.lockRef=null;
 		}
@@ -305,14 +323,15 @@ public class HADaemon {
 					Runnable restartThread = new RestartThread(replicaId);
 					new Thread(restartThread).start();
 					
-					System.out.println(lockRef + " status: "+MusicHandle.acquireLock(lockRef));
+					logger.info(EELFLoggerDelegate.applicationLogger,
+							lockRef + " status: "+MusicHandle.acquireLock(lockRef));
 				}
 			}
 		}	
 	}
 	
 	private boolean restartHALDaemon(String replicaId, int noOfAttempts){
-		System.out.println("***Hal Daemon--"+replicaId+"---needs to be restarted***");
+		logger.info(EELFLoggerDelegate.applicationLogger, "Hal Daemon--"+replicaId+"--needs to be restarted");
 
 		ArrayList<String> restartScript = ConfigReader.getExeCommandWithParams("restart-hal-"+replicaId);
 		if (restartScript!=null && restartScript.size()>0 && restartScript.get(0).length()>0) {
@@ -358,7 +377,8 @@ public class HADaemon {
 			
 			//waited long enough..just make the old active passive yourself
 			if ((System.currentTimeMillis() - startTime) > restartTimeout) {
-				System.out.println("***Old Active not responding..resetting Music state of old active to passive myself***");
+				logger.info(EELFLoggerDelegate.applicationLogger, 
+						"Old Active not responding..resetting Music state of old active to passive myself");
 				Map<String, Object> removeActive = new HashMap<String,Object>();
 				removeActive.put("isactive", false);
 				MusicHandle.updateTableEventual(keyspaceName, tableName, "lockref", currentActiveLockRef, removeActive);
@@ -368,16 +388,18 @@ public class HADaemon {
 			updateHealth(CoreState.PASSIVE);
 		}
 
-		System.out.println("***Old Active has now become passive, so starting active flow ***");
+		logger.info(EELFLoggerDelegate.applicationLogger,
+				"Old Active has now become passive, so starting active flow ***");
 
 		//now you can take over as active! 
 	}
 	
 	
 	private void activeFlow(){
+		logger.info(EELFLoggerDelegate.applicationLogger, "activeFlow");
 		while (true) {
 			if(acquireLock() == false){
-				System.out.println("******I no longer have the lock! Make myself passive*******");
+				logger.info(EELFLoggerDelegate.applicationLogger, "I no longer have the lock! Make myself passive");
 				return;
 			}
 			
@@ -393,19 +415,18 @@ public class HADaemon {
 			
 			updateHealth(CoreState.ACTIVE);
 			
-			System.out.println("--(Active) Hal Daemon--"+id+"---CORE ACTIVE---Lock Ref:"+lockRef);
-			
-			System.out.println("--(Active) Hal Daemon--"+id+"---HEALTH  UPDATED---");
-			System.out.println(lockRef + " status: "+MusicHandle.acquireLock(lockRef));
+			logger.info(EELFLoggerDelegate.applicationLogger, 
+					"--(Active) Hal Daemon--"+id+"---CORE ACTIVE---Lock Ref:"+lockRef);
+
 			tryToEnsurePeerHealth();
-			System.out.println(lockRef + " status: "+MusicHandle.acquireLock(lockRef));
-			System.out.println("--(Active) Hal Daemon--"+id+"---PEERS CHECKED---");
+			logger.info(EELFLoggerDelegate.applicationLogger, 
+					"--(Active) Hal Daemon--"+id+"---PEERS CHECKED---");
 
 			//back off if needed
 			try {
 				Long sleeptime = Long.parseLong(ConfigReader.getConfigAttribute("core-monitor-sleep-time", "0"));
 				if (sleeptime>0) {
-					System.out.println("Sleeping for " + sleeptime + " ms");
+					logger.info(EELFLoggerDelegate.applicationLogger, "Sleeping for " + sleeptime + " ms");
 					Thread.sleep(sleeptime);
 				}
 			} catch (Exception e) {
@@ -415,47 +436,49 @@ public class HADaemon {
 	}
 	
 	private void passiveFlow(){
+		logger.info(EELFLoggerDelegate.applicationLogger, "passiveFlow");
 		while(true){
 			ScriptResult result = tryToEnsureCoreFunctioning(ConfigReader.getExeCommandWithParams("ensure-passive-"+id));		
 			if (result == ScriptResult.ALREADY_RUNNING) {
 				if (lockRef==null) {
-					System.out.println("Replica does not have a lock, but is running. Getting a lock now");
+					logger.info(EELFLoggerDelegate.applicationLogger,
+							"Replica does not have a lock, but is running. Getting a lock now");
 					lockRef = MusicHandle.createLockRef(lockName);
+					logger.info(EELFLoggerDelegate.applicationLogger, "new lockRef " + lockRef);
 				}
-			} else if (result ==ScriptResult.SUCCESS_RESTART) {
+			} else if (result == ScriptResult.SUCCESS_RESTART) {
 				//we can now handle being after, put yourself back in queue
+				logger.info(EELFLoggerDelegate.applicationLogger, "Script successfully restarted. Getting a new lock");
 				lockRef = MusicHandle.createLockRef(lockName);
+				logger.info(EELFLoggerDelegate.applicationLogger, "new lockRef " + lockRef);
 			} else if (result == ScriptResult.FAIL_RESTART) {
+				logger.info(EELFLoggerDelegate.applicationLogger,
+						"Site not working and could not restart, releasing lock"); 
 				releaseLock(lockRef);
 			}
 			
 			//update own health in music
 			updateHealth(CoreState.PASSIVE);
 			
-			System.out.println("-- {Passive} Hal Daemon--"+id+"---CORE PASSIVE---Lock Ref:"+lockRef);
+			logger.info(EELFLoggerDelegate.applicationLogger,
+					"-- {Passive} Hal Daemon--"+id+"---CORE PASSIVE---Lock Ref:"+lockRef);
 
 			//obtain active lock holder's id
 			String activeLockRef = MusicHandle.whoIsLockHolder(lockName);
 			releaseLockIfActiveIsDead(activeLockRef);
 			
 			if (isActiveLockHolder()) {
-				System.out.println("***I am the active lockholder, so taking over from previous active***");
+				logger.info(EELFLoggerDelegate.applicationLogger,
+						"***I am the active lockholder, so taking over from previous active***");
 				takeOverFromCurrentActive(activeLockRef);
 				return;
 			}
-			/*
-			 * 1. If manual override triggered (REST/properties file)
-			 * 2. release lock.active_id
-			 * 3. 
-			 */
-			
-			System.out.println("--{Passive} Hal Daemon--"+id+"---ACTIVE  ALIVE---");
 
 			//back off if needed
 			try {
 				Long sleeptime = Long.parseLong(ConfigReader.getConfigAttribute("core-monitor-sleep-time", "0"));
 				if (sleeptime>0) {
-					System.out.println("Sleeping for " + sleeptime + " ms");
+					logger.info(EELFLoggerDelegate.applicationLogger, "Sleeping for " + sleeptime + " ms");
 					Thread.sleep(sleeptime);
 				}
 			} catch (Exception e) {
@@ -470,25 +493,31 @@ public class HADaemon {
 	 * @return the active id
 	 */
 	private void releaseLockIfActiveIsDead(String activeLockRef) {
+		logger.info(EELFLoggerDelegate.applicationLogger, "releaseLockIfActiveIsDead " + activeLockRef);
 		Map<String, Object> activeDetails =  getReplicaDetails(activeLockRef);
 		Boolean activeIsAlive = false;
 		String activeId = null;
 		if (activeDetails!=null) {
 			activeId = (String)activeDetails.get("id");
+			logger.info(EELFLoggerDelegate.applicationLogger, "Active lockholder is site " + activeId);
 			activeIsAlive = isReplicaAlive(activeId);
 		}
 
 		if (activeIsAlive == false) {
+			logger.info(EELFLoggerDelegate.applicationLogger, "Active lockholder is not alive");
 			if (activeId==null) {
 				if (activeLockRef!=null && !activeLockRef.equals("")) {
 					//no reference to the current lock, probably corrupt/stale data
-					System.out.println("*** UNKNOWN ACTIVE LOCKHOLDER. RELEASING CURRENT LOCK.");
+					logger.info(EELFLoggerDelegate.applicationLogger,
+							"Unknown active lockholder. Releasing current lock");
 					MusicHandle.unlock(activeLockRef);
 				} else {
-					System.out.println("*** NO LOCK HOLDERS. MAKE SURE THERE ARE HEALTHY SITES.");
+					logger.info(EELFLoggerDelegate.applicationLogger,
+							"*****No lock holders. Make sure there are healthy sites*****");
 				}
 			} else {
-				System.out.println("*** ACTIVE "+"("+ activeId+") *** SUSPECTED DEAD!!");
+				logger.info(EELFLoggerDelegate.applicationLogger,
+						"Active " + activeId + " is suspected dead. Releasing it's lock.");
 				releaseLock(activeLockRef);
 			}
 		}

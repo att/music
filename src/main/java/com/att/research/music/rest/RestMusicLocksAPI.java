@@ -13,8 +13,9 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 
 import org.apache.log4j.Logger;
-import org.onap.music.response.jsonobjects.JsonLockResponse;
+
 import com.att.research.music.datastore.jsonobjects.JsonLeasedLock;
+import com.att.research.music.datastore.jsonobjects.JsonLockResponse;
 import com.att.research.music.lockingservice.MusicLockState;
 import com.att.research.music.main.MusicCore;
 import com.att.research.music.main.ResultType;

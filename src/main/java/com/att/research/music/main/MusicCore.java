@@ -190,6 +190,11 @@ public class MusicCore {
 	}
 
 	public static WriteReturnType criticalPut(String keyspaceName, String tableName, String primaryKey, String query, String lockId, Condition conditionInfo){
+		return criticalPut(keyspaceName, tableName, primaryKey, query, lockId, conditionInfo,1);
+	}
+
+	
+	public static WriteReturnType criticalPut(String keyspaceName, String tableName, String primaryKey, String query, String lockId, Condition conditionInfo, int batchSize){
 
 		Boolean result = getLockingServiceHandle().isMyTurn(lockId);	
 		if(result == false)
@@ -200,7 +205,8 @@ public class MusicCore {
 				return new WriteReturnType(ResultType.FAILURE,"Lock acquired but the condition is not true"); 
 
 		try {
-			getDSHandle().executePut(query,"critical");
+			for(int i =0; i < batchSize; ++i)
+				getDSHandle().executePut(query,"critical");
 			return new WriteReturnType(ResultType.SUCCESS,"Update performed"); 
 		}catch (Exception e) {
 			// TODO Auto-generated catch block
@@ -211,7 +217,7 @@ public class MusicCore {
 		}
 	}
 
-	public static WriteReturnType atomicPut(String keyspaceName, String tableName, String primaryKey, String query, Condition conditionInfo){
+	public static WriteReturnType atomicPut(String keyspaceName, String tableName, String primaryKey, String query, Condition conditionInfo, int batchSize){
 		long start = System.currentTimeMillis();
 		String key = keyspaceName+"."+tableName+"."+primaryKey;
 		String lockId = createLockReference(key);
@@ -219,7 +225,7 @@ public class MusicCore {
 		WriteReturnType lockAcqResult = acquireLock(key, lockId);
 		long lockAcqTime = System.currentTimeMillis();
 		if(lockAcqResult.getResult().equals(ResultType.SUCCESS)){
-			WriteReturnType criticalPutResult = criticalPut(keyspaceName, tableName, primaryKey, query, lockId,conditionInfo);
+			WriteReturnType criticalPutResult = criticalPut(keyspaceName, tableName, primaryKey, query, lockId,conditionInfo, batchSize);
 			long criticalPutTime = System.currentTimeMillis();
 			voluntaryReleaseLock(lockId);
 			long lockDeleteTime = System.currentTimeMillis();
@@ -415,7 +421,7 @@ public class MusicCore {
 	public static void pureZkWrite(String nodeName, byte[] data){
 		long start = System.currentTimeMillis();
 		getLockingServiceHandle().getzkLockHandle().setNodeData(nodeName, data);
-		logger.info("Performed zookeeper write to "+nodeName);
+		//logger.info("Performed zookeeper write to "+nodeName);
 		long end = System.currentTimeMillis();
 		//logger.info("Time taken for the actual zk put:"+(end-start)+" ms");
 	}

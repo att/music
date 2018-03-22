@@ -85,7 +85,8 @@ public class RestMusicBmAPI {
 		long zkPutTime=0,lockReleaseTime=0;
 
 		if(lockAcqResult.getResult().equals(ResultType.SUCCESS)){
-			MusicCore.pureZkWrite(lockname, data);
+			for(int i=0; i < updateObj.getBatchSize();++i)
+				MusicCore.pureZkWrite(lockname, data);
 			zkPutTime = System.currentTimeMillis();
 			if(consistency.equals("atomic"))
 				MusicCore.voluntaryReleaseLock(lockId);

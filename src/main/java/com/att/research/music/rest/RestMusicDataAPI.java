@@ -283,7 +283,12 @@ public class RestMusicDataAPI {
 			MusicCore.criticalPut(keyspace,tablename,primaryKey, query, lockId, null);
 		}
 		else if(consistency.equalsIgnoreCase("atomic")){
-			MusicCore.atomicPut(keyspace,tablename,primaryKey, query,null);
+			int batchSize;
+			if(insObj.getBatchSize() != 0)
+				batchSize = insObj.getBatchSize();
+			else 
+				batchSize =1;
+			MusicCore.atomicPut(keyspace,tablename,primaryKey, query,null,batchSize);
 		}
 	}
 	
@@ -359,7 +364,12 @@ public class RestMusicDataAPI {
 			operationResult = MusicCore.atomicPutWithDeleteLock(keyspace,tablename,rowId.primarKeyValue, updateQuery,conditionInfo);
 		}
 		else if(consistency.equalsIgnoreCase("atomic")){
-			operationResult = MusicCore.atomicPut(keyspace,tablename,rowId.primarKeyValue, updateQuery,conditionInfo);
+			int batchSize;
+			if(updateObj.getBatchSize() != 0)
+				batchSize = updateObj.getBatchSize();
+			else 
+				batchSize =1;
+			operationResult = MusicCore.atomicPut(keyspace,tablename,rowId.primarKeyValue, updateQuery,conditionInfo,batchSize);
 		}
 		long actualUpdateCompletionTime = System.currentTimeMillis();
 
@@ -433,7 +443,8 @@ public class RestMusicDataAPI {
 			operationResult = MusicCore.criticalPut(keyspace,tablename,rowId.primarKeyValue, query, lockId, conditionInfo);
 		}
 		else if(consistency.equalsIgnoreCase("atomic")){
-			operationResult = MusicCore.atomicPut(keyspace,tablename,rowId.primarKeyValue, query,conditionInfo);
+			int batchSize = 1; 
+			operationResult = MusicCore.atomicPut(keyspace,tablename,rowId.primarKeyValue, query,conditionInfo,batchSize);
 		}
 		return operationResult.toString();
 	}

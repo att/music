@@ -37,6 +37,16 @@ public class JsonInsert implements Serializable {
 	private Map<String,Object> row_specification;
     private Map<String,String> consistencyInfo;
 
+    private int batchSize; //only for benchmarking. 
+    
+	public int getBatchSize() {
+		return batchSize;
+	}
+
+	public void setBatchSize(int batchSize) {
+		this.batchSize = batchSize;
+	}
+
 	public String getKeyspaceName() {
 		return keyspaceName;
 	}

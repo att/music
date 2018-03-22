@@ -36,6 +36,15 @@ public class JsonUpdate implements Serializable {
     private String ttl, timestamp;
     private Map<String,String> consistencyInfo;
     private Map<String,Object> conditions;
+    private int batchSize; //only for benchmarking. 
+    
+	public int getBatchSize() {
+		return batchSize;
+	}
+
+	public void setBatchSize(int batchSize) {
+		this.batchSize = batchSize;
+	}
 
 	public Map<String, Object> getConditions() {
 		return conditions;

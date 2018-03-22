@@ -167,7 +167,7 @@ public class MusicDataStore {
 		long start = System.currentTimeMillis();
 		Statement statement = new SimpleStatement(query);
 		if(consistency.equalsIgnoreCase("critical")){
-			logger.info("Executing critical put query:"+query);
+			//logger.info("Executing critical put query:"+query);
 			statement.setConsistencyLevel(ConsistencyLevel.QUORUM);
 		}
 		else if (consistency.equalsIgnoreCase("eventual")){

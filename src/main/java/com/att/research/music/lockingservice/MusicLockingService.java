@@ -130,4 +130,10 @@ public class MusicLockingService implements Watcher {
 		zkLockHandle.close();
 	}
 
+	
+	public boolean lockIdExists(String lockIdWithDollar) {
+		String lockId = lockIdWithDollar.replace('$', '/');
+		return zkLockHandle.checkIfLockExists(lockId);
+	}
+	
 }

@@ -353,23 +353,27 @@ public class RestMusicDataAPI {
 
 		WriteReturnType operationResult=null;
 		long jsonParseCompletionTime = System.currentTimeMillis();
-
-		if(consistency.equalsIgnoreCase("eventual"))
-			operationResult = MusicCore.eventualPut(updateQuery);
-		else if(consistency.equalsIgnoreCase("critical")){
-			String lockId = updateObj.getConsistencyInfo().get("lockId");
-			operationResult = MusicCore.criticalPut(keyspace,tablename,rowId.primarKeyValue, updateQuery, lockId, conditionInfo);
+		try {
+			if(consistency.equalsIgnoreCase("eventual"))
+				operationResult = MusicCore.eventualPut(updateQuery);
+			else if(consistency.equalsIgnoreCase("critical")){
+				String lockId = updateObj.getConsistencyInfo().get("lockId");
+				operationResult = MusicCore.criticalPut(keyspace,tablename,rowId.primarKeyValue, updateQuery, lockId, conditionInfo);
+			}
+			else if(consistency.equalsIgnoreCase("atomic_delete_lock")){//this function is mainly for the benchmarks
+				operationResult = MusicCore.atomicPutWithDeleteLock(keyspace,tablename,rowId.primarKeyValue, updateQuery,conditionInfo);
+			}
+			else if(consistency.equalsIgnoreCase("atomic")){
+				int batchSize;
+				if(updateObj.getBatchSize() != 0)
+					batchSize = updateObj.getBatchSize();
+				else 
+					batchSize =1;
+				operationResult = MusicCore.atomicPut(keyspace,tablename,rowId.primarKeyValue, updateQuery,conditionInfo,batchSize);
+			}
 		}
-		else if(consistency.equalsIgnoreCase("atomic_delete_lock")){//this function is mainly for the benchmarks
-			operationResult = MusicCore.atomicPutWithDeleteLock(keyspace,tablename,rowId.primarKeyValue, updateQuery,conditionInfo);
-		}
-		else if(consistency.equalsIgnoreCase("atomic")){
-			int batchSize;
-			if(updateObj.getBatchSize() != 0)
-				batchSize = updateObj.getBatchSize();
-			else 
-				batchSize =1;
-			operationResult = MusicCore.atomicPut(keyspace,tablename,rowId.primarKeyValue, updateQuery,conditionInfo,batchSize);
+		catch (Exception e) {
+			e.printStackTrace();
 		}
 		long actualUpdateCompletionTime = System.currentTimeMillis();
 

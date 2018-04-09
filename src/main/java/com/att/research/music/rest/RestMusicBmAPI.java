@@ -83,19 +83,22 @@ public class RestMusicBmAPI {
 		WriteReturnType lockAcqResult = MusicCore.acquireLock(lockname, lockId);
 		long lockAcqTime = System.currentTimeMillis();
 		long zkPutTime=0,lockReleaseTime=0;
-
-		if(lockAcqResult.getResult().equals(ResultType.SUCCESS)){
-			for(int i=0; i < updateObj.getBatchSize();++i)
-				MusicCore.pureZkWrite(lockname, data);
-			zkPutTime = System.currentTimeMillis();
-			if(consistency.equals("atomic"))
-				MusicCore.voluntaryReleaseLock(lockId);
-			else 
-			if(consistency.equals("atomic_delete_lock"))
-				MusicCore.deleteLock(lockname);
-			lockReleaseTime = System.currentTimeMillis();
-		}else{
-			MusicCore.destroyLockRef(lockId);
+		try {
+			if(lockAcqResult.getResult().equals(ResultType.SUCCESS)){
+				for(int i=0; i < updateObj.getBatchSize();++i)
+					MusicCore.pureZkWrite(lockname, data);
+				zkPutTime = System.currentTimeMillis();
+				if(consistency.equals("atomic"))
+					MusicCore.voluntaryReleaseLock(lockId);
+				else 
+				if(consistency.equals("atomic_delete_lock"))
+					MusicCore.deleteLock(lockname);
+				lockReleaseTime = System.currentTimeMillis();
+			}else{
+				MusicCore.destroyLockRef(lockId);
+			}
+		}catch(Exception e) {
+			e.printStackTrace();
 		}
 		
 		long actualUpdateCompletionTime = System.currentTimeMillis();

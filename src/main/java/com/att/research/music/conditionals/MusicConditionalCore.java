@@ -20,7 +20,6 @@ import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
 import com.att.research.music.conditionals.*;
-import com.sun.jersey.server.impl.container.servlet.JerseyServletContainerInitializer;
 
 public class MusicConditionalCore {
 

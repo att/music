@@ -88,7 +88,7 @@ public class MusicConditionalCore {
 	}
 
 	public static ReturnType conditionalUpdate(Map<String, String> query, String tableName, String keySpace,
-			String primaryKey, Map<String, String> changeOfStatus,String cascadeColumnName,String primaryKeyName) {
+			String primaryKey, Map<String, String> changeOfStatus,String cascadeColumnName,String primaryKeyName,String planId) {
 
 		long start = System.currentTimeMillis();
 		String key = keySpace + "." + tableName + "." + primaryKey;
@@ -99,7 +99,7 @@ public class MusicConditionalCore {
 			if (lockAcqResult.getResult().equals(ResultType.SUCCESS)) {
 				logger.info("acquired lock with id " + lockId);
 				ReturnType criticalPutResult = conditionalUpdateCriticalPut(keySpace, tableName, primaryKey, query,
-						lockId, changeOfStatus, cascadeColumnName,primaryKeyName);
+						lockId, changeOfStatus, cascadeColumnName,primaryKeyName,planId);
 				boolean voluntaryRelease = true;
 				MusicCore.releaseLock(lockId, voluntaryRelease);
 				long end = System.currentTimeMillis();
@@ -117,7 +117,8 @@ public class MusicConditionalCore {
 	}
 
 	public static ReturnType conditionalUpdateCriticalPut(String keyspaceName, String tableName, String primaryKey,
-			Map<String, String> query, String lockId,Map<String, String> changeOfStatus,String cascadeColumnName,String primaryKeyname) {
+			Map<String, String> query, String lockId,Map<String, String> changeOfStatus,String cascadeColumnName,String primaryKeyname,String planId) {
+		//have an object that contains all the fields instead of sending way too many params.
 		long start = System.currentTimeMillis();
 		ResultSet results = null;
 		Row row = null;
@@ -130,7 +131,10 @@ public class MusicConditionalCore {
 				results = MusicCore.getDSHandle().executeCriticalGet(query.get("select"));
 				row = results.one();
 				if (row != null) {
-					updatedValues = cascadeColumnUpdate(row, changeOfStatus, cascadeColumnName);
+					if(planId == null || planId.isEmpty() || planId.length()==0)
+					updatedValues = cascadeColumnUpdateAll(row, changeOfStatus, cascadeColumnName);//remove this function.just for testing
+					else
+					updatedValues = cascadeColumnUpdateSpecific(row, changeOfStatus, cascadeColumnName,planId);
 					ColumnDefinitions colInfo = row.getColumnDefinitions();
 					DataType colType = colInfo.getType(cascadeColumnName);
 					updateQuery = getUpdateQuery(updatedValues, tableName, keyspaceName, primaryKey, cascadeColumnName, colType, primaryKeyname);
@@ -155,8 +159,10 @@ public class MusicConditionalCore {
 		}
 
 	}
+	//TODO
+	//remove this function. just for test
 	@SuppressWarnings("unchecked")
-	public static Map<String,String> cascadeColumnUpdate (Row row,Map<String,String>changeOfStatus,String cascadeColumnName) {
+	public static Map<String,String> cascadeColumnUpdateAll (Row row,Map<String,String>changeOfStatus,String cascadeColumnName) {
 		
 		ColumnDefinitions colInfo = row.getColumnDefinitions();
 		DataType colType = colInfo.getType(cascadeColumnName);
@@ -189,6 +195,34 @@ public class MusicConditionalCore {
 	    	}
 	    }
 	    return finalValues;
+		
+		
+	}
+	
+public static Map<String,String> cascadeColumnUpdateSpecific (Row row,Map<String,String>changeOfStatus,String cascadeColumnName,String planId) {
+		
+		ColumnDefinitions colInfo = row.getColumnDefinitions();
+		DataType colType = colInfo.getType(cascadeColumnName);
+		Map<String,String> values =new HashMap<>();
+		Object columnValue = getColValue(row, cascadeColumnName, colType);
+		
+		Map<String,String> finalValues =new HashMap<>();
+	    values  =  (Map<String, String>) columnValue;
+	    Map<String,String> keyValuePair = new HashMap<>();
+	    if(values.keySet().contains(planId)) {
+	    	String valueString = values.get(planId);
+	    	String tempValueString = valueString.replaceAll("\\{", "").replaceAll("\\}", "");
+	    	String[] elements = tempValueString.split(",");
+	    	for(String str : elements) {
+	    		String[] keyValue = str.split("=");
+	    		if((changeOfStatus.keySet().contains(keyValue[0].replaceAll("\\s", ""))));
+	    		     keyValue[1] = changeOfStatus.get(keyValue[0].replaceAll("\\s", ""));
+	    		finalValues.put(keyValue[0], keyValue[1]);     
+	    	}
+	    }
+	    values.remove(planId);
+	    values.put(planId, finalValues.toString());
+	    return values;
 		
 		
 	}

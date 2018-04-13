@@ -28,6 +28,7 @@ import java.util.Map;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
@@ -139,7 +140,7 @@ public class RestMusicConditonalAPI {
 	
 	
 	@SuppressWarnings("unchecked")
-	@POST
+	@PUT
 	@Path("/update/keyspaces/{keyspace}/tables/{tablename}")
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
@@ -149,6 +150,7 @@ public class RestMusicConditonalAPI {
 		String primaryKey = upObj.getPrimaryKey();
 		String primaryKeyValue = upObj.getPrimaryKeyValue();
 		String cascadeColumnName = upObj.getCascadeColumnName();
+		String planId = upObj.getPlanId();
 		Map<String,String> changeOfStatus = upObj.getUpdateStatus();
 		Map<String,String> queries = new HashMap<>();
 		String selectQuery = "SELECT * FROM " + keyspace + "." + tablename + " where " + primaryKey + " = '"+ primaryKeyValue + "';";
@@ -156,7 +158,7 @@ public class RestMusicConditonalAPI {
 		Map<String,String> returnValue = new HashMap<>();
 		queries.put("select",selectQuery );
 		try {
-		result =MusicConditionalCore.conditionalUpdate(queries, tablename, keyspace, primaryKeyValue, changeOfStatus, cascadeColumnName,primaryKey);
+		result =MusicConditionalCore.conditionalUpdate(queries, tablename, keyspace, primaryKeyValue, changeOfStatus, cascadeColumnName,primaryKey,planId);
 		String returnMsg = result.getMessage();
 		returnValue.put("Status", "Success");
 		returnValue.put("Operation", "Update");

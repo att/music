@@ -10,6 +10,17 @@ public class JsonConditionalUpdate implements Serializable {
 	
 	private String primaryKey;
 	private String primaryKeyValue;
+	private String cascadeColumnName;
+	private Map<String,String> updateStatus;
+	private String planId;
+	
+	public String getPlanId() {
+		return planId;
+	}
+	public void setPlanId(String planId) {
+		this.planId = planId;
+	}
+
 	public String getPrimaryKey() {
 		return primaryKey;
 	}
@@ -34,8 +45,7 @@ public class JsonConditionalUpdate implements Serializable {
 	public void setUpdateStatus(Map<String, String> upateStatus) {
 		this.updateStatus = upateStatus;
 	}
-	private String cascadeColumnName;
-	private Map<String,String> updateStatus;
+	
 	
 	
 	

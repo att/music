@@ -71,6 +71,12 @@ stated inside of the file.
  		<version>2.4</version>
   		<scope>provided</scope>
 		</dependency>
+		
+		<dependency>
+	<groupId>commons-logging</groupId>
+	<artifactId>commons-logging</artifactId>
+	<version>1.2</version>
+</dependency>
 			
 			<dependency>
   <groupId>org.apache.maven</groupId>

@@ -22,8 +22,12 @@ stated inside of the file.
  */
 package com.att.research.music.conditionals;
 
+import java.io.IOException;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
@@ -35,12 +39,19 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 
 import org.apache.log4j.Logger;
+import org.codehaus.jackson.JsonParser;
+import org.codehaus.jackson.JsonProcessingException;
+import org.codehaus.jackson.map.ObjectMapper;
+import org.codehaus.jettison.json.JSONArray;
+import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
+import org.codehaus.jettison.json.JSONTokener;
 
 import com.att.research.music.main.MusicCore;
 import com.att.research.music.main.ResultType;
 import com.att.research.music.main.ReturnType;
 import com.datastax.driver.core.DataType;
+import com.datastax.driver.core.Row;
 import com.datastax.driver.core.TableMetadata;
 import com.att.research.music.conditionals.*;
 
@@ -69,76 +80,78 @@ public class RestMusicConditonalAPI {
 		String primaryKeyValue = insObj.getPrimaryKeyValue();
 		String cascadeColumnName = insObj.getCascadeColumnName();
 		String cascadeColumnKey = insObj.getCascadeColumnKey();
-		Map<String, Object> nonExisitngValueMap = new HashMap<>();
-		nonExisitngValueMap = insObj.getValues();
-		Map<String, Object> exisitngValueMap = new HashMap<>();
-		exisitngValueMap.putAll(nonExisitngValueMap);
+		Map<String, Object> valueMap = new HashMap<>();
+		valueMap = insObj.getValues();
+		Map<String, Object> valueMapClone = new HashMap<>();
+		valueMapClone.putAll(valueMap);
 		Map<String, Object> existingCondition = new HashMap<>();
 		existingCondition = insObj.getExistsCondition();
 		Map<String, Object> nonExistingCondition = new HashMap<>();
 		nonExistingCondition = insObj.getNonExistsCondition();
-		Map<String, String> tempValues = (Map<String, String>) existingCondition.get("value");
+		Map<String, String> existingConditionValues = (Map<String, String>) existingCondition.get("value");
+		Map<String, String> nonExistingConditionValues = (Map<String, String>) nonExistingCondition.get("value");
+		JSONObject existingConditionValuesJson = new JSONObject(existingConditionValues);
+		JSONObject nonExistingConditionValuesJson = new JSONObject(nonExistingConditionValues);
 		Map<String, Object> tempValueMap = new HashMap<>();
-		tempValueMap.put(cascadeColumnKey, tempValues.toString());
+		tempValueMap.put(cascadeColumnKey, existingConditionValuesJson.toString());
 		Map<String, String> queries = new HashMap<>();
-		//exisitngValueMap = formatValues(exisitngValueMap,existingCondition,cascadeColumnName, cascadeColumnKey, true);
-		nonExisitngValueMap = formatValues(nonExisitngValueMap, nonExistingCondition, cascadeColumnName,
-				cascadeColumnKey, true);
-		 JSONObject json = null;
-		 Map<String,Object> retunValue = new HashMap<>();
+		valueMap = formatValues(valueMap, nonExistingCondition, cascadeColumnName, cascadeColumnKey, true);
+		JSONObject json = null;
+		Map<String, Object> retunValue = new LinkedHashMap<>();
 		try {
 			tableInfo = MusicCore.returnColumnMetadata(keyspace, tablename);
 		} catch (Exception ex) {
 			logger.error(ex.getMessage());
 			result = new ReturnType(ResultType.FAILURE, ex.getMessage());
-			//return result;
+			// return result;
 		}
 		String selectQuery = "SELECT * FROM " + keyspace + "." + tablename + " where " + primaryKey + " = '"
 				+ primaryKeyValue + "';";
 		DataType colType = tableInfo.getColumn(cascadeColumnName).getType();
 		String formattedValue = MusicCore.convertToCQLDataType(colType, tempValueMap);
+		String vectorTs = "'"+Thread.currentThread().getId()+System.currentTimeMillis()+"'";
 		String updateQuery = "UPDATE " + keyspace + "." + tablename + " SET " + cascadeColumnName + " = "
-				+ cascadeColumnName + "+" + formattedValue.toString() + " WHERE " + primaryKey + " = '"
+				+ cascadeColumnName + "+" + formattedValue.toString()+ " , vector_ts = "+vectorTs + " WHERE " + primaryKey + " = '"
 				+ primaryKeyValue + "';";
-		String upsert = extractQuery(exisitngValueMap, tableInfo, tablename, keyspace);
-		String insertQuery = extractQuery(nonExisitngValueMap, tableInfo, tablename, keyspace);
+		String upsert = extractQuery(valueMapClone, tableInfo, tablename, keyspace);
+		String insertQuery = extractQuery(valueMap, tableInfo, tablename, keyspace);
 		queries.put("select", selectQuery);
 		queries.put("update", updateQuery);
 		queries.put("upsert", upsert);// need to simplify this
 		queries.put("insert", insertQuery);
 		try {
 			result = MusicConditionalCore.conditionalInsert(queries, tablename, keyspace, primaryKeyValue);
-			if(result.getMessage().equalsIgnoreCase("insert")) {
-				retunValue.put("Status", "Success");
-				retunValue.put("Operation", "Insert");
-				retunValue.putAll(nonExisitngValueMap);
+			if(result.getResult().equals(ResultType.FAILURE)) {
+				retunValue.put("status", "failure");
+				retunValue.put("reason", result.getMessage());
 				return new JSONObject(retunValue);
-			    
 			}
-			else
-				retunValue.put("Status", "Success");
-			    retunValue.put("Operation", "Update");
-			    retunValue.put("Operation", "Appended " +cascadeColumnName+" with following values");
-			    retunValue.put(cascadeColumnName+" ID", cascadeColumnKey);
-			    retunValue.putAll(existingCondition);
-			    return new JSONObject(retunValue);
-			  
-			 
+			retunValue.put("status", "success");
+			if (result.getMessage().equalsIgnoreCase("insert")) {
+				retunValue.put("operation", "insert");
+				retunValue.put("row_values", parseValuesForOutPut(null, (Map<String, Object>) valueMapClone));
+				retunValue.put("added_"+cascadeColumnName, cascadeColumnKey);
+				retunValue.put(cascadeColumnName+"_values", nonExistingConditionValuesJson);
+				return new JSONObject(retunValue);
+
+			} else {
+				retunValue.put("operation", "append");
+				retunValue.put(primaryKey, primaryKeyValue);
+				retunValue.put("added_"+cascadeColumnName, cascadeColumnKey);
+				retunValue.put(cascadeColumnName+"_values", parseValuesForOutPut(existingConditionValues, null));
+				return new JSONObject(retunValue);
+			}
+
 		} catch (Exception e) {
 			result = new ReturnType(ResultType.FAILURE, e.getMessage());
-			retunValue.put("Status", "Failure");
-			retunValue.put("Reason", e.getMessage());
+			retunValue.put("status", "failure");
+			retunValue.put("reason", e.getMessage());
 			return new JSONObject(retunValue);
-		    
-			
+
 		}
-		
-		
-		
 
 	}
-	
-	
+
 	@SuppressWarnings("unchecked")
 	@PUT
 	@Path("/update/keyspaces/{keyspace}/tables/{tablename}")
@@ -147,31 +160,45 @@ public class RestMusicConditonalAPI {
 	public JSONObject updateConditional(JsonConditionalUpdate upObj, @PathParam("keyspace") String keyspace,
 			@PathParam("tablename") String tablename) {
 
+		  
 		String primaryKey = upObj.getPrimaryKey();
 		String primaryKeyValue = upObj.getPrimaryKeyValue();
 		String cascadeColumnName = upObj.getCascadeColumnName();
 		String planId = upObj.getPlanId();
-		Map<String,String> changeOfStatus = upObj.getUpdateStatus();
-		Map<String,String> queries = new HashMap<>();
-		String selectQuery = "SELECT * FROM " + keyspace + "." + tablename + " where " + primaryKey + " = '"+ primaryKeyValue + "';";
-		ReturnType result = null;
-		Map<String,String> returnValue = new HashMap<>();
-		queries.put("select",selectQuery );
+		Map<String, String> changeOfStatus = upObj.getUpdateStatus();
+		Map<String, String> queries = new HashMap<>();
+		String selectQuery = "SELECT * FROM " + keyspace + "." + tablename + " where " + primaryKey + " = '"
+				+ primaryKeyValue + "';";
+		ResponseObject result = null;
+		Map<String, Object> returnValue = new LinkedHashMap<>();
+		Map<String,Map<String,String>> rowValues = new LinkedHashMap<>();
+		queries.put("select", selectQuery);
 		try {
-		result =MusicConditionalCore.conditionalUpdate(queries, tablename, keyspace, primaryKeyValue, changeOfStatus, cascadeColumnName,primaryKey,planId);
-		String returnMsg = result.getMessage();
-		returnValue.put("Status", "Success");
-		returnValue.put("Operation", "Update");
-		returnValue.put("Values", returnMsg);
-		return new JSONObject(returnValue);
-		}catch(Exception e) {
-			returnValue.put("Status", "Failure");
-			returnValue.put("Reason", e.getMessage());
+			result = MusicConditionalCore.conditionalUpdate(queries, tablename, keyspace, primaryKeyValue,
+					changeOfStatus, cascadeColumnName, primaryKey, planId);
+		} catch (Exception e) {
+			returnValue.put("status", "failure");
+			returnValue.put("reason", e.getMessage());
 			
 		}
-		String returnMsg = result.getMessage();
+		if(result.getResult().equals(ResultType.FAILURE)) {
+			returnValue.put("status", "failure");
+			returnValue.put("reason", result.getMessage());
+			return new JSONObject(returnValue);
+			}
 		
-		return new JSONObject();
+		/*for(Row row:result.getUpdatedValues()) {
+			
+			rowValues.putAll((Map<? extends String, ? extends Map<String, String>>) row.getObject(cascadeColumnName));
+		}*///figure out marshalling data accordingly for output
+        returnValue.put("status", "success");
+		returnValue.put("operation", "update");
+		returnValue.put(primaryKey, primaryKeyValue);
+		returnValue.put("changed_"+cascadeColumnName, planId);
+		returnValue.put(cascadeColumnName+"_values",parseValuesForOutPut(changeOfStatus, null));
+		
+		
+		return new JSONObject(returnValue);
 
 	}
 
@@ -181,7 +208,8 @@ public class RestMusicConditonalAPI {
 		if (isExists) {
 			Map<String, String> temp1 = (Map<String, String>) conditions.get("value");
 			Map<String, String> temp2 = new HashMap<>();
-			temp2.put(columnValue, temp1.toString());
+			JSONObject json = new JSONObject(temp1);
+			temp2.put(columnValue, json.toString());
 			valueMap.put(columnName, temp2);
 		}
 
@@ -191,8 +219,11 @@ public class RestMusicConditonalAPI {
 
 	public String extractQuery(Map<String, Object> valueMap, TableMetadata tableInfo, String tableName,
 			String keySpaceName) {
-		String fieldsString = "(";
-		String valueString = "(";
+		//String fieldsString = "(";
+		//String valueString = "(";
+		String fieldsString="(vector_ts,";
+		String vectorTs = "'"+Thread.currentThread().getId()+System.currentTimeMillis()+"'";
+		String valueString ="("+vectorTs+",";
 		int counter = 0;
 		for (Map.Entry<String, Object> entry : valueMap.entrySet()) {
 			fieldsString = fieldsString + "" + entry.getKey();
@@ -213,6 +244,17 @@ public class RestMusicConditonalAPI {
 		String insertQuery = "INSERT INTO " + keySpaceName + "." + tableName + " " + fieldsString + " VALUES "
 				+ valueString + ";";
 		return insertQuery;
+
+	}
+
+	public JSONObject parseValuesForOutPut(Map<String, String> stringMap, Map<String, Object> objectMap) {
+		JSONObject json = null;
+		if (stringMap == null)
+			json = new JSONObject(objectMap);
+		if (objectMap == null)
+			json = new JSONObject(stringMap);
+		return json;
+	
 
 	}
 

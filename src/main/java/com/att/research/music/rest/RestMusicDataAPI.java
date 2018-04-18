@@ -54,6 +54,7 @@ import com.att.research.music.datastore.jsonobjects.JsonKeySpace;
 import com.att.research.music.datastore.jsonobjects.JsonSelect;
 import com.att.research.music.datastore.jsonobjects.JsonTable;
 import com.att.research.music.datastore.jsonobjects.JsonUpdate;
+import com.att.research.music.datastore.jsonobjects.RowIdentifier;
 import com.att.research.music.main.MusicCore;
 import com.att.research.music.main.MusicCore.Condition;
 import com.att.research.music.main.MusicUtil;
@@ -67,15 +68,6 @@ import com.datastax.driver.core.TableMetadata;
 @Path("/")
 public class RestMusicDataAPI {
 	final static Logger logger = Logger.getLogger(RestMusicDataAPI.class);
-
-	private class RowIdentifier{
-		public String primarKeyValue;
-		public String rowIdString;//the string with all the row identifiers separted by AND
-		public RowIdentifier(String primaryKeyValue, String rowIdString){
-			this.primarKeyValue = primaryKeyValue;
-			this.rowIdString = rowIdString;
-		}
-	}
 
 	@GET
 	@Path("/version")

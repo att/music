@@ -36,7 +36,56 @@ public class JsonUpdate implements Serializable {
     private String ttl, timestamp;
     private Map<String,String> consistencyInfo;
     private Map<String,Object> conditions;
-    private int batchSize; //only for benchmarking. 
+    
+    //start benchmarking stuff
+    private int batchSize; 
+    private int mixSize; 
+
+	public int getMixSize() {
+		return mixSize;
+	}
+
+	public void setMixSize(int mixSize) {
+		this.mixSize = mixSize;
+	}
+
+	public int getEvAtRatio() {
+		return evAtRatio;
+	}
+
+	public void setEvAtRatio(int evAtRatio) {
+		this.evAtRatio = evAtRatio;
+	}
+	private int startId; 
+    private int evAtRatio; 
+	private String keyName;
+    private String baseKeyValue;
+
+    public String getKeyName() {
+		return keyName;
+	}
+
+	public void setKeyName(String keyName) {
+		this.keyName = keyName;
+	}
+
+	public String getBaseKeyValue() {
+		return baseKeyValue;
+	}
+
+	public void setBaseKeyValue(String baseKeyValue) {
+		this.baseKeyValue = baseKeyValue;
+	}
+    
+    public int getStartId() {
+		return startId;
+	}
+
+	public void setStartId(int startId) {
+		this.startId = startId;
+	}
+
+
     
 	public int getBatchSize() {
 		return batchSize;
@@ -46,6 +95,8 @@ public class JsonUpdate implements Serializable {
 		this.batchSize = batchSize;
 	}
 
+	//end  benchmarking stuff
+	
 	public Map<String, Object> getConditions() {
 		return conditions;
 	}

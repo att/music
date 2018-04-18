@@ -150,7 +150,7 @@ public class MusicCore {
 		long start = System.currentTimeMillis();
 		getDSHandle().executePut(query, "eventual");
 		long end = System.currentTimeMillis();
-		logger.info("Time taken for the actual eventual put:"+(end-start)+" ms");
+		//logger.info("Time taken for the actual eventual put:"+(end-start)+" ms");
 		return new WriteReturnType(ResultType.SUCCESS,""); 
 
 	}

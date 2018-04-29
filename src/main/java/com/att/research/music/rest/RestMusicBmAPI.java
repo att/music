@@ -1,5 +1,6 @@
 package com.att.research.music.rest;
 
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -292,6 +293,11 @@ public class RestMusicBmAPI {
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
 	public String musicMix(JsonUpdate updateObj, @PathParam("keyspace") String keyspace, @PathParam("tablename") String tablename, @Context UriInfo info) throws Exception{
+		String operationId = UUID.randomUUID().toString();//just for debugging purposes. 
+		
+		
+		logger.info("************************************Music mix "+operationId+" received with, date:"+(new Date())+", startId:"+updateObj.getStartId()+", mixSize:"+updateObj.getMixSize()+", evAtRatio:"+updateObj.getEvAtRatio()+"************************************");
+
 		int evAtRatio = updateObj.getEvAtRatio();
 		updateObj.setBatchSize(1); //to be safe
 		for(int i = updateObj.getStartId(); i < (updateObj.getStartId()+updateObj.getMixSize()) ;++i) { 
@@ -315,6 +321,8 @@ public class RestMusicBmAPI {
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
 	public String zkMix(JsonUpdate updateObj, @PathParam("keyspace") String keyspace, @PathParam("tablename") String tablename, @Context UriInfo info) throws Exception{
+		String operationId = UUID.randomUUID().toString();//just for debugging purposes. 
+		logger.info("************************************Zk mix "+operationId+" received with, date:"+(new Date())+", startId:"+updateObj.getStartId()+", mixSize:"+updateObj.getMixSize()+", evAtRatio:"+updateObj.getEvAtRatio()+"************************************");
 		int evAtRatio = updateObj.getEvAtRatio();
 		updateObj.setBatchSize(1); //to be safe
 		for(int i = updateObj.getStartId(); i < (updateObj.getStartId()+updateObj.getMixSize()) ;++i) { 

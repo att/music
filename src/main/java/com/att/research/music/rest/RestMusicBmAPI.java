@@ -288,57 +288,51 @@ public class RestMusicBmAPI {
 		return operationResult; 	
 	}
 	
+
+	
 	@PUT
-	@Path("music_mix/keyspaces/{keyspace}/tables/{tablename}")
+	@Path("gen_mix/keyspaces/{keyspace}/tables/{tablename}")
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
-	public String musicMix(JsonUpdate updateObj, @PathParam("keyspace") String keyspace, @PathParam("tablename") String tablename, @Context UriInfo info) throws Exception{
+	public String generateMix(JsonUpdate updateObj, @PathParam("keyspace") String keyspace, @PathParam("tablename") String tablename, @Context UriInfo info) throws Exception{
+		String operationType = updateObj.getOperationType();	
 		String operationId = UUID.randomUUID().toString();//just for debugging purposes. 
-		
-		
-		logger.info("************************************Music mix "+operationId+" received with, date:"+(new Date())+", startId:"+updateObj.getStartId()+", mixSize:"+updateObj.getMixSize()+", evAtRatio:"+updateObj.getEvAtRatio()+"************************************");
-
+		logger.info("************************************"+operationType+" mix "+operationId+" received with, date:"+(new Date())+", startId:"+updateObj.getStartId()+", mixSize:"+updateObj.getMixSize()+", evAtRatio:"+updateObj.getEvAtRatio()+", dataSize (KB):"+updateObj.getDataSize()+"************************************");
 		int evAtRatio = updateObj.getEvAtRatio();
+		
+		//enlarge the contents -- hard coded right now;
+		
+        
+		int dataSize = updateObj.getDataSize()*1000;
+		
+		StringBuilder sbString = 
+                new StringBuilder(dataSize);
+        
+        for(int i=0; i < dataSize; i++){
+            sbString.append("*");
+        }
+		updateObj.getValues().put("job", sbString.toString());
+		
 		updateObj.setBatchSize(1); //to be safe
 		for(int i = updateObj.getStartId(); i < (updateObj.getStartId()+updateObj.getMixSize()) ;++i) { 
 			String primaryKeyValue = updateObj.getBaseKeyValue()+i;
 			String rowIdString = updateObj.getKeyName()+"='"+primaryKeyValue+"'";
 			Map<String, String> consistencyInfo = new HashMap<String, String>();
 			RowIdentifier rowId = new RowIdentifier(primaryKeyValue, rowIdString);
-			if(i % evAtRatio == 0) 
-				consistencyInfo.put("type", "atomic");
-			else 
-				consistencyInfo.put("type", "eventual");
-			
-			updateObj.setConsistencyInfo(consistencyInfo);
-			musicBenchmarkUpdate(updateObj, keyspace, tablename, rowId);
-		}
-		return "music mix done";
-	}
-	
-	@PUT
-	@Path("zk_mix/keyspaces/{keyspace}/tables/{tablename}")
-	@Consumes(MediaType.APPLICATION_JSON)
-	@Produces(MediaType.APPLICATION_JSON)
-	public String zkMix(JsonUpdate updateObj, @PathParam("keyspace") String keyspace, @PathParam("tablename") String tablename, @Context UriInfo info) throws Exception{
-		String operationId = UUID.randomUUID().toString();//just for debugging purposes. 
-		logger.info("************************************Zk mix "+operationId+" received with, date:"+(new Date())+", startId:"+updateObj.getStartId()+", mixSize:"+updateObj.getMixSize()+", evAtRatio:"+updateObj.getEvAtRatio()+"************************************");
-		int evAtRatio = updateObj.getEvAtRatio();
-		updateObj.setBatchSize(1); //to be safe
-		for(int i = updateObj.getStartId(); i < (updateObj.getStartId()+updateObj.getMixSize()) ;++i) { 
-			String primaryKeyValue = updateObj.getBaseKeyValue()+i;
-			Map<String, String> consistencyInfo = new HashMap<String, String>();
-			if(i % evAtRatio == 0) 
-				consistencyInfo.put("type", "atomic");
-			else 
-				consistencyInfo.put("type", "eventual");
-			
-			updateObj.setConsistencyInfo(consistencyInfo);
-			zkBenchMarkUpdate(updateObj, keyspace+"."+tablename+"."+primaryKeyValue);
-		}
-		return "zk mix done";
-	}
 
+			if(i % evAtRatio == 0) 
+				consistencyInfo.put("type", "atomic");
+			else 
+				consistencyInfo.put("type", "eventual");
+			
+			updateObj.setConsistencyInfo(consistencyInfo);
+			if(operationType.equals("Zk"))
+				zkBenchMarkUpdate(updateObj, keyspace+"."+tablename+"."+primaryKeyValue);
+			else
+				musicBenchmarkUpdate(updateObj, keyspace, tablename, rowId);
+		}
+		return "done";	
+	}
 	
 	public String musicBenchmarkUpdate(JsonUpdate updateObj, String keyspace, String tablename, RowIdentifier rowId) throws Exception{
 		long startTime = System.currentTimeMillis();

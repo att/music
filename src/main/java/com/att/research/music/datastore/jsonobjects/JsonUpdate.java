@@ -40,6 +40,27 @@ public class JsonUpdate implements Serializable {
     //start benchmarking stuff
     private int batchSize; 
     private int mixSize; 
+    private int dataSize; 
+	private String operationType;
+    
+    
+    public String getOperationType() {
+		return operationType;
+	}
+
+	public void setOperationType(String operationType) {
+		this.operationType = operationType;
+	}
+
+    
+
+	public int getDataSize() {
+		return dataSize;
+	}
+
+	public void setDataSize(int dataSize) {
+		this.dataSize = dataSize;
+	}
 
 	public int getMixSize() {
 		return mixSize;

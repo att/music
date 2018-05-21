@@ -14,12 +14,12 @@ import javax.ws.rs.core.MediaType;
 
 import org.apache.log4j.Logger;
 
-import com.att.research.music.datastore.jsonobjects.JsonLeasedLock;
-import com.att.research.music.datastore.jsonobjects.JsonLockResponse;
-import com.att.research.music.lockingservice.MusicLockState;
+import com.att.research.music.datastore.JsonLeasedLock;
+import com.att.research.music.datastore.JsonLockResponse;
 import com.att.research.music.main.MusicCore;
 import com.att.research.music.main.ResultType;
 import com.att.research.music.main.WriteReturnType;
+import com.att.research.music.zklockingservice.MusicLockState;
 
 
 @Path("/locks/")
@@ -37,14 +37,16 @@ public class RestMusicLocksAPI {
 	//checks if the node is in the top of the queue and hence acquires the lock
 	@GET
 	@Path("/acquire/{lockreference}")
-	@Produces(MediaType.APPLICATION_JSON)	
-	public Map<String,Object> accquireLock(
+	@Produces(MediaType.TEXT_PLAIN)	
+	public String accquireLock(
             @PathParam("lockreference") String lockId,
             @Context HttpServletResponse response){
         String lockName = lockId.substring(lockId.indexOf('$')+1, lockId.lastIndexOf('$'));
         WriteReturnType lockStatus = MusicCore.acquireLock(lockName,lockId);
-        return new JsonLockResponse(lockStatus.getResult()).setLock(lockId)
-                                    .setMessage(lockStatus.getMessage()).toMap();
+        if(lockStatus.getResultType().equals(ResultType.SUCCESS))
+        		return true+"";
+        else
+        		return false+""; 
     }
 	
 	@POST

@@ -17,10 +17,10 @@ import javax.ws.rs.core.UriInfo;
 
 import org.apache.log4j.Logger;
 
-import com.att.research.music.datastore.jsonobjects.JsonDelete;
-import com.att.research.music.datastore.jsonobjects.JsonInsert;
-import com.att.research.music.datastore.jsonobjects.JsonTable;
-import com.att.research.music.datastore.jsonobjects.JsonUpdate;
+import com.att.research.music.datastore.JsonDelete;
+import com.att.research.music.datastore.JsonInsert;
+import com.att.research.music.datastore.JsonTable;
+import com.att.research.music.datastore.JsonUpdate;
 import com.att.research.music.main.MusicCore;
 import com.datastax.driver.core.ResultSet;
 

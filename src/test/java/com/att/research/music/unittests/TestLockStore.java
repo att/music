@@ -2,7 +2,7 @@ package com.att.research.music.unittests;
 
 import org.apache.log4j.Logger;
 
-import com.att.research.music.lockingservice.MusicLockingService;
+import com.att.research.music.zklockingservice.MusicLockingService;
 
 public class TestLockStore {
 	final static Logger logger = Logger.getLogger(TestLockStore.class);
@@ -15,11 +15,11 @@ public class TestLockStore {
 
 		logger.info("lockname:"+lockName);	
 			
-		String lockId1 = ml.createLockId(lockName);
+		String lockId1 = ml.createLockReference(lockName);
 		logger.info("lockId1 "+ lockId1);
         logger.info(ml.isMyTurn(lockId1));
         
-		String lockId2 = ml.createLockId(lockName);
+		String lockId2 = ml.createLockReference(lockName);
 		logger.info("lockId2 "+lockId2);
 		logger.info("check "+ml.isMyTurn("$bank$x-94608776321630264-0000000000"));
 		logger.info(ml.isMyTurn(lockId2));

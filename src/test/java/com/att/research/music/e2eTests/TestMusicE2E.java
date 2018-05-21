@@ -31,10 +31,10 @@ import java.util.Map;
 
 import javax.ws.rs.core.MediaType;
 
-import com.att.research.music.datastore.jsonobjects.JsonDelete;
-import com.att.research.music.datastore.jsonobjects.JsonInsert;
-import com.att.research.music.datastore.jsonobjects.JsonKeySpace;
-import com.att.research.music.datastore.jsonobjects.JsonTable;
+import com.att.research.music.datastore.JsonDelete;
+import com.att.research.music.datastore.JsonInsert;
+import com.att.research.music.datastore.JsonKeySpace;
+import com.att.research.music.datastore.JsonTable;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
@@ -464,7 +464,7 @@ public class TestMusicE2E {
 	public static void main(String[] args) {	
 		long start = System.currentTimeMillis();
 		String[] musicIps = args;
-			for(int i =0; i < 1;++i){
+			for(int i =0; i < 3;++i){
 				TestMusicE2E vHandle = new TestMusicE2E(musicIps);
 				vHandle.overAllTests();
 

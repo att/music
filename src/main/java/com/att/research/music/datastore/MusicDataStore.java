@@ -26,7 +26,11 @@ import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
+import java.sql.Timestamp;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -54,6 +58,7 @@ import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.TableMetadata;
 import com.datastax.driver.core.ColumnDefinitions.Definition;
 import com.datastax.driver.core.exceptions.NoHostAvailableException;
+import com.datastax.driver.core.utils.UUIDs;
 
 public class MusicDataStore {
 	private Session session;
@@ -173,7 +178,16 @@ public class MusicDataStore {
 		else if (consistency.equalsIgnoreCase("eventual")){
 			logger.info("Executing normal put query:"+query);
 			statement.setConsistencyLevel(ConsistencyLevel.ONE);
+		}		
+		else if (consistency.equalsIgnoreCase("serial")){
+			logger.info("Executing serial put query:"+query);
+			statement.setConsistencyLevel(ConsistencyLevel.SERIAL);
 		}
+		else if (consistency.equalsIgnoreCase("local_serial")){
+			logger.info("Executing local serial put query:"+query);
+			statement.setConsistencyLevel(ConsistencyLevel.LOCAL_SERIAL);
+		}
+
 		session.execute(statement); 
 		long end = System.currentTimeMillis();
 		logger.debug("Time taken for actual put in cassandra:"+(end-start));
@@ -296,6 +310,72 @@ public class MusicDataStore {
 		}
 		session.execute(preparedInsert.bind(values.toArray()));
 		
+	}
+	
+	
+	public void createLockingTable(String keyspace, String table) {
+		table = "locks_"+table; 
+		String tabQuery = "CREATE TABLE IF NOT EXISTS "+keyspace+"."+table
+				+ " ( key text, lockReferenceUUID timeuuid, creationtime text,   PRIMARY KEY ((key), lockReferenceUUID) ) "
+				+ "WITH CLUSTERING ORDER BY (lockReferenceUUID ASC);";
+		System.out.println(tabQuery);
+		
+		executePut(tabQuery, "critical");
+	}
+	
+	public UUID createLockReferenceUUID(String keyspace, String table, String key) {
+		table = "locks_"+table; 
+		UUID timeBasedUuid = UUIDs.timeBased();
+		String values = "('"+key+"',"+timeBasedUuid+",'"+timeBasedUuid.timestamp()+"')";
+		String insQuery = "INSERT INTO "+keyspace+"."+table+"(key, lockReferenceUUID, creationtime) VALUES"+values+" IF NOT EXISTS;";	
+		executePut(insQuery, "critical");	
+		return timeBasedUuid;
+	}
+	
+	public boolean isItMyTurn(String keyspace, String table, String key, UUID lockReferenceUUID) {
+		table = "locks_"+table; 
+		String selectQuery = "select * from "+keyspace+"."+table+" where key='"+key+"' LIMIT 1;";	
+		
+		ResultSet results = session.execute(selectQuery);
+		String topOfQ = results.one().getUUID("lockReferenceUUID")+"";
+		return lockReferenceUUID.toString().equals(topOfQ);
+	}
+	
+	public void releaseLock(String keyspace, String table, String key, UUID lockReferenceUUID) {
+		table = "locks_"+table; 
+		String deleteQuery = "delete from "+keyspace+"."+table+" where key='"+key+"' AND lockReferenceUUID ="+lockReferenceUUID+" IF EXISTS;";	
+		executePut(deleteQuery, "critical");	
+	}
+	
+	/* delete lock is not even needed -- as long as all lock references are cleaned up, 
+	there wont be any key in the l*/
+
+
+	
+	public static void main(String[] args) {
+		MusicDataStore ds = new MusicDataStore();
+		String keyspace = "bmkeyspace";
+		String table = "locktesttable";
+		ds.createLockingTable(keyspace, table);
+		
+		UUID lockRefb1 = ds.createLockReferenceUUID(keyspace, table, "bharath");
+		UUID lockRefc1 = ds.createLockReferenceUUID(keyspace, table, "cat");
+
+		UUID lockRefb2 = ds.createLockReferenceUUID(keyspace, table, "bharath");
+		UUID lockRefc2 = ds.createLockReferenceUUID(keyspace, table, "cat");
+
+		System.out.println(ds.isItMyTurn(keyspace, table, "bharath", lockRefb1));
+		
+		System.out.println(ds.isItMyTurn(keyspace, table, "cat", lockRefc2));
+		
+		System.out.println(ds.isItMyTurn(keyspace, table, "bharath", lockRefb2));
+
+		
+		ds.releaseLock(keyspace, table, "cat", lockRefc1);
+
+		System.out.println(ds.isItMyTurn(keyspace, table, "cat", lockRefc2));
+
+		System.out.println(ds.isItMyTurn(keyspace, table, "cat", lockRefc1));
 	}
 
 }

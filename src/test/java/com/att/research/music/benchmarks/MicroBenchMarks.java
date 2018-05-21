@@ -26,9 +26,9 @@ import java.util.Map;
 
 import javax.ws.rs.core.MediaType;
 
-import com.att.research.music.datastore.jsonobjects.JsonInsert;
-import com.att.research.music.datastore.jsonobjects.JsonKeySpace;
-import com.att.research.music.datastore.jsonobjects.JsonTable;
+import com.att.research.music.datastore.JsonInsert;
+import com.att.research.music.datastore.JsonKeySpace;
+import com.att.research.music.datastore.JsonTable;
 import com.att.research.music.main.MusicUtil;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;

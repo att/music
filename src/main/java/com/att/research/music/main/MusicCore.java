@@ -35,11 +35,11 @@ import java.util.UUID;
 import org.apache.log4j.Logger;
 
 import com.att.research.music.client.MusicRestClient;
+import com.att.research.music.datastore.JsonKeySpace;
 import com.att.research.music.datastore.MusicDataStore;
-import com.att.research.music.datastore.jsonobjects.JsonKeySpace;
-import com.att.research.music.lockingservice.MusicLockState;
-import com.att.research.music.lockingservice.MusicLockingService;
-import com.att.research.music.lockingservice.MusicLockState.LockStatus;
+import com.att.research.music.zklockingservice.MusicLockState;
+import com.att.research.music.zklockingservice.MusicLockingService;
+import com.att.research.music.zklockingservice.MusicLockState.LockStatus;
 import com.datastax.driver.core.ColumnDefinitions;
 import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.ResultSet;
@@ -103,7 +103,7 @@ public class MusicCore {
 	}        
 
 	public static  String createLockReference(String lockName){
-		String lockId = getLockingServiceHandle().createLockId("/"+lockName);
+		String lockId = getLockingServiceHandle().createLockReference("/"+lockName);
 		return lockId;
 	}
 
@@ -342,17 +342,17 @@ public class MusicCore {
 
 	public static void destroyLockRef(String lockId){
 		long start = System.currentTimeMillis();
-		getLockingServiceHandle().unlockAndDeleteId(lockId);
+		getLockingServiceHandle().releaseLockByDeletingReference(lockId);
 		long end = System.currentTimeMillis();			
 		logger.info("Time taken to destroy lock reference:"+(end-start)+" ms");
 	}
 
 	public static  void  voluntaryReleaseLock(String lockId){
-		getLockingServiceHandle().unlockAndDeleteId(lockId);
+		getLockingServiceHandle().releaseLockByDeletingReference(lockId);
 	}
 
 	public static  void  forcedReleaseLock(String lockId, boolean voluntaryRelease){
-		getLockingServiceHandle().unlockAndDeleteId(lockId);
+		getLockingServiceHandle().releaseLockByDeletingReference(lockId);
 	}
 
 	public static  void deleteLock(String lockName){

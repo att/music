@@ -34,11 +34,11 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.att.research.music.datastore.JsonInsert;
+import com.att.research.music.datastore.JsonKeySpace;
+import com.att.research.music.datastore.JsonTable;
 import com.att.research.music.datastore.MusicDataStore;
-import com.att.research.music.datastore.jsonobjects.JsonInsert;
-import com.att.research.music.datastore.jsonobjects.JsonKeySpace;
-import com.att.research.music.datastore.jsonobjects.JsonTable;
-import com.att.research.music.lockingservice.MusicLockingService;
+import com.att.research.music.zklockingservice.MusicLockingService;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.ColumnDefinitions;
 import com.datastax.driver.core.ConsistencyLevel;
@@ -125,7 +125,7 @@ public class MusicClient {
 	}
 	/**
 	 * Create a lock.
-	 * @see com.att.research.music.lockingservice.MusicLockingService#createLock(String)
+	 * @see com.att.research.music.zklockingservice.MusicLockingService#createLock(String)
 	 * @param lockName the lock name
 	 * @return FILL IN
 	 */
@@ -134,11 +134,11 @@ public class MusicClient {
 		synchronized (lockNames) {
 			lockNames.add(ln);
 		}
-		return getLockingService().createLockId(ln);
+		return getLockingService().createLockReference(ln);
 	}
 	/**
 	 * Acquire a lock.
-	 * @see com.att.research.music.lockingservice.MusicLockingService#lock(String)
+	 * @see com.att.research.music.zklockingservice.MusicLockingService#lock(String)
 	 * @param lockName the lock name
 	 * @return FILL IN
 	 */
@@ -147,7 +147,7 @@ public class MusicClient {
 	}
 	/**
 	 * Get the lock holder.
-	 * @see com.att.research.music.lockingservice.MusicLockingService#currentLockHolder(String)
+	 * @see com.att.research.music.zklockingservice.MusicLockingService#currentLockHolder(String)
 	 * @param lockName the lock name
 	 * @return FILL IN
 	 */
@@ -156,15 +156,15 @@ public class MusicClient {
 	}
 	/**
 	 * Unlock a lock.
-	 * @see com.att.research.music.lockingservice.MusicLockingService#unlock(String)
+	 * @see com.att.research.music.zklockingservice.MusicLockingService#unlock(String)
 	 * @param lockName the lock name
 	 */
 	public void unlockLock(String lockName) {
-		getLockingService().unlockAndDeleteId(lockName);
+		getLockingService().releaseLockByDeletingReference(lockName);
 	}
 	/**
 	 * Delete a lock.
-	 * @see com.att.research.music.lockingservice.MusicLockingService#deleteLock(String)
+	 * @see com.att.research.music.zklockingservice.MusicLockingService#deleteLock(String)
 	 * @param lockName the lock name
 	 */
 	public void deleteLock(String lockName) {
@@ -176,7 +176,7 @@ public class MusicClient {
 	}
 	/**
 	 * Delete all locks.
-	 * @see com.att.research.music.lockingservice.MusicLockingService#deleteLock(String)
+	 * @see com.att.research.music.zklockingservice.MusicLockingService#deleteLock(String)
 	 * @return true
 	 */
 	public boolean deleteAllLocks() {

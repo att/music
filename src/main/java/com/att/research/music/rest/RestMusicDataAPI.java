@@ -322,6 +322,7 @@ public class RestMusicDataAPI {
 			conditionInfo = null;
 		else{//to avoid parsing repeatedly, just send the select query to obtain row
 			String selectQuery =  "SELECT *  FROM "+keyspace+"."+tablename+ " WHERE "+rowId.rowIdString+";"; 
+			logger.info("Condition exists. Query: "+selectQuery);
 			conditionInfo = new MusicCore.Condition(updateObj.getConditions() , selectQuery);
 		}
 

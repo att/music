@@ -65,6 +65,7 @@ public class MusicCore {
 			//first generate the row
 			ResultSet results = quorumGet(selectQueryForTheRow);
 			Row row = results.one();
+			logger.debug("MusicCore.testCondition returned some results.");
 			return getDSHandle().doesRowSatisfyCondition(row, conditions);
 		}
 	}
@@ -300,24 +301,30 @@ public class MusicCore {
 	public static ReturnType criticalPut(String keyspaceName, String tableName, String primaryKey, String query, String lockId, Condition conditionInfo){
 		long start = System.currentTimeMillis();
 		try {
+			logger.info("Starting criticalPut for "+(keyspaceName+"."+tableName+"."+primaryKey));
 			MusicLockState mls = getLockingServiceHandle().getLockState(keyspaceName+"."+tableName+"."+primaryKey);
 			if(mls.getLockHolder().equals(lockId) == true){
 				if(conditionInfo != null)//check if condition is true
-					if(conditionInfo.testCondition() == false)
+					if(conditionInfo.testCondition() == false) {
+						logger.info("Lock acquired but the condition is not true. "+conditionInfo.selectQueryForTheRow);
 						return new ReturnType(ResultType.FAILURE,"Lock acquired but the condition is not true"); 
+					}
 				getDSHandle().executePut(query,"critical");
 				long end = System.currentTimeMillis();
 				logger.info("Time taken for the critical put:"+(end-start)+" ms");
 				return new ReturnType(ResultType.SUCCESS,"Update performed"); 
 			}
-			else 
+			else {
+				logger.info("Cannot perform operation since you are the not the lock holder.");
 				return new ReturnType(ResultType.FAILURE,"Cannot perform operation since you are the not the lock holder"); 
+			}
 		} catch (Exception e) {
+			logger.info("Exception thrown while doing the critical put..."+e.getMessage());
 			// TODO Auto-generated catch block
 			StringWriter sw = new StringWriter();
 			e.printStackTrace(new PrintWriter(sw));
 			String exceptionAsString = sw.toString();
-			return new ReturnType(ResultType.FAILURE,"Exception thrown while doing the critical put, check sanctity of the row/conditions:\n"+exceptionAsString); 
+			return new ReturnType(ResultType.FAILURE,"Exception thrown while doing the critical put:\n"+exceptionAsString); 
 		}
 	}
 

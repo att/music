@@ -304,7 +304,7 @@ public class RestMusicBmAPI {
 		//enlarge the contents -- hard coded right now;
 		
         
-		int dataSize = updateObj.getDataSize()*10; //CHANGEEEEEEEEEEEEEEEEEEEEEEEEE
+		int dataSize = updateObj.getDataSize()*1000; 
 		
 		StringBuilder sbString = 
                 new StringBuilder(dataSize);

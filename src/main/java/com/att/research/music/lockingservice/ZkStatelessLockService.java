@@ -89,7 +89,10 @@ public class ZkStatelessLockService extends ProtocolSupport{
 		try {
 			if(zookeeper.exists("/"+lockName, null) != null)
 				return zookeeper.getData("/"+lockName, false,null);
-			else return null;
+			else {
+				LOG.info("No lock exists. returning null byte[]");
+				return null;
+			}
 
 		} catch (KeeperException e) {
 			LOG.warn("Caught: " + e, e);

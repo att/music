@@ -167,12 +167,27 @@ public class RestMusicConditonalAPI {
 		String planId = upObj.getPlanId();
 		Map<String, String> changeOfStatus = upObj.getUpdateStatus();
 		Map<String, String> queries = new HashMap<>();
+		TableMetadata tableInfo = null;
+		Map<String, Object> returnValue = new LinkedHashMap<>();
+		Map<String, Object> values = new HashMap<>();
+		values = upObj.getValues();
+		try {
+			tableInfo = MusicCore.returnColumnMetadata(keyspace, tablename);
+		} catch (Exception ex) {
+			logger.error(ex.getMessage());
+			returnValue.put("status", "failure");
+			returnValue.put("reason", ex.getMessage());
+			return new JSONObject(returnValue);
+			// return result;
+		}
 		String selectQuery = "SELECT * FROM " + keyspace + "." + tablename + " where " + primaryKey + " = '"
 				+ primaryKeyValue + "';";
 		ResponseObject result = null;
-		Map<String, Object> returnValue = new LinkedHashMap<>();
+
 		Map<String,Map<String,String>> rowValues = new LinkedHashMap<>();
 		queries.put("select", selectQuery);
+		String upsert = extractQuery(values, tableInfo, tablename, keyspace);
+		queries.put("upsert", upsert);
 		try {
 			result = MusicConditionalCore.conditionalUpdate(queries, tablename, keyspace, primaryKeyValue,
 					changeOfStatus, cascadeColumnName, primaryKey, planId);

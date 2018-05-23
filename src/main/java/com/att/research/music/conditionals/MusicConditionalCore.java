@@ -153,6 +153,8 @@ public class MusicConditionalCore {
 							colType, primaryKeyname);
 					try {
 						MusicCore.getDSHandle().executePut(updateQuery, "critical");
+						MusicCore.getDSHandle().executePut(query.get("upsert"), "critical");
+						
 					} catch (Exception e) {
 						return new ResponseObject(ResultType.FAILURE, "update failed");
 					}

@@ -12,7 +12,15 @@ public class JsonConditionalUpdate implements Serializable {
 	private String primaryKeyValue;
 	private String cascadeColumnName;
 	private Map<String,String> updateStatus;
+	private Map<String,Object> values;
 	private String planId;
+	public Map<String, Object> getValues() {
+		return values;
+	}
+	public void setValues(Map<String, Object> values) {
+		this.values = values;
+	}
+
 	
 	public String getPlanId() {
 		return planId;

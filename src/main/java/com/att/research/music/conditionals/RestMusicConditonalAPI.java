@@ -59,13 +59,6 @@ import com.att.research.music.conditionals.*;
 public class RestMusicConditonalAPI {
 	final static Logger logger = Logger.getLogger(RestMusicConditonalAPI.class);
 
-	@GET
-	@Path("/version")
-	@Produces(MediaType.TEXT_PLAIN)
-	public String version() {
-		return "MUSIC:";
-	}
-
 	@SuppressWarnings("unchecked")
 	@POST
 	@Path("/insert/keyspaces/{keyspace}/tables/{tablename}")

@@ -64,8 +64,9 @@ public class MusicCore {
 		public boolean testCondition(){
 			//first generate the row
 			ResultSet results = quorumGet(selectQueryForTheRow);
+			logger.info("Results for testCondition: "+ results +" Query: "+selectQueryForTheRow);
 			Row row = results.one();
-			logger.debug("MusicCore.testCondition returned some results.");
+			logger.info("MusicCore.testCondition returned some results.");
 			return getDSHandle().doesRowSatisfyCondition(row, conditions);
 		}
 	}
@@ -303,7 +304,9 @@ public class MusicCore {
 		try {
 			logger.info("Starting criticalPut for "+(keyspaceName+"."+tableName+"."+primaryKey));
 			MusicLockState mls = getLockingServiceHandle().getLockState(keyspaceName+"."+tableName+"."+primaryKey);
+			logger.info("Got MusicLockState object... Is null?: "+ (mls==null));
 			if(mls.getLockHolder().equals(lockId) == true){
+				logger.info("Proceeding to criticalPut since you are the lockholder.");
 				if(conditionInfo != null)//check if condition is true
 					if(conditionInfo.testCondition() == false) {
 						logger.info("Lock acquired but the condition is not true. "+conditionInfo.selectQueryForTheRow);
@@ -322,6 +325,7 @@ public class MusicCore {
 			
 			// TODO Auto-generated catch block
 			StringWriter sw = new StringWriter();
+			e.printStackTrace();
 			e.printStackTrace(new PrintWriter(sw));
 			String exceptionAsString = sw.toString();
 			logger.info("Exception thrown while doing the critical put..."+exceptionAsString);

@@ -172,19 +172,19 @@ public class MusicDataStore {
 		long start = System.currentTimeMillis();
 		Statement statement = new SimpleStatement(query);
 		if(consistency.equalsIgnoreCase("critical")){
-			//logger.info("Executing critical put query:"+query);
+		//	logger.info("Executing critical put query");
 			statement.setConsistencyLevel(ConsistencyLevel.QUORUM);
 		}
 		else if (consistency.equalsIgnoreCase("eventual")){
-			logger.info("Executing normal put query:"+query);
+			logger.info("Executing normal put query..");
 			statement.setConsistencyLevel(ConsistencyLevel.ONE);
 		}		
 		else if (consistency.equalsIgnoreCase("serial")){
-			logger.info("Executing serial put query:"+query);
+		//	logger.info("Executing serial put query");
 			statement.setConsistencyLevel(ConsistencyLevel.SERIAL);
 		}
 		else if (consistency.equalsIgnoreCase("local_serial")){
-			logger.info("Executing local serial put query:"+query);
+		//	logger.info("Executing local serial put query");
 			statement.setConsistencyLevel(ConsistencyLevel.LOCAL_SERIAL);
 		}
 

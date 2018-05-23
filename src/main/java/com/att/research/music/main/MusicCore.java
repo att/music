@@ -319,11 +319,12 @@ public class MusicCore {
 				return new ReturnType(ResultType.FAILURE,"Cannot perform operation since you are the not the lock holder"); 
 			}
 		} catch (Exception e) {
-			logger.info("Exception thrown while doing the critical put..."+e.getMessage());
+			
 			// TODO Auto-generated catch block
 			StringWriter sw = new StringWriter();
 			e.printStackTrace(new PrintWriter(sw));
 			String exceptionAsString = sw.toString();
+			logger.info("Exception thrown while doing the critical put..."+exceptionAsString);
 			return new ReturnType(ResultType.FAILURE,"Exception thrown while doing the critical put:\n"+exceptionAsString); 
 		}
 	}

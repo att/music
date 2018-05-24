@@ -475,7 +475,12 @@ public class MusicCore {
 			Map<String,Object> otMap = (Map<String,Object>)valueObj;
 			value = "{"+jsonMaptoSqlString(otMap, ",")+"}";
 			break;
-		}	
+		}
+		case LIST:{
+			List<Object> lst = (List<Object>)valueObj;
+			value = "["+jsonListtoSqlString(lst)+"]";
+			break;
+		}
 		default:
 			value = valueObj+"";
 			break;
@@ -500,6 +505,22 @@ public class MusicCore {
 			counter = counter +1;
 		}	
 		return sqlString;	
+	}
+	
+	public static String jsonListtoSqlString(List<Object> jList) {
+		String sqlString = "";
+		int counter = 0;
+		if (jList.size() == 1)
+			sqlString = sqlString + "'" + jList.get(0) + "'";
+		else {
+			for (int i = 0; i < jList.size() - 1; i++) {
+				sqlString = sqlString + "'" + jList.get(i) + "',";
+				counter = i;
+			}
+			sqlString = sqlString + "'" + jList.get(counter + 1) + "'";
+		}
+
+		return sqlString;
 	}
 	
 	public static void pureZkCreate(String nodeName){

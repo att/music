@@ -199,6 +199,8 @@ public class MusicDataStore {
 			return row.getBool(colName);
 		case MAP: 
 			return row.getMap(colName, String.class, String.class);
+		case LIST:
+			return row.getList(colName, String.class);
 		default: 
 			return null;
 		}

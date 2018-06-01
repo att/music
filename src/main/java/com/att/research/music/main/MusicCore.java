@@ -167,6 +167,7 @@ public class MusicCore {
 			if(acquireLock(key, lockId) == true){
 				mls = getMusicLockState(key);//get latest state
 				if(mls.getLeaseStartTime() == -1){//set it again only if it is not set already
+					logger.info("set mls leasetime again as it is not set already");
 					mls.setLeaseStartTime(System.currentTimeMillis());
 					mls.setLeasePeriod(leasePeriod);
 					getLockingServiceHandle().setLockState(key, mls);			
@@ -308,11 +309,11 @@ public class MusicCore {
 			if(mls == null || mls.getLockHolder() == null) {
 				logger.info("Something is weird.. reconstrucitng mls for "+lockId);
                 String lockName = getLockNameFromId(lockId);
-                logger.info("Reconstructed mls for "+lockName);
                 //getLockingServiceHandle().setLockState(lockName, mls);
                 mls = new MusicLockState(MusicLockState.LockStatus.LOCKED, lockId, false);
                 mls.setLockHolder(lockId);
                 getLockingServiceHandle().setLockState(lockName, mls);
+                logger.info("Reconstructed mls for "+lockName);
 			}
 			if(mls.getLockHolder().equals(lockId) == true){
 				logger.info("Proceeding to criticalPut since you are the lockholder.");

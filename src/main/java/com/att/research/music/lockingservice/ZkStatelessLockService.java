@@ -19,6 +19,9 @@ package com.att.research.music.lockingservice;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.att.research.music.main.MusicCore;
+
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.ZooDefs;
@@ -44,6 +47,7 @@ public class ZkStatelessLockService extends ProtocolSupport{
 		zookeeper = zk; 
 	}
 	private static final Logger LOG = LoggerFactory.getLogger(ZkStatelessLockService.class);
+	final static org.apache.log4j.Logger logger = org.apache.log4j.Logger.getLogger(MusicCore.class);
 	
 	protected void createLock(final String path, final byte[] data){
 	    final List<ACL>  acl = ZooDefs.Ids.OPEN_ACL_UNSAFE;
@@ -79,8 +83,10 @@ public class ZkStatelessLockService extends ProtocolSupport{
 			});
 		} catch (KeeperException e) {
 			LOG.warn("Caught: " + e, e);
+			logger.info("Caught: " + e, e);
 		} catch (InterruptedException e) {
 			LOG.warn("Caught: " + e, e);
+			logger.info("Caught: " + e, e);
 		}
 
 	}
@@ -90,14 +96,16 @@ public class ZkStatelessLockService extends ProtocolSupport{
 			if(zookeeper.exists("/"+lockName, null) != null)
 				return zookeeper.getData("/"+lockName, false,null);
 			else {
-				LOG.info("No lock exists. returning null byte[]");
+				logger.info("No lock exists. returning null byte[]");
 				return null;
 			}
 
 		} catch (KeeperException e) {
 			LOG.warn("Caught: " + e, e);
+			logger.info("Caught: " + e, e);
 		} catch (InterruptedException e) {
 			LOG.warn("Caught: " + e, e);
+			logger.info("Caught: " + e, e);
 		}
 		return null;
 	}
@@ -161,6 +169,7 @@ public class ZkStatelessLockService extends ProtocolSupport{
 	 * if it cannot connect to zookeeper.
 	 */
 	public synchronized void unlock(String lockId) throws RuntimeException {
+		logger.info("Unlocking lock: "+lockId);
 		final String id = lockId;
 		if (!isClosed() && id != null) {
 			try {

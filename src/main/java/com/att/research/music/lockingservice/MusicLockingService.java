@@ -27,18 +27,21 @@ import java.io.IOException;
 import java.util.StringTokenizer;
 import java.util.concurrent.CountDownLatch;
 
+import org.apache.log4j.Logger;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.Watcher.Event.KeeperState;
 import org.apache.zookeeper.ZooKeeper;
 
+import com.att.research.music.main.MusicCore;
 import com.att.research.music.main.MusicUtil;
 public class MusicLockingService implements Watcher {
 
 	private  final int SESSION_TIMEOUT = 180000;
 	ZkStatelessLockService zkLockHandle= null;
 	private  CountDownLatch connectedSignal = new CountDownLatch(1);
+	final static Logger logger = Logger.getLogger(MusicLockingService.class);
 	
 	public MusicLockingService(){
 		try {
@@ -81,6 +84,7 @@ public class MusicLockingService implements Watcher {
 	}
 	
 	public void setLockState(String lockName, MusicLockState mls){
+		logger.info("Setting lockState to "+mls.getLockHolder()+ ":" +mls.getLockStatus()+ " for "+lockName);
 		byte[] data = mls.serialize();
 		zkLockHandle.setNodeData(lockName, data);
 	}

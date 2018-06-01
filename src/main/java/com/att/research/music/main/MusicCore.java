@@ -304,7 +304,16 @@ public class MusicCore {
 		try {
 			logger.info("Starting criticalPut for "+(keyspaceName+"."+tableName+"."+primaryKey));
 			MusicLockState mls = getLockingServiceHandle().getLockState(keyspaceName+"."+tableName+"."+primaryKey);
-			logger.info("Got MusicLockState object... Is null?: "+ (mls==null));
+			logger.info("Got MusicLockState object... Is null?: "+ (mls==null) +" mls: "+mls);
+			if(mls == null || mls.getLockHolder() == null) {
+				logger.info("Something is weird.. reconstrucitng mls for "+lockId);
+                String lockName = getLockNameFromId(lockId);
+                logger.info("Reconstructed mls for "+lockName);
+                //getLockingServiceHandle().setLockState(lockName, mls);
+                mls = new MusicLockState(MusicLockState.LockStatus.LOCKED, lockId, false);
+                mls.setLockHolder(lockId);
+                getLockingServiceHandle().setLockState(lockName, mls);
+			}
 			if(mls.getLockHolder().equals(lockId) == true){
 				logger.info("Proceeding to criticalPut since you are the lockholder.");
 				if(conditionInfo != null)//check if condition is true

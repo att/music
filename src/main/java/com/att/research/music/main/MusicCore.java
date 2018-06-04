@@ -212,12 +212,13 @@ public class MusicCore {
 		try{
 			currentMls = getMusicLockState(key);
 			String currentLockHolder = currentMls.getLockHolder();
+			
 			if(lockId.equals(currentLockHolder)){
 				logger.info("In acquire lock: You already have the lock!");
 				return true;
 			}
 			if (currentMls.getLockStatus() != MusicLockState.LockStatus.UNLOCKED || currentMls.getLockHolder() != null) {
-				logger.info("In acquire lock: the previous lock has not been released yet!");
+				logger.info("In acquire lock: the previous lock has not been released yet! current mls:"+currentMls.toString());
 				return false ;
 			}
 
@@ -310,7 +311,7 @@ public class MusicCore {
 		try {
 			logger.info("Starting criticalPut for "+(keyspaceName+"."+tableName+"."+primaryKey));
 			MusicLockState mls = getLockingServiceHandle().getLockState(keyspaceName+"."+tableName+"."+primaryKey);
-			logger.info("Got MusicLockState object... Is null?: "+ (mls==null) +" mls: "+mls);
+			logger.info("Got MusicLockState object... Is null?: "+ (mls==null) +" mls: "+mls.toString());
 			if(mls.getLockHolder() == null) {
 				logger.info("What? "+lockId+ " is now not a lock holder?.. Throwing exception..");
 			}

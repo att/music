@@ -43,7 +43,7 @@ E.g. 127.0.0.1 localhost music-1. Some of the apt-get installation seem to requi
   <http://cassandra.apache.org/doc/latest/getting_started/installing.html> till and including Step
 4. By the end of this you should have Cassandra working.
 - Download Apache Zookeeper 3.4.6 from and follow these instructions
-  <https://zookeeper.apache.org/doc/trunk/zookeeperStarted.html> pertaining to the standalone
+  <https://zookeeper.apache.org/doc/current/zookeeperStarted.html> pertaining to the standalone
 operation. By the end of this you should have Zookeeper working.
 - Create a music.properties file and place it in /etc/music/. Here is a sample of the file: 
 

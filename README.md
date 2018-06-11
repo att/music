@@ -284,3 +284,15 @@ default. To mute it (if it exists), remove the following lines from the web.xml 
   <param-value>com.sun.jersey.api.container.filter.LoggingFilter</param-value>
 </init-param>
 ```
+
+## Running Examples
+### Python Requirements
+
+* Requests
+
+In Ubuntu 16.04:
+```bash
+$ sudo apt-get install python-pip python-dev build-essential 
+$ sudo pip install --upgrade pip 
+$ sudo pip install requests
+```

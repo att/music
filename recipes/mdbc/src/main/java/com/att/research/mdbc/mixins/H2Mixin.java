@@ -4,14 +4,15 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.TreeSet;
 
-import org.apache.log4j.Logger;
-
+import com.att.research.logging.EELFLoggerDelegate;
 import com.att.research.mdbc.MusicSqlManager;
 import com.att.research.mdbc.TableInfo;
 
@@ -24,10 +25,11 @@ import com.att.research.mdbc.TableInfo;
 public class H2Mixin implements DBInterface {
 	public  static final String MIXIN_NAME = "h2";
 	private static final String triggerClassName = H2MixinTriggerHandler.class.getName();
+	private EELFLoggerDelegate logger = EELFLoggerDelegate.getLogger(H2Mixin.class);
 	private static int connindex = 0;
 
 	protected final MusicSqlManager msm;
-	protected final Logger logger;
+	//protected final Logger logger;
 	protected final int connId;
 	protected final Connection dbConnection;
 	protected final Map<String, TableInfo> tables;
@@ -41,7 +43,7 @@ public class H2Mixin implements DBInterface {
 	}
 	public H2Mixin(MusicSqlManager msm, String url, Connection conn, Properties info) {
 		this.msm = msm;
-		this.logger = Logger.getLogger(this.getClass());
+		//this.logger = Logger.getLogger(this.getClass());
 		this.connId = generateConnID(conn);
 		this.dbConnection = conn;
 		this.tables = new HashMap<String, TableInfo>();
@@ -64,6 +66,10 @@ public class H2Mixin implements DBInterface {
 	public void close() {
 		// nothing yet
 	}
+	public String getDatabaseName() {
+		logger.error(EELFLoggerDelegate.errorLogger, "H2Mixin getDatabaseName: not implemented");
+		return "mdbc";
+	}
 	/**
 	 * Get a set of the table names in the database. The table names should be returned in UPPER CASE.
 	 * @return the set
@@ -80,7 +86,7 @@ public class H2Mixin implements DBInterface {
 			}
 			stmt.close();
 		} catch (SQLException e) {
-			logger.warn("getSQLTableSet: "+e);
+			logger.error(EELFLoggerDelegate.errorLogger,"getSQLTableSet: "+e);
 		}
 		return set;
 	}
@@ -128,10 +134,12 @@ public class H2Mixin implements DBInterface {
 						rs.getStatement().close();
 					}
 				} else {
-					logger.warn("Cannot retrieve table info for table "+tableName+" from H2.");
+					logger.error(EELFLoggerDelegate.errorLogger,"Cannot retrieve table info for table "+tableName+" from H2.");
+					
 				}
 			} catch (SQLException e) {
-				logger.warn("Cannot retrieve table info for table "+tableName+" from H2: "+e);
+				logger.error(EELFLoggerDelegate.errorLogger,"Cannot retrieve table info for table "+tableName+" from H2: "+e);
+				
 				return null;
 			}
 			tables.put(tableName, ti);
@@ -148,7 +156,7 @@ public class H2Mixin implements DBInterface {
 		try {
 			// Give the triggers a way to find this MSM
 			for (String name : getTriggerNames(tableName)) {
-				logger.debug("ADD trigger "+name+" to msm_map");
+				logger.info(EELFLoggerDelegate.applicationLogger,"ADD trigger "+name+" to msm_map");
 				msm.register(name);
 			}
 			executeSQLWrite("CREATE TRIGGER IF NOT EXISTS I_"+connId+"_" +tableName+" AFTER INSERT ON " +tableName+" FOR EACH ROW CALL \""+triggerClassName+"\"");
@@ -157,7 +165,8 @@ public class H2Mixin implements DBInterface {
 			executeSQLWrite("CREATE TRIGGER IF NOT EXISTS S_"+connId+"_" +tableName+" BEFORE SELECT ON "+tableName+" CALL \""+triggerClassName+"\"");
 			dbConnection.commit();
 		} catch (SQLException e) {
-			logger.warn("createSQLTriggers: "+e);
+			logger.error(EELFLoggerDelegate.errorLogger,"createSQLTriggers: "+e);
+			
 		}
 	}
 	/**
@@ -168,12 +177,14 @@ public class H2Mixin implements DBInterface {
 	public void dropSQLTriggers(String tableName) {
 		try {
 			for (String name : getTriggerNames(tableName)) {
-				logger.debug("REMOVE trigger "+name+" from msmmap");
+				logger.info(EELFLoggerDelegate.applicationLogger,"REMOVE trigger "+name+" from msmmap");
+				
 				executeSQLWrite("DROP TRIGGER IF EXISTS " +name);
 				msm.unregister(name);
 			}
 		} catch (SQLException e) {
-			logger.warn("dropSQLTriggers: "+e);
+			logger.error(EELFLoggerDelegate.errorLogger,"dropSQLTriggers: "+e);
+			
 		}
 	}
 	private String[] getTriggerNames(String tableName) {
@@ -206,6 +217,7 @@ public class H2Mixin implements DBInterface {
 			String sql = String.format("DELETE FROM %s WHERE %s", tableName, where.toString());
 			executeSQLWrite(sql);
 		} catch (SQLException e) {
+			logger.error(EELFLoggerDelegate.errorLogger,"deleteRowFromSqlDb: "+e);
 			e.printStackTrace();
 		}
 	}
@@ -227,7 +239,7 @@ public class H2Mixin implements DBInterface {
 			String sql = String.format("INSERT INTO %s (%s) VALUES (%s);", tableName, fields.toString(), values.toString());
 			executeSQLWrite(sql);
 		} catch (SQLException e) {
-			logger.debug("Insert failed because row exists, do an update");
+			logger.error(EELFLoggerDelegate.errorLogger,"insertRowIntoSqlDb: "+e);
 			// TODO - rewrite this UPDATE command should not update key fields
 			StringBuilder where = new StringBuilder();
 			pfx = "";
@@ -243,6 +255,7 @@ public class H2Mixin implements DBInterface {
 			try {
 				executeSQLWrite(sql);
 			} catch (SQLException e1) {
+				logger.error(EELFLoggerDelegate.errorLogger,"insertRowIntoSqlDb: "+e);
 				e1.printStackTrace();
 			}
 		}
@@ -254,14 +267,15 @@ public class H2Mixin implements DBInterface {
 	 * @param sql the query to run
 	 * @return a ResultSet containing the rows returned from the query
 	 */
-	protected ResultSet executeSQLRead(String sql) {
+	@Override
+	public ResultSet executeSQLRead(String sql) {
 		logger.debug("Executing SQL read:"+ sql);
 		ResultSet rs = null;
 		try {
 			Statement stmt = dbConnection.createStatement();
 			rs = stmt.executeQuery(sql);
 		} catch (SQLException e) {
-			logger.warn("executeSQLRead: "+e);
+			logger.error(EELFLoggerDelegate.errorLogger,"executeSQLRead: "+e);
 		}
 		return rs;
 	}
@@ -272,7 +286,8 @@ public class H2Mixin implements DBInterface {
 	 * @throws SQLException if an underlying JDBC method throws an exception
 	 */
 	protected void executeSQLWrite(String sql) throws SQLException {
-		logger.debug("Executing SQL write:"+ sql);
+		logger.info(EELFLoggerDelegate.applicationLogger,"Executing SQL write:"+ sql);
+		
 //		dbConnection.setAutoCommit(false);
 		Statement stmt = dbConnection.createStatement();
 		stmt.execute(sql);
@@ -283,6 +298,7 @@ public class H2Mixin implements DBInterface {
 	 * Code to be run within the DB driver before a SQL statement is executed.  This is where tables
 	 * can be synchronized before a SELECT, for those databases that do not support SELECT triggers.
 	 * @param sql the SQL statement that is about to be executed
+	 * @return keys of rows that will be 
 	 */
 	@Override
 	public void preStatementHook(final String sql) {
@@ -297,4 +313,26 @@ public class H2Mixin implements DBInterface {
 	public void postStatementHook(final String sql) {
 		// do nothing
 	}
+	@Override
+	public void synchronizeData(String tableName) {
+		// TODO Auto-generated method stub
+		
+	}
+	
+	/**
+	 * Return a list of "reserved" names, that should not be used by MySQL client/MUSIC
+	 * These are reserved for mdbc
+	 */
+	@Override
+	public List<String> getReservedTblNames() {
+		ArrayList<String> rsvdTables = new ArrayList<String>();
+		//Add table names here as necessary
+		return rsvdTables;
+	}
+	@Override
+	public String getPrimaryKey(String sql, String tableName) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+	
 }

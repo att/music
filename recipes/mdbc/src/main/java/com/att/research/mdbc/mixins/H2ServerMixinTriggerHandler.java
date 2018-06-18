@@ -12,6 +12,8 @@ import org.apache.log4j.Logger;
 import org.h2.api.Trigger;
 import org.json.JSONObject;
 
+import com.att.research.logging.EELFLoggerDelegate;
+import com.att.research.mdbc.MusicSqlManager;
 import com.att.research.mdbc.TableInfo;
 
 /**
@@ -46,7 +48,7 @@ public class H2ServerMixinTriggerHandler implements Trigger {
 	public static final int    OP_INSERT = 1;
 	public static final int    OP_UPDATE = 2;
 
-	private static final Logger logger = Logger.getLogger(H2ServerMixinTriggerHandler.class);
+	private static EELFLoggerDelegate logger = EELFLoggerDelegate.getLogger(H2ServerMixinTriggerHandler.class);
 	private static final String CREATE_TBL_SQL =
 		"CREATE TABLE IF NOT EXISTS "+TRANS_TBL+
 		" (IX INT AUTO_INCREMENT, CONNID INT, OP INT, TABLENAME VARCHAR, KEYDATA VARCHAR, PRIMARY KEY (IX))";
@@ -100,33 +102,32 @@ public class H2ServerMixinTriggerHandler implements Trigger {
 	@Override
 	public void fire(Connection conn, Object[] oldRow, Object[] newRow) throws SQLException {
 		try {
+			System.out.println("Trigger fired");
 			if (oldRow == null) {
 				if (newRow == null) {
 					// this is a SELECT Query; ignore
-					if (logger.isDebugEnabled())
-						logger.debug("H2ServerMixinTriggerHandler.fire(); unexepected SELECT, triggerName+="+ triggerName);
+					logger.info(EELFLoggerDelegate.applicationLogger,"H2ServerMixinTriggerHandler.fire(); unexepected SELECT, triggerName+="+ triggerName);
+						
 				} else {
 					// this is an INSERT
-					if (logger.isDebugEnabled())
-						logger.debug("H2ServerMixinTriggerHandler.fire(); triggerName="+ triggerName+", op=INSERT, newrow="+cat(newRow));
+					logger.info(EELFLoggerDelegate.applicationLogger,"H2ServerMixinTriggerHandler.fire(); triggerName="+ triggerName+", op=INSERT, newrow="+cat(newRow));
 					writeRecord(conn, OP_INSERT, newRow);
 				}
 			} else {
 				if (newRow == null) {
 					// this is a DELETE
-					if (logger.isDebugEnabled())
-						logger.debug("H2ServerMixinTriggerHandler.fire(); triggerName="+ triggerName+", op=DELETE, oldrow="+cat(oldRow));
+						logger.info(EELFLoggerDelegate.applicationLogger,"H2ServerMixinTriggerHandler.fire(); triggerName="+ triggerName+", op=DELETE, oldrow="+cat(oldRow));
 					writeRecord(conn, OP_DELETE, oldRow);
 				} else {
 					// this is an UPDATE
-					if (logger.isDebugEnabled())
-						logger.debug("H2ServerMixinTriggerHandler.fire(); triggerName="+ triggerName+", op=UPDATE, newrow="+cat(newRow));
+					
+						logger.info(EELFLoggerDelegate.applicationLogger,"H2ServerMixinTriggerHandler.fire(); triggerName="+ triggerName+", op=UPDATE, newrow="+cat(newRow));
 					writeRecord(conn, OP_UPDATE, newRow);
 				}
 			}
 		} catch (Exception e) {
 			// Log and ignore all exceptions
-			logger.warn("IGNORING EXCEPTION: "+e);
+			logger.error(EELFLoggerDelegate.errorLogger,"IGNORING EXCEPTION: "+e);
 			e.printStackTrace();
 		}
 	}
@@ -137,8 +138,8 @@ public class H2ServerMixinTriggerHandler implements Trigger {
 			stmt.close();
 			table_created = true;
 		} catch (SQLException e) {
-			logger.error("createTable: problem creating the "+TRANS_TBL+" table!");
-			logger.error(e);
+			logger.error(EELFLoggerDelegate.errorLogger,"createTransTable: problem creating the "+TRANS_TBL+" table! "+e);
+			
 		}
 		table_created = true;
 	}
@@ -154,13 +155,13 @@ public class H2ServerMixinTriggerHandler implements Trigger {
 				ps.setInt(3, op);
 				ps.setString(4, keys);
 				ps.execute();
-				logger.debug("writeRecord "+tableName+"+, "+connid+", "+op+", "+keys);
+				logger.info(EELFLoggerDelegate.applicationLogger,"writeRecord "+tableName+"+, "+connid+", "+op+", "+keys);
 			} catch (SQLException e) {
-				logger.error("createTable: problem inserting into "+TRANS_TBL+" table!");
-				logger.error(e);
+				logger.error(EELFLoggerDelegate.errorLogger,"createTable: problem inserting into "+TRANS_TBL+" table!");
+				
 			}
 		} else {
-			logger.error("Cannot write to the transaction table since it was not created.");
+			logger.error(EELFLoggerDelegate.errorLogger,"Cannot write to the transaction table since it was not created.");
 		}
 	}
 	// Build JSON string representing this row from the table
@@ -229,10 +230,10 @@ public class H2ServerMixinTriggerHandler implements Trigger {
 						rs.getStatement().close();
 					}
 				} else {
-					logger.warn("Cannot retrieve table info for table "+tableName+" from H2.");
+					logger.info(EELFLoggerDelegate.applicationLogger,"Cannot retrieve table info for table "+tableName+" from H2.");
 				}
 			} catch (SQLException e) {
-				logger.warn("Cannot retrieve table info for table "+tableName+" from H2: "+e);
+				logger.error(EELFLoggerDelegate.errorLogger,"Cannot retrieve table info for table "+tableName+" from H2: "+e);
 				return null;
 			}
 			ticache.put(tableName, ti);
@@ -240,13 +241,14 @@ public class H2ServerMixinTriggerHandler implements Trigger {
 		return ti;
 	}
 	private ResultSet executeSQLRead(Connection conn, String sql) {
-		logger.debug("Executing SQL read:"+ sql);
+		logger.info(EELFLoggerDelegate.applicationLogger,"Executing SQL read:"+ sql);
+		
 		ResultSet rs = null;
 		try {
 			Statement stmt = conn.createStatement();
 			rs = stmt.executeQuery(sql);
 		} catch (SQLException e) {
-			logger.warn("executeSQLRead: "+e);
+			logger.error(EELFLoggerDelegate.errorLogger,"Executing SQL read:"+ sql);
 		}
 		return rs;
 	}

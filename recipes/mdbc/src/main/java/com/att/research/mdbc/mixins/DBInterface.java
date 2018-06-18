@@ -1,5 +1,9 @@
 package com.att.research.mdbc.mixins;
 
+import java.sql.ResultSet;
+import java.util.ArrayList;
+import java.util.Hashtable;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -25,6 +29,11 @@ public interface DBInterface {
 	 * @return the set
 	 */
 	public Set<String> getSQLTableSet();
+	/**
+	 * Return the name of the database that the driver is connected to
+	 * @return
+	 */
+	public String getDatabaseName();
 	/**
 	 * Return a TableInfo object for the specified table.
 	 * @param tableName the table to look up
@@ -64,6 +73,20 @@ public interface DBInterface {
 	 * Code to be run within the DB driver after a SQL statement has been executed.  This is where remote
 	 * statement actions can be copied back to Cassandra/MUSIC.
 	 * @param sql the SQL statement that was executed
+	 * @param keys that were updated in the sql call
 	 */
 	public void postStatementHook(final String sql);
+	/**
+	 * This method executes a read query in the SQL database.  Methods that call this method should be sure
+	 * to call resultset.getStatement().close() when done in order to free up resources.
+	 * @param sql the query to run
+	 * @return a ResultSet containing the rows returned from the query
+	 */
+	public ResultSet executeSQLRead(String sql);
+	
+	public void synchronizeData(String tableName);
+	
+	public List<String> getReservedTblNames();
+	
+	public String getPrimaryKey(String sql, String tableName);
 }

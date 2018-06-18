@@ -1,6 +1,8 @@
 package com.att.research.mdbc;
 
 import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -11,11 +13,24 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.TreeSet;
 
-import org.apache.log4j.Logger;
-
 import com.att.research.mdbc.mixins.DBInterface;
 import com.att.research.mdbc.mixins.MixinFactory;
 import com.att.research.mdbc.mixins.MusicInterface;
+import com.att.research.mdbc.mixins.MusicMixin;
+import com.att.research.mdbc.mixins.Utils;
+
+import net.sf.jsqlparser.JSQLParserException;
+import net.sf.jsqlparser.parser.CCJSqlParserUtil;
+import net.sf.jsqlparser.statement.delete.Delete;
+import net.sf.jsqlparser.statement.insert.Insert;
+import net.sf.jsqlparser.statement.update.Update;
+
+import com.att.research.exceptions.MDBCServiceException;
+import com.att.research.exceptions.QueryException;
+import com.att.research.logging.*;
+import com.att.research.logging.format.AppMessages;
+import com.att.research.logging.format.ErrorSeverity;
+import com.att.research.logging.format.ErrorTypes;
 
 /**
 * <p>
@@ -40,12 +55,14 @@ public class MusicSqlManager {
 	/** The property name to use to select the MUSIC 'mixin'. */
 	public static final String KEY_MUSIC_MIXIN_NAME = "MDBC_MUSIC_MIXIN";
 	/** The name of the default mixin to use for the DBInterface. */
-	public static final String DB_MIXIN_DEFAULT     = "h2";
+	public static final String DB_MIXIN_DEFAULT     = "mysql";//"h2";
 	/** The name of the default mixin to use for the MusicInterface. */
-	public static final String MUSIC_MIXIN_DEFAULT  = "cassandra2";
+	public static final String MUSIC_MIXIN_DEFAULT  = "cassandra2";//"cassandra2";
 
 	private static final Map<String, MusicSqlManager> msm_map = new Hashtable<String, MusicSqlManager>(); // needs to be synchronized
 
+	private static EELFLoggerDelegate logger = EELFLoggerDelegate.getLogger(MusicSqlManager.class);
+	
 	/**
 	 * Get the MusicSqlManager instance that applies to a specific trigger in a specific database connection.
 	 * @param key the key used to fetch the MusicSqlManager from the map.  The key consists of three parts:
@@ -63,6 +80,7 @@ public class MusicSqlManager {
 	 * @param c the JDBC Connection
 	 * @param info the JDBC Properties
 	 * @return the corresponding MusicSqlManager, or null if no proxy is needed for this URL
+	 * @throws MDBCServiceException 
 	 */
 	public static MusicSqlManager getMusicSqlManager(String url, Connection c, Properties info) {
 		String s = info.getProperty(KEY_DISABLED, "false");
@@ -71,7 +89,12 @@ public class MusicSqlManager {
 		}
 
 		// To support transactions we need one MusicSqlManager per Connection
-		return new MusicSqlManager(url, c, info);
+		try {
+			return new MusicSqlManager(url, c, info);
+		} catch (MDBCServiceException e) {
+			logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(),AppMessages.UNKNOWNERROR, ErrorSeverity.CRITICAL, ErrorTypes.GENERALSERVICEERROR);
+		}
+		return null;
 
 //		synchronized (msm_map) {
 //			MusicSqlManager mgr = msm_map.get(url);
@@ -83,7 +106,7 @@ public class MusicSqlManager {
 //		}
 	}
 
-	private final Logger logger;
+	
 	private final DBInterface dbi;
 	private final MusicInterface mi;
 	private final Set<String> table_set;
@@ -102,22 +125,28 @@ public class MusicSqlManager {
 	 * @param url the JDBC URL which was used to connection to the database
 	 * @param conn the actual connection to the database
 	 * @param info properties passed from the initial JDBC connect() call
+	 * @throws MDBCServiceException 
 	 */
-	private MusicSqlManager(String url, Connection conn, Properties info) {
-		String mixin1  = info.getProperty(KEY_DB_MIXIN_NAME, "h2");
-		String mixin2  = info.getProperty(KEY_MUSIC_MIXIN_NAME, "cassandra2");
-		this.logger    = Logger.getLogger(this.getClass());
-		this.dbi       = MixinFactory.createDBInterface(mixin1, this, url, conn, info);
-		this.mi        = MixinFactory.createMusicInterface(mixin2, this, dbi, url, info);
-		this.table_set = Collections.synchronizedSet(new HashSet<String>());
-		this.autocommit = true;
-		this.mi.createKeyspace();
+	private MusicSqlManager(String url, Connection conn, Properties info) throws MDBCServiceException {
+		try {
+			info.putAll(Utils.getMdbcProperties());
+			String mixin1  = info.getProperty(KEY_DB_MIXIN_NAME, DB_MIXIN_DEFAULT);
+			String mixin2  = info.getProperty(KEY_MUSIC_MIXIN_NAME, MUSIC_MIXIN_DEFAULT);
+			this.dbi       = MixinFactory.createDBInterface(mixin1, this, url, conn, info);
+			this.mi        = MixinFactory.createMusicInterface(mixin2, this, dbi, url, info);
+			this.table_set = Collections.synchronizedSet(new HashSet<String>());
+			this.autocommit = true;
+			this.mi.createKeyspace();
+			MusicMixin.loadProperties();
+		}catch(Exception e) {
+			throw new MDBCServiceException(e.getMessage());
+		}
 	}
 
 	public void setAutoCommit(boolean b) {
 		if (b != autocommit) {
 			autocommit = b;
-			logger.info("autocommit changed to "+b);
+			logger.info(EELFLoggerDelegate.applicationLogger,"autocommit changed to "+b);
 			if (b) {
 				// My reading is that turning autoCOmmit ON should automatically commit any outstanding transaction
 				commit();
@@ -143,10 +172,6 @@ public class MusicSqlManager {
 	 * Close this MusicSqlManager.
 	 */
 	public void close() {
-		// Drop triggers from the database and from msm_map for this MusicSqlManager
-		for (String tableName : table_set) {
-			dbi.dropSQLTriggers(tableName);
-		}
 		// remove from msm_map
 		for (String key : new TreeSet<String>(msm_map.keySet())) {
 			if (msm_map.get(key) == this) {
@@ -174,6 +199,7 @@ public class MusicSqlManager {
 	 * Code to be run within the DB driver after a SQL statement has been executed.  This is where remote
 	 * statement actions can be copied back to Cassandra/MUSIC.
 	 * @param sql the SQL statement that was executed
+	 * @param keys that were updated in the sql call
 	 */
 	public void postStatementHook(final String sql) {
 		dbi.postStatementHook(sql);
@@ -183,19 +209,25 @@ public class MusicSqlManager {
 	 * proxy first starts, and whenever there is the possibility that tables were created or dropped.  It is synchronized
 	 * in order to prevent multiple threads from running this code in parallel.
 	 */
-	public synchronized void synchronizeTables() {
+	public synchronized void synchronizeTables() throws QueryException {
 			Set<String> set1 = dbi.getSQLTableSet();	// set of tables in the database
+			logger.info(EELFLoggerDelegate.applicationLogger, "synchronizing tables:" + set1);
 			for (String tableName : set1) {
 				// This map will be filled in if this table was previously discovered
-				if (!table_set.contains(tableName)) {
-					logger.debug("New table discovered: "+tableName);
+				if (!table_set.contains(tableName) && !dbi.getReservedTblNames().contains(tableName)) {
+					logger.info(EELFLoggerDelegate.applicationLogger, "New table discovered: "+tableName);
 					try {
 						mi.initializeMusicForTable(tableName);
 						mi.createDirtyRowTable(tableName);
 						dbi.createSQLTriggers(tableName);
 						table_set.add(tableName);
+						synchronizeTableData(tableName);
+						logger.info(EELFLoggerDelegate.applicationLogger, "synchronized tables:" +
+									table_set.size() + "/" + set1.size() + "tables uploaded");
 					} catch (Exception e) {
-						logger.warn("synchronizeTables: "+e);
+						logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(),AppMessages.UNKNOWNERROR, ErrorSeverity.CRITICAL, ErrorTypes.QUERYERROR);
+						//logger.error(EELFLoggerDelegate.errorLogger, "Exception synchronizeTables: "+e);
+						throw new QueryException();
 					}
 				}
 			}
@@ -213,9 +245,11 @@ public class MusicSqlManager {
 
 	/**
 	 * On startup, copy dirty data from Cassandra to H2. May not be needed.
+	 * @param tableName 
 	 */
-	public void synchronizeTableData() {
+	public void synchronizeTableData(String tableName) {
 		// TODO - copy MUSIC -> H2
+		dbi.synchronizeData(tableName);
 	}
 	/**
 	 * This method is called whenever there is a SELECT on a local SQL table, and should be called by the underlying databases
@@ -236,6 +270,7 @@ public class MusicSqlManager {
 	 * @param changedRow This is information about the row that has changed, an array of objects representing the data being inserted/updated
 	 */
 	public void updateDirtyRowAndEntityTableInMusic(String tableName, Object[] changedRow) {
+		//TODO: is this right? should we be saving updates at the client? we should leverage jdbc to handle this
 		if (autocommit) {
 			mi.updateDirtyRowAndEntityTableInMusic(tableName, changedRow);
 		} else {
@@ -257,7 +292,82 @@ public class MusicSqlManager {
 			saveUpdate("delete", tableName, oldRow);
 		}
 	}
+	
+	/**
+	 * Returns all keys that matches the current sql statement, and not in already updated keys.
+	 * 
+	 * @param sql the query that we are getting keys for
+	 * @deprecated
+	 */
+	public ArrayList<String> getMusicKeys(String sql) {
+		ArrayList<String> musicKeys = new ArrayList<String>();
+		/*
+		try {
+			net.sf.jsqlparser.statement.Statement stmt = CCJSqlParserUtil.parse(sql);
+			if (stmt instanceof Insert) {
+				Insert s = (Insert) stmt;
+				String tbl = s.getTable().getName();
+				musicKeys.add(generatePrimaryKey());
+			} else {
+				String tbl;
+				String where = "";
+				if (stmt instanceof Update){
+					Update u = (Update) stmt;
+					tbl = u.getTables().get(0).getName();
+					where = u.getWhere().toString();
+				} else if (stmt instanceof Delete) {
+					Delete d = (Delete) stmt;
+					tbl = d.getTable().getName();
+					if (d.getWhere()!=null) {
+						where = d.getWhere().toString();
+					}
+				} else {
+					System.err.println("Not recognized sql type");
+					tbl = "";
+				}
+				String dbiSelect = "SELECT * FROM " + tbl;
+				if (!where.equals("")) {
+					dbiSelect += "WHERE" + where;
+				}
+				ResultSet rs = dbi.executeSQLRead(dbiSelect);
+				musicKeys.addAll(getMusicKeysWhere(tbl, Utils.parseResults(dbi.getTableInfo(tbl), rs)));
+				rs.getStatement().close();
+			}
+		} catch (JSQLParserException | SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		System.err.print("MusicKeys:");
+		for(String musicKey:musicKeys) {
+			System.out.print(musicKey + ",");
+		}
+		*/
+		return musicKeys;
 
+	}
+	
+	
+	/**
+	 * This method gets the primary key that the music interfaces uses by default.
+	 * If the front end uses a primary key, this will not match what is used in the MUSIC interface
+	 * @return
+	 */
+	public String getMusicDefaultPrimaryKeyName() {
+		return mi.getMusicDefaultPrimaryKeyName();
+	}
+	
+	/**
+	 * Asks music interface to provide the function to create a primary key
+	 * e.g. uuid(), 1, "unique_aksd419fjc"
+	 * @return
+	 */
+	public String generatePrimaryKey() {
+		// TODO Auto-generated method stub
+		return mi.generatePrimaryKey();
+	}
+	
+	
+	
 	private class RowUpdate {
 		public final String type, table;
 		public final Object[] row;
@@ -282,15 +392,24 @@ public class MusicSqlManager {
 	 * they are performed now and copied into MUSIC.
 	 */
 	public synchronized void commit() {
-		logger.info("Commit");;
+		logger.info(EELFLoggerDelegate.applicationLogger, " commit ");
 		// transaction was committed -- play all the updates into MUSIC
 		List<RowUpdate> mylist = delayed_updates;
 		delayed_updates = new ArrayList<RowUpdate>();
+		logger.info(EELFLoggerDelegate.applicationLogger, " Row Update "+mylist.size());
 		for (RowUpdate upd : mylist) {
 			if (upd.type.equals("update")) {
-				mi.updateDirtyRowAndEntityTableInMusic(upd.table, upd.row);
+				try {
+					mi.updateDirtyRowAndEntityTableInMusic(upd.table, upd.row);
+				}catch(Exception e) {
+					logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(), AppMessages.QUERYERROR, ErrorTypes.QUERYERROR, ErrorSeverity.CRITICAL);
+				}
 			} else if (upd.type.equals("delete")) {
-				mi.deleteFromEntityTableInMusic(upd.table, upd.row);
+				try {
+					mi.deleteFromEntityTableInMusic(upd.table, upd.row);
+				}catch(Exception e) {
+					logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(), AppMessages.QUERYERROR, ErrorTypes.QUERYERROR, ErrorSeverity.CRITICAL);
+				}
 			}
 		}
 	}
@@ -303,5 +422,8 @@ public class MusicSqlManager {
 		// transaction was rolled back - discard the updates
 		logger.info("Rollback");;
 		delayed_updates.clear();
+	}
+	public String getMusicKeysFromRow(String table, Object[] dbRow) {
+		return mi.getMusicKeyFromRow(table, dbRow);
 	}
 }

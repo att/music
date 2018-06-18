@@ -1,19 +1,38 @@
 package com.att.research.mdbc.mixins;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+
+import org.json.JSONObject;
 
 /**
  * This Interface defines the methods that MDBC needs for a class to provide access to the persistence layer of MUSIC.
  *
  * @author Robert P. Eby
  */
-public interface MusicInterface {
+public interface MusicInterface {	
 	/**
 	 * Get the name of this MusicInterface mixin object.
 	 * @return the name
 	 */
 	public String getMixinName();
+	/**
+	 * Gets the name of this MusicInterface mixin's default primary key name
+	 * @return default primary key name
+	 */
+	public String getMusicDefaultPrimaryKeyName();
+	/**
+	 * generates a key or placeholder for what is required for a primary key
+	 * @return a primary key
+	 */
+	public String generatePrimaryKey();
+	/**
+	 * Select * from [table] where [where string]
+	 * @param where
+	 * @return list of primary keys
+	 */
+	public String getMusicKeyFromRow(String table, Object[] dbRow);
 	/**
 	 * Do what is needed to close down the MUSIC connection.
 	 */
@@ -87,4 +106,6 @@ public interface MusicInterface {
 	 * @param changedRow This is information about the row that has changed
 	 */
 	public void updateDirtyRowAndEntityTableInMusic(String tableName, Object[] changedRow);
+	
+	public String getPrimaryKey(String tableName, Object[] changedRow);
 }

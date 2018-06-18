@@ -47,4 +47,17 @@ public class TableInfo {
 		}
 		return Types.NULL;
 	}
+	
+	/**
+	 * Checks if this table has a primary key
+	 * @return
+	 */
+	public boolean hasKey() {
+		for (Boolean b: iskey) {
+			if (b) {
+				return true;
+			}
+		}
+		return false;
+	}
 }

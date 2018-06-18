@@ -8,6 +8,7 @@ import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.NClob;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLClientInfoException;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
@@ -19,6 +20,14 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executor;
 
+import com.att.research.exceptions.QueryException;
+import com.att.research.logging.EELFLoggerDelegate;
+import com.att.research.logging.format.AppMessages;
+import com.att.research.logging.format.ErrorSeverity;
+import com.att.research.logging.format.ErrorTypes;
+import com.att.research.mdbc.mixins.Utils;
+
+
 /**
  * ProxyConnection is a proxy to a JDBC driver Connection.  It uses the MusicSqlManager to copy
  * data to and from Cassandra and the underlying JDBC database as needed.  It will notify the underlying
@@ -27,50 +36,59 @@ import java.util.concurrent.Executor;
  *
  * @author Robert Eby
  */
-public class ProxyConnection implements Connection {
+public class MdbcConnection implements Connection {
+	private static EELFLoggerDelegate logger = EELFLoggerDelegate.getLogger(Driver.class);
+	
 	private final Connection conn;		// the JDBC Connection to the actual underlying database
 	private final MusicSqlManager mgr;	// there should be one MusicSqlManager in use per Connection
 
-	public ProxyConnection(String url, Connection c, Properties info) {
+	public MdbcConnection(String url, Connection c, Properties info) {
 		this.conn = c;
 		this.mgr = MusicSqlManager.getMusicSqlManager(url, c, info);
 		try {
 			this.mgr.setAutoCommit(c.getAutoCommit());
 		} catch (SQLException e) {
-			// ignore
+			logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(), AppMessages.QUERYERROR, ErrorTypes.QUERYERROR, ErrorSeverity.CRITICAL);
 		}
 
 		// Verify the tables in MUSIC match the tables in the database
 		// and create triggers on any tables that need them
-		if (mgr != null) {
-			mgr.synchronizeTables();
-			mgr.synchronizeTableData();
+		if (mgr != null && false) {
+			try {
+				mgr.synchronizeTables();
+			}catch (QueryException e) {
+				logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(), AppMessages.QUERYERROR, ErrorTypes.QUERYERROR, ErrorSeverity.CRITICAL);
+			}
+			//mgr.synchronizeTableData();
 		}
 	}
 
 	@Override
 	public <T> T unwrap(Class<T> iface) throws SQLException {
+		logger.error(EELFLoggerDelegate.errorLogger, "proxyconn unwrap: " + iface.getName());
 		return conn.unwrap(iface);
 	}
 
 	@Override
 	public boolean isWrapperFor(Class<?> iface) throws SQLException {
+		logger.error(EELFLoggerDelegate.errorLogger, "proxystatement iswrapperfor: " + iface.getName());
 		return conn.isWrapperFor(iface);
 	}
 
 	@Override
 	public Statement createStatement() throws SQLException {
-		return new ProxyStatement(conn.createStatement(), mgr);
+		return new MdbcCallableStatement(conn.createStatement(), mgr);
 	}
 
 	@Override
 	public PreparedStatement prepareStatement(String sql) throws SQLException {
-		return new ProxyStatement(conn.prepareStatement(sql), mgr);
+		//TODO: grab the sql call from here and all the other preparestatement calls
+		return new MdbcPreparedStatement(conn.prepareStatement(sql), sql, mgr);
 	}
 
 	@Override
 	public CallableStatement prepareCall(String sql) throws SQLException {
-		return new ProxyStatement(conn.prepareCall(sql), mgr);
+		return new MdbcCallableStatement(conn.prepareCall(sql), mgr);
 	}
 
 	@Override
@@ -96,6 +114,7 @@ public class ProxyConnection implements Connection {
 	public void commit() throws SQLException {
 		mgr.commit();
 		conn.commit();
+		//MusicMixin.releaseZKLocks(MusicMixin.currentLockMap.get(getConnID()));
 	}
 
 	@Override
@@ -164,18 +183,18 @@ public class ProxyConnection implements Connection {
 
 	@Override
 	public Statement createStatement(int resultSetType, int resultSetConcurrency) throws SQLException {
-		return new ProxyStatement(conn.createStatement(resultSetType, resultSetConcurrency), mgr);
+		return new MdbcCallableStatement(conn.createStatement(resultSetType, resultSetConcurrency), mgr);
 	}
 
 	@Override
 	public PreparedStatement prepareStatement(String sql, int resultSetType, int resultSetConcurrency)
 			throws SQLException {
-		return new ProxyStatement(conn.prepareStatement(sql, resultSetType, resultSetConcurrency), mgr);
+		return new MdbcCallableStatement(conn.prepareStatement(sql, resultSetType, resultSetConcurrency), sql, mgr);
 	}
 
 	@Override
 	public CallableStatement prepareCall(String sql, int resultSetType, int resultSetConcurrency) throws SQLException {
-		return new ProxyStatement(conn.prepareCall(sql, resultSetType, resultSetConcurrency), mgr);
+		return new MdbcCallableStatement(conn.prepareCall(sql, resultSetType, resultSetConcurrency), mgr);
 	}
 
 	@Override
@@ -221,34 +240,34 @@ public class ProxyConnection implements Connection {
 	@Override
 	public Statement createStatement(int resultSetType, int resultSetConcurrency, int resultSetHoldability)
 			throws SQLException {
-		return new ProxyStatement(conn.createStatement(resultSetType, resultSetConcurrency, resultSetHoldability), mgr);
+		return new MdbcCallableStatement(conn.createStatement(resultSetType, resultSetConcurrency, resultSetHoldability), mgr);
 	}
 
 	@Override
 	public PreparedStatement prepareStatement(String sql, int resultSetType, int resultSetConcurrency,
 			int resultSetHoldability) throws SQLException {
-		return new ProxyStatement(conn.prepareStatement(sql, resultSetType, resultSetConcurrency, resultSetHoldability), mgr);
+		return new MdbcCallableStatement(conn.prepareStatement(sql, resultSetType, resultSetConcurrency, resultSetHoldability), sql, mgr);
 	}
 
 	@Override
 	public CallableStatement prepareCall(String sql, int resultSetType, int resultSetConcurrency,
 			int resultSetHoldability) throws SQLException {
-		return new ProxyStatement(conn.prepareCall(sql, resultSetType, resultSetConcurrency, resultSetHoldability), mgr);
+		return new MdbcCallableStatement(conn.prepareCall(sql, resultSetType, resultSetConcurrency, resultSetHoldability), mgr);
 	}
 
 	@Override
 	public PreparedStatement prepareStatement(String sql, int autoGeneratedKeys) throws SQLException {
-		return new ProxyStatement(conn.prepareStatement(sql, autoGeneratedKeys), mgr);
+		return new MdbcPreparedStatement(conn.prepareStatement(sql, autoGeneratedKeys), sql, mgr);
 	}
 
 	@Override
 	public PreparedStatement prepareStatement(String sql, int[] columnIndexes) throws SQLException {
-		return new ProxyStatement(conn.prepareStatement(sql, columnIndexes), mgr);
+		return new MdbcPreparedStatement(conn.prepareStatement(sql, columnIndexes), sql, mgr);
 	}
 
 	@Override
 	public PreparedStatement prepareStatement(String sql, String[] columnNames) throws SQLException {
-		return new ProxyStatement(conn.prepareStatement(sql, columnNames), mgr);
+		return new MdbcPreparedStatement(conn.prepareStatement(sql, columnNames), sql, mgr);
 	}
 
 	@Override

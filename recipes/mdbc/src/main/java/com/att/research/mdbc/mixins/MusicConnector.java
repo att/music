@@ -9,7 +9,10 @@ import java.util.Iterator;
 import java.util.List;
 
 import org.apache.log4j.Logger;
+import org.onap.music.datastore.MusicDataStore;
+import org.onap.music.main.MusicCore;
 
+import com.att.research.logging.EELFLoggerDelegate;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.HostDistance;
 import com.datastax.driver.core.Metadata;
@@ -23,7 +26,8 @@ import com.datastax.driver.core.exceptions.NoHostAvailableException;
  * @author Robert P. Eby
  */
 public class MusicConnector {
-	private final static Logger logger = Logger.getLogger(MusicConnector.class);
+	
+	private EELFLoggerDelegate logger = EELFLoggerDelegate.getLogger(MusicConnector.class);
 
 	private Session session;
 	private Cluster cluster;
@@ -51,13 +55,15 @@ public class MusicConnector {
 	}
 
 	private void connectToMultipleAddresses(String address) {
+			MusicCore.getDSHandle(address);
+		/*
 		PoolingOptions poolingOptions =
 			new PoolingOptions()
 	    	.setConnectionsPerHost(HostDistance.LOCAL,  4, 10)
 	    	.setConnectionsPerHost(HostDistance.REMOTE, 2, 4);
 		String[] music_hosts = address.split(",");
 		if (cluster == null) {
-			logger.debug("Initializing MUSIC Client with endpoints "+address);
+			logger.info(EELFLoggerDelegate.applicationLogger,"Initializing MUSIC Client with endpoints "+address);
 			cluster = Cluster.builder()
 				.withPort(9042)
 				.withPoolingOptions(poolingOptions)
@@ -65,10 +71,11 @@ public class MusicConnector {
 				.addContactPoints(music_hosts)
 				.build();
 			Metadata metadata = cluster.getMetadata();
-			logger.debug("Connected to cluster:"+metadata.getClusterName()+" at address:"+address);
+			logger.info(EELFLoggerDelegate.applicationLogger,"Connected to cluster:"+metadata.getClusterName()+" at address:"+address);
+			
 		}
 		session = cluster.connect();
-	}
+	*/}
 
 	@SuppressWarnings("unused")
 	private void connectToCassaCluster(String address) {
@@ -77,7 +84,8 @@ public class MusicConnector {
 	    	.setConnectionsPerHost(HostDistance.LOCAL,  4, 10)
 	    	.setConnectionsPerHost(HostDistance.REMOTE, 2, 4);
 		Iterator<String> it = getAllPossibleLocalIps().iterator();
-		logger.debug("Iterating through possible ips:"+getAllPossibleLocalIps());
+		logger.info(EELFLoggerDelegate.applicationLogger,"Iterating through possible ips:"+getAllPossibleLocalIps());
+		
 		while (it.hasNext()) {
 			try {
 				cluster = Cluster.builder()
@@ -88,7 +96,8 @@ public class MusicConnector {
 					.build();
 				//cluster.getConfiguration().getSocketOptions().setReadTimeoutMillis(Integer.MAX_VALUE);
 				Metadata metadata = cluster.getMetadata();
-				logger.debug("Connected to cluster:"+metadata.getClusterName()+" at address:"+address);
+				logger.info(EELFLoggerDelegate.applicationLogger,"Connected to cluster:"+metadata.getClusterName()+" at address:"+address);
+				
 				session = cluster.connect();
 				break;
 			} catch (NoHostAvailableException e) {

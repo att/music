@@ -48,7 +48,7 @@ call to influence how MDBC works.
 
 | Property Name	     | Property Value	                                                              | Default Value |
 |--------------------|--------------------------------------------------------------------------------|---------------|
-| MDBC\_DB\_MIXIN	 | The mixin name to use to select the database mixin to use for this connection. | h2            |
+| MDBC\_DB\_MIXIN	 | The mixin name to use to select the database mixin to use for this connection. | mysql         |
 | MDBC\_MUSIC\_MIXIN | The mixin name to use to select the MUSIC mixin to use for this connection.    | cassandra2    |
 | myid	             | The ID of this replica in the collection of replicas sharing the same tables.  | 0             |
 | replicas           | A comma-separated list of replica names for the collection of replicas sharing the same tables. | the value of myid |
@@ -63,7 +63,7 @@ The values of the mixin properties may be:
 |--------------------|----------------|---------------|
 | MDBC\_DB\_MIXIN	 | h2             | This mixin provides access to either an in-memory, or a local (file-based) version of the H2 database. |
 | MDBC\_DB\_MIXIN	 | h2server       | This mixin provides access to a copy of the H2 database running as a server. Because the server needs special Java classes in order to handle certain TRIGGER actions, the server must be et up in a special way (see below). |
-| MDBC\_DB\_MIXIN	 | mysql          | This mixin provides access to MySQL or MariaDB running on a remote server. |
+| MDBC\_DB\_MIXIN	 | mysql          | This mixin provides access to MySQL or MariaDB (10.2+) running on a remote server. |
 | MDBC\_MUSIC\_MIXIN | cassandra      | A Cassandra based persistence layer (without any of the table locking that MUSIC normally provides). |
 | MDBC\_MUSIC\_MIXIN | cassandra2     | Similar to the _cassandra_ mixin, but stores all dirty row information in one table, rather than one table per real table. |
 
@@ -157,3 +157,6 @@ will be no longer than 512 bytes. If this is not true, you should adjust, edit, 
 
 * MDBC is limited to only data types that can be easily translated to a Cassandra equivalent;
 e.g. BIGINT, BOOLEAN, BLOB, DOUBLE, INT, TIMESTAMP, VARCHAR
+
+* To find the data types that your database is currently using run the following command:
+SELECT DISTINCT DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA='<your db name here>';

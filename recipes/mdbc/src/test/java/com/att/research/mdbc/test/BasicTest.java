@@ -9,17 +9,17 @@ import java.sql.Statement;
 
 import org.junit.Test;
 
-import com.att.research.mdbc.ProxyDriver;
+import com.att.research.mdbc.Driver;
 
 /**
  * This is a basic test which creates some tables, does a few selects, adn runs some joins.
  * It is mainly intended to make sure that no exceptions are thrown in basic operation.
  */
 public class BasicTest extends TestCommon {
-	private static final String DB_CONNECTION = ProxyDriver.PROXY_PREFIX + "mem:db1";
+	private static final String DB_CONNECTION = Driver.PROXY_PREFIX + "mem:db1";
 	private static final String KEYSPACE      = "Basic_Test";
 
-	@Test
+	//@Test
 	public void test() {
 		try {
 			Connection connection = getDBConnection(DB_CONNECTION, KEYSPACE, "0");
@@ -62,6 +62,7 @@ public class BasicTest extends TestCommon {
 				connection.close();
 			}
 		} catch (Exception e) {
+			e.printStackTrace();
 			fail(e.toString());
 		}
 		System.out.println("BasicTest.test OK");

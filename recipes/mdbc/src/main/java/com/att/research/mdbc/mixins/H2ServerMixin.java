@@ -6,6 +6,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.Properties;
 import java.util.Set;
@@ -15,8 +16,15 @@ import java.util.UUID;
 import org.json.JSONObject;
 import org.json.JSONTokener;
 
+import com.att.research.logging.EELFLoggerDelegate;
 import com.att.research.mdbc.MusicSqlManager;
 import com.att.research.mdbc.TableInfo;
+
+import net.sf.jsqlparser.JSQLParserException;
+import net.sf.jsqlparser.parser.CCJSqlParserUtil;
+import net.sf.jsqlparser.statement.delete.Delete;
+import net.sf.jsqlparser.statement.insert.Insert;
+import net.sf.jsqlparser.statement.update.Update;
 
 /**
  * This class provides the methods that MDBC needs in order to mirror data to/from an H2 Database instance
@@ -27,6 +35,7 @@ import com.att.research.mdbc.TableInfo;
 public class H2ServerMixin extends H2Mixin {
 	public  static final String MIXIN_NAME = "h2server";
 	private static final String triggerClassName = H2ServerMixinTriggerHandler.class.getName();
+	private EELFLoggerDelegate logger = EELFLoggerDelegate.getLogger(H2ServerMixin.class);
 
 	private boolean server_tbl_created = false;
 
@@ -51,8 +60,7 @@ public class H2ServerMixin extends H2Mixin {
 			}
 			stmt.close();
 		} catch (SQLException e) {
-			logger.error("generateConnID: problem creating/using the MDBC_UNIQUEID table!");
-			logger.error(e);
+			logger.error(EELFLoggerDelegate.errorLogger,"generateConnID: problem creating/using the MDBC_UNIQUEID table!"+e);
 		}
 		return rv;
 	}
@@ -77,15 +85,17 @@ public class H2ServerMixin extends H2Mixin {
 		try {
 			if (!server_tbl_created) {
 				H2ServerMixinTriggerHandler.createTransTable(dbConnection);
-				logger.debug("Server side dirty table created.");
+				logger.info(EELFLoggerDelegate.applicationLogger,"Server side dirty table created.");
+				
 				server_tbl_created = true;
 			}
 
 			// Give the triggers a way to find this MSM
 			for (String name : getTriggerNames(tableName)) {
-				logger.debug("ADD trigger "+name+" to msm_map");
+				logger.error(EELFLoggerDelegate.errorLogger,"ADD trigger "+name+" to msm_map");
 				msm.register(name);
 			}
+			System.out.println("CREATE TRIGGER IF NOT EXISTS I_"+connId+"_" +tableName+" AFTER INSERT ON " +tableName+" FOR EACH ROW CALL \""+triggerClassName+"\"");
 			executeSQLWrite("CREATE TRIGGER IF NOT EXISTS I_"+connId+"_" +tableName+" AFTER INSERT ON " +tableName+" FOR EACH ROW CALL \""+triggerClassName+"\"");
 			executeSQLWrite("CREATE TRIGGER IF NOT EXISTS U_"+connId+"_" +tableName+" AFTER UPDATE ON " +tableName+" FOR EACH ROW CALL \""+triggerClassName+"\"");
 			executeSQLWrite("CREATE TRIGGER IF NOT EXISTS D_"+connId+"_" +tableName+" AFTER DELETE ON " +tableName+" FOR EACH ROW CALL \""+triggerClassName+"\"");
@@ -93,7 +103,7 @@ public class H2ServerMixin extends H2Mixin {
 //			executeSQLWrite("CREATE TRIGGER IF NOT EXISTS S_"+connId+"_" +tableName+" BEFORE SELECT ON "+tableName+" CALL \""+triggerClassName+"\"");
 			dbConnection.commit();
 		} catch (SQLException e) {
-			logger.warn("createSQLTriggers: "+e);
+			logger.error(EELFLoggerDelegate.errorLogger,"createSQLTriggers: "+e);
 		}
 	}
 	private String[] getTriggerNames(String tableName) {
@@ -107,10 +117,15 @@ public class H2ServerMixin extends H2Mixin {
 	 * Code to be run within the DB driver before a SQL statement is executed.  This is where tables
 	 * can be synchronized before a SELECT, for those databases that do not support SELECT triggers.
 	 * @param sql the SQL statement that is about to be executed
+	 * @return keys of rows that are updated during sql query
 	 */
 	@Override
 	public void preStatementHook(final String sql) {
-		if (sql != null && sql.trim().toLowerCase().startsWith("select")) {
+		if (sql == null) {
+			return;
+		}
+		String cmd = sql.trim().toLowerCase();
+		if (cmd.startsWith("select")) {
 			String[] parts = sql.trim().split(" ");
 			Set<String> set = getSQLTableSet();
 			for (String part : parts) {
@@ -156,8 +171,9 @@ public class H2ServerMixin extends H2Mixin {
 					if (rows.size() > 0) {
 						sql2 = "DELETE FROM "+H2ServerMixinTriggerHandler.TRANS_TBL+" WHERE IX = ?";
 						PreparedStatement ps = dbConnection.prepareStatement(sql2);
-						logger.debug("Executing: "+sql2);
-						logger.debug("  For ix = "+rows);
+						logger.info(EELFLoggerDelegate.applicationLogger,"Executing: "+sql2);
+						logger.info(EELFLoggerDelegate.applicationLogger,"  For ix = "+rows);
+						
 						for (int ix : rows) {
 							ps.setInt(1, ix);
 							ps.execute();
@@ -165,12 +181,14 @@ public class H2ServerMixin extends H2Mixin {
 						ps.close();
 					}
 				} catch (SQLException e) {
-					logger.warn("Exception in postStatementHook: "+e);
+					logger.error(EELFLoggerDelegate.errorLogger,"Exception in postStatementHook: "+e);
 					e.printStackTrace();
 				}
 			}
 		}
 	}
+	
+	
 	@SuppressWarnings("deprecation")
 	private Object[] jsonToRow(String tbl, JSONObject jo) {
 		TableInfo ti = getTableInfo(tbl);
@@ -185,7 +203,7 @@ public class H2ServerMixin extends H2Mixin {
 				rv[i] = jo.getBoolean(colname);
 				break;
 			case Types.BLOB:
-				logger.error("WE DO NOT SUPPORT BLOBS IN H2!! COLUMN NAME="+colname);
+				logger.error(EELFLoggerDelegate.errorLogger,"WE DO NOT SUPPORT BLOBS IN H2!! COLUMN NAME="+colname);
 				// throw an exception here???
 				break;
 			case Types.DOUBLE:
@@ -204,5 +222,49 @@ public class H2ServerMixin extends H2Mixin {
 			}
 		}
 		return rv;
+	}
+	
+	@Override
+	public void synchronizeData(String tableName) {
+		// TODO Auto-generated method stub
+		System.out.println("In Synchronize data");
+		
+		ResultSet rs = null;
+		TableInfo ti = getTableInfo(tableName);
+		System.out.println("Table info :"+ti);
+		String query = "select * from "+tableName;
+		System.out.println("query is :"+query);
+		
+		try {
+			 rs = executeSQLRead(query);
+			 while(rs.next()) {
+				 
+				JSONObject jo = new JSONObject();
+				if (!getTableInfo(tableName).hasKey()) {
+						String musicKey = msm.generatePrimaryKey();;
+						jo.put(msm.getMusicDefaultPrimaryKeyName(), musicKey);	
+				}
+					
+				for (String col : ti.columns) {
+						jo.put(col, rs.getString(col));
+				}
+					
+				Object[] row = jsonToRow(tableName, jo);
+				
+				msm.updateDirtyRowAndEntityTableInMusic(tableName, row);
+				 
+			 }
+		} catch (Exception e) {
+			System.out.println("sql exception");
+		}
+		finally {
+			try {
+				rs.close();
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		
 	}
 }

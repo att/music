@@ -10,7 +10,13 @@ import java.util.Properties;
 
 import org.json.JSONObject;
 import org.json.JSONTokener;
+import org.onap.music.datastore.PreparedQueryObject;
+import org.onap.music.exceptions.MusicServiceException;
+import org.onap.music.main.MusicCore;
+import org.onap.music.main.ResultType;
+import org.onap.music.main.ReturnType;
 
+import com.att.research.logging.EELFLoggerDelegate;
 import com.att.research.mdbc.MusicSqlManager;
 import com.att.research.mdbc.TableInfo;
 import com.datastax.driver.core.BoundStatement;
@@ -29,6 +35,8 @@ import com.datastax.driver.core.Session;
 public class Cassandra2Mixin extends CassandraMixin {
 	private static final String DIRTY_TABLE = "DIRTY____";	// it seems Cassandra won't allow __DIRTY__
 	private boolean dirty_table_created = false;
+	
+	private EELFLoggerDelegate logger = EELFLoggerDelegate.getLogger(Cassandra2Mixin.class);
 
 	public Cassandra2Mixin() {
 		super();
@@ -103,18 +111,29 @@ public class Cassandra2Mixin extends CassandraMixin {
 	@Override
 	public void markDirtyRow(String tableName, Object[] keys) {
 		String cql = String.format("INSERT INTO %s.%s (tablename, replica, keyset) VALUES (?, ?, ?);", music_ns, DIRTY_TABLE);
-		Session sess = getMusicSession();
-		PreparedStatement ps = getPreparedStatementFromCache(cql);
+		/*Session sess = getMusicSession();
+		PreparedStatement ps = getPreparedStatementFromCache(cql);*/
 		Object[] values = new Object[] { tableName, "", buildJSON(tableName, keys) };
+		PreparedQueryObject pQueryObject = null;
 		for (String repl : allReplicaIds) {
-			if (!repl.equals(myId)) {
+			/*if (!repl.equals(myId)) {
 				values[1] = repl;
-				logger.debug("Executing MUSIC write:"+ cql + " with values " + values[0] + " " + values[1] + " " + values[2]);
+				logger.info(EELFLoggerDelegate.applicationLogger,"Executing MUSIC write:"+ cql + " with values " + values[0] + " " + values[1] + " " + values[2]);
+				
 				BoundStatement bound = ps.bind(values);
 				bound.setReadTimeoutMillis(60000);
 				synchronized (sess) {
 					sess.execute(bound);
 				}
+			}*/
+			pQueryObject = new PreparedQueryObject();
+			pQueryObject.appendQueryString(cql);
+			pQueryObject.addValue(tableName);
+			pQueryObject.addValue(repl);
+			pQueryObject.addValue(buildJSON(tableName, keys));
+			ReturnType rt = MusicCore.eventualPut(pQueryObject);
+			if(rt.getResult().getResult().toLowerCase().equals("failure")) {
+				System.out.println("Failure while critical put..."+rt.getMessage());
 			}
 		}
 	}
@@ -138,15 +157,25 @@ public class Cassandra2Mixin extends CassandraMixin {
 	@Override
 	public void cleanDirtyRow(String tableName, Object[] keys) {
 		String cql = String.format("DELETE FROM %s.%s WHERE tablename = ? AND replica = ? AND keyset = ?;", music_ns, DIRTY_TABLE);
-		Session sess = getMusicSession();
-		PreparedStatement ps = getPreparedStatementFromCache(cql);
+		//Session sess = getMusicSession();
+		//PreparedStatement ps = getPreparedStatementFromCache(cql);
 		Object[] values = new Object[] { tableName, myId, buildJSON(tableName, keys) };
-		logger.debug("Executing MUSIC write:"+ cql + " with values " + values[0] + " " + values[1] + " " + values[2]);
-		BoundStatement bound = ps.bind(values);
+		logger.info(EELFLoggerDelegate.applicationLogger,"Executing MUSIC write:"+ cql + " with values " + values[0] + " " + values[1] + " " + values[2]);
+		
+		PreparedQueryObject pQueryObject = new PreparedQueryObject();
+		pQueryObject.appendQueryString(cql);
+		pQueryObject.addValue(tableName);
+		pQueryObject.addValue(myId);
+		pQueryObject.addValue(buildJSON(tableName, keys));
+		ReturnType rt = MusicCore.eventualPut(pQueryObject);
+		if(rt.getResult().getResult().toLowerCase().equals("failure")) {
+			logger.error(EELFLoggerDelegate.errorLogger, "Failure while eventualPut...: "+rt.getMessage());
+		}
+		/*BoundStatement bound = ps.bind(values);
 		bound.setReadTimeoutMillis(60000);
 		synchronized (sess) {
 			sess.execute(bound);
-		}
+		}*/
 	}
 	/**
 	 * Get a list of "dirty rows" for a table.  The dirty rows returned apply only to this replica,
@@ -158,15 +187,27 @@ public class Cassandra2Mixin extends CassandraMixin {
 	@Override
 	public List<Map<String,Object>> getDirtyRows(String tableName) {
 		String cql = String.format("SELECT keyset FROM %s.%s WHERE tablename = ? AND replica = ?;", music_ns, DIRTY_TABLE);
-		logger.debug("Executing MUSIC write:"+ cql + " with values " + tableName + " " + myId);
-		Session sess = getMusicSession();
+		logger.info(EELFLoggerDelegate.applicationLogger,"Executing MUSIC write:"+ cql + " with values " + tableName + " " + myId);
+		
+		PreparedQueryObject pQueryObject = new PreparedQueryObject();
+		pQueryObject.appendQueryString(cql);
+		pQueryObject.addValue(tableName);
+		pQueryObject.addValue(myId);
+		ResultSet results = null;
+		try {
+			results = MusicCore.get(pQueryObject);
+		} catch (MusicServiceException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		/*Session sess = getMusicSession();
 		PreparedStatement ps = getPreparedStatementFromCache(cql);
 		BoundStatement bound = ps.bind(new Object[] { tableName, myId });
 		bound.setReadTimeoutMillis(60000);
 		ResultSet results = null;
 		synchronized (sess) {
 			results = sess.execute(bound);
-		}
+		}*/
 		List<Map<String,Object>> list = new ArrayList<Map<String,Object>>();
 		TableInfo ti = dbi.getTableInfo(tableName);
 		for (Row row : results) {
@@ -183,7 +224,7 @@ public class Cassandra2Mixin extends CassandraMixin {
 					objs.put(colname, jo.getBoolean(colname));
 					break;
 				case Types.BLOB:
-					logger.error("WE DO NOT SUPPORT BLOBS AS PRIMARY KEYS!! COLUMN NAME="+colname);
+					logger.error(EELFLoggerDelegate.errorLogger,"WE DO NOT SUPPORT BLOBS AS PRIMARY KEYS!! COLUMN NAME="+colname);
 					// throw an exception here???
 					break;
 				case Types.DOUBLE:

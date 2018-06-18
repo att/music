@@ -3,9 +3,9 @@ package com.att.research.mdbc.mixins;
 import java.sql.Connection;
 import java.sql.SQLException;
 
-import org.apache.log4j.Logger;
 import org.h2.api.Trigger;
 
+import com.att.research.logging.EELFLoggerDelegate;
 import com.att.research.mdbc.MusicSqlManager;
 
 /**
@@ -17,7 +17,7 @@ import com.att.research.mdbc.MusicSqlManager;
  * @since   2014-03-31
  */
 public class H2MixinTriggerHandler implements Trigger {
-	private static final Logger logger = Logger.getLogger(H2MixinTriggerHandler.class);
+	private EELFLoggerDelegate logger = EELFLoggerDelegate.getLogger(H2MixinTriggerHandler.class);
 
 	private String tableName;
 	private String triggerName;
@@ -43,9 +43,10 @@ public class H2MixinTriggerHandler implements Trigger {
 		this.musicHandle = MusicSqlManager.getMusicSqlManager(triggerName);
 		if (musicHandle == null) {
 			String info = String.format(" (%s %s %b %d)", schemaName, tableName, before, type);
-			logger.error("No MusicSqlManager found for triggerName "+triggerName + info);
+			logger.info(EELFLoggerDelegate.applicationLogger,"No MusicSqlManager found for triggerName "+triggerName + info);
+			
 		} else {
-			logger.debug("Init Name:"+ triggerName+", table:"+tableName+", type:"+type);
+			logger.info(EELFLoggerDelegate.applicationLogger,"Init Name:"+ triggerName+", table:"+tableName+", type:"+type);
 		}
 	}
 
@@ -65,33 +66,35 @@ public class H2MixinTriggerHandler implements Trigger {
 	public void fire(Connection conn, Object[] oldRow, Object[] newRow) throws SQLException {
 		try {
 			if (musicHandle == null) {
-				logger.error("Trigger called but there is no MusicSqlManager found for triggerName "+triggerName);
+				logger.error(EELFLoggerDelegate.errorLogger,"Trigger called but there is no MusicSqlManager found for triggerName "+triggerName);
+				
 			} else {
 				if (oldRow == null) {
 					if (newRow == null) {
 						// this is a SELECT Query; just merge the table
-						logger.debug("In trigger fire, Trigger Name:"+ triggerName+", Operation type: SELECT");
+						logger.info(EELFLoggerDelegate.applicationLogger,"In trigger fire, Trigger Name:"+ triggerName+", Operation type: SELECT");
+						
 						musicHandle.readDirtyRowsAndUpdateDb(tableName);
 					} else {
 						// this is an INSERT
-						logger.debug("In trigger fire, Trigger Name:"+ triggerName+", Operation type: INSERT, newrow="+cat(newRow));
+						logger.info(EELFLoggerDelegate.applicationLogger,"In trigger fire, Trigger Name:"+ triggerName+", Operation type: INSERT, newrow="+cat(newRow));
 						musicHandle.updateDirtyRowAndEntityTableInMusic(tableName, newRow);
 					}
 				} else {
 					if (newRow == null) {
 						// this is a DELETE
-						logger.debug("In trigger fire, Trigger Name:"+ triggerName+", Operation type: DELETE, oldrow="+cat(oldRow));
+						logger.info(EELFLoggerDelegate.applicationLogger,"In trigger fire, Trigger Name:"+ triggerName+", Operation type: DELETE, oldrow="+cat(oldRow));
 						musicHandle.deleteFromEntityTableInMusic(tableName, oldRow);
 					} else {
 						// this is an UPDATE
-						logger.debug("In trigger fire, Trigger Name:"+ triggerName+", Operation type: UPDATE, newrow="+cat(newRow));
+						logger.info(EELFLoggerDelegate.applicationLogger,"In trigger fire, Trigger Name:"+ triggerName+", Operation type: UPDATE, newrow="+cat(newRow));
 						musicHandle.updateDirtyRowAndEntityTableInMusic(tableName, newRow);
 					}
 				}
 			}
 		} catch (Exception e) {
 			// Ignore all exceptions in this method; not ideal but Cassandra is a p.i.t.a. with exceptions.
-			logger.warn("IGNORING EXCEPTION: "+e);
+			logger.error(EELFLoggerDelegate.errorLogger,"Exception "+e);
 			e.printStackTrace();
 		}
 	}

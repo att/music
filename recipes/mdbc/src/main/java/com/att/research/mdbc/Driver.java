@@ -1,7 +1,7 @@
 package com.att.research.mdbc;
 
+import java.io.OutputStream;
 import java.sql.Connection;
-import java.sql.Driver;
 import java.sql.DriverManager;
 import java.sql.DriverPropertyInfo;
 import java.sql.SQLException;
@@ -10,7 +10,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
 
-import org.apache.log4j.Logger;
+import com.att.research.logging.EELFLoggerDelegate;
+import com.att.research.mdbc.mixins.Utils;
 
 /**
  * ProxyDriver is a proxy to another database's JDBC driver, which also has the side
@@ -22,19 +23,20 @@ import org.apache.log4j.Logger;
  *
  * @author Robert Eby
  */
-public class ProxyDriver implements Driver {
+public class Driver implements java.sql.Driver {
 	/** URL prefix to use for the Proxy driver (this driver) */
 	public static final String PROXY_PREFIX = "jdbc:mdbc:";
 	public static final int MAJOR_VERSION = 0;
 	public static final int MINOR_VERSION = 1;
 
-	private static final Logger logger = Logger.getLogger(ProxyDriver.class);
+	private static EELFLoggerDelegate logger = EELFLoggerDelegate.getLogger(Driver.class);
 
 	static {
 		try {
-			DriverManager.registerDriver(new ProxyDriver());
-			logger.info("ProxyDriver driver registered with DriverManager.");
+			DriverManager.registerDriver(new Driver());
+			logger.info(EELFLoggerDelegate.applicationLogger, "ProxyDriver driver registered with DriverManager.");
 		} catch (SQLException e) {
+			logger.error(EELFLoggerDelegate.errorLogger,"SqlException while registering driver "+e);
 			// ignore
 		}
 	}
@@ -48,7 +50,7 @@ public class ProxyDriver implements Driver {
 	@Override
 	public boolean acceptsURL(final String url) {
 		boolean b = url.startsWith(PROXY_PREFIX);
-		logger.debug("acceptsURL("+url+") returns "+b);
+		logger.info(EELFLoggerDelegate.applicationLogger,"acceptsURL("+url+") returns "+b);
 		return b;
 	}
 
@@ -81,26 +83,28 @@ public class ProxyDriver implements Driver {
 	public Connection connect(String url, Properties info) throws SQLException {
 		if (acceptsURL(url)) {
 			String newurl = rewriteURL(url, info);
-			logger.debug("URL rewrite: "+url+ " to "+newurl);
-			Driver dr = null;
+			logger.info(EELFLoggerDelegate.applicationLogger,"URL rewrite: "+url+ " to "+newurl);
+			java.sql.Driver dr = null;
 			try {
 				dr = DriverManager.getDriver(newurl);
-			} catch (SQLException ex) {
-				logger.warn("SQLException: "+ex);
-				// This shouldn't be necessary, but it appears that in JBoss modules,
-				// JDBC drivers are not automatically registered as they should be.
-				if (newurl.startsWith("jdbc:h2:")) {
-					dr = new org.h2.Driver();
-				}
+			} catch (SQLException sqlex) {
+				logger.warn(EELFLoggerDelegate.applicationLogger,"SqlException while connect "+newurl + " "+sqlex);
+				logger.warn(EELFLoggerDelegate.applicationLogger, "Registering default mdbc drivers and trying again.");
+				// in JBoss modules JDBC drivers are not automatically registered
+				Utils.registerDefaultDrivers();
+				dr = DriverManager.getDriver(newurl);
 			}
 			if (dr != null) {
-				Connection conn = new ProxyConnection(url, dr.connect(newurl, info), info);
-				logger.info("Connection created: "+url);
+				Connection conn = new MdbcConnection(url, dr.connect(newurl, info), info);
+				logger.info(EELFLoggerDelegate.applicationLogger,"Connection established: "+url);
 				return conn;
 			}
+			logger.error(EELFLoggerDelegate.errorLogger, "MDBC could not find proper driver for internal url: " + newurl);
 		}
 		return null;
 	}
+	
+
 	/**
 	 * Gets the driver's major version number.
 	 * @return this driver's major version number
@@ -128,8 +132,9 @@ public class ProxyDriver implements Driver {
 
 	@Override
 	public DriverPropertyInfo[] getPropertyInfo(String url, Properties info) throws SQLException {
+		logger.info(EELFLoggerDelegate.applicationLogger,"getPropertyInfo "+url);
 		String newurl = rewriteURL(url, info);
-		Driver dr = DriverManager.getDriver(newurl);
+		java.sql.Driver dr = DriverManager.getDriver(newurl);
 		if (dr != null) {
 			DriverPropertyInfo[] dpi = dr.getPropertyInfo(newurl, info);
 			List<DriverPropertyInfo> list = Arrays.asList(dpi);
@@ -150,6 +155,7 @@ public class ProxyDriver implements Driver {
 	}
 
 	private String rewriteURL(String u, Properties info) {
+		logger.info(EELFLoggerDelegate.applicationLogger,"rewriteURL "+u);
 		String db = info.getProperty(MusicSqlManager.KEY_DB_MIXIN_NAME, MusicSqlManager.DB_MIXIN_DEFAULT);
 		if (db.equals("h2server"))
 			db = "h2";	// uggh! -- special case

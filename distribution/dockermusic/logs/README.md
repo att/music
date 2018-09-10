@@ -1,0 +1,1 @@
+This folder is where the logs will be stored for MUSIC. 

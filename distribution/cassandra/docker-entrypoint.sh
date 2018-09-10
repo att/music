@@ -1,0 +1,96 @@
+#!/bin/bash
+set -e
+
+# Removal for issues with Kubernetes - Need to make sure any injected files 
+# Are chown 664 or ID is smae ID as Cassandra in Container. 
+#for f in /docker-entrypoint-initdb.d/*.cql; do
+#    chown cassandra.root "$f"
+#done
+
+
+# first arg is `-f` or `--some-option`
+# or there are no args
+if [ "$#" -eq 0 ] || [ "${1#-}" != "$1" ]; then
+    set -- cassandra -f "$@"
+fi
+
+# allow the container to be started with `--user`
+if [ "$1" = 'cassandra' -a "$(id -u)" = '0' ]; then
+    chown -R cassandra /var/lib/cassandra /var/log/cassandra "$CASSANDRA_CONFIG"
+    exec gosu cassandra "$BASH_SOURCE" "$@"
+fi
+
+if [ "$1" = 'cassandra' ]; then
+    : ${CASSANDRA_RPC_ADDRESS='0.0.0.0'}
+
+    : ${CASSANDRA_LISTEN_ADDRESS='auto'}
+    if [ "$CASSANDRA_LISTEN_ADDRESS" = 'auto' ]; then
+        CASSANDRA_LISTEN_ADDRESS="$(hostname --ip-address)"
+    fi
+
+    : ${CASSANDRA_BROADCAST_ADDRESS="$CASSANDRA_LISTEN_ADDRESS"}
+
+    if [ "$CASSANDRA_BROADCAST_ADDRESS" = 'auto' ]; then
+        CASSANDRA_BROADCAST_ADDRESS="$(hostname --ip-address)"
+    fi
+    : ${CASSANDRA_BROADCAST_RPC_ADDRESS:=$CASSANDRA_BROADCAST_ADDRESS}
+
+    if [ -n "${CASSANDRA_NAME:+1}" ]; then
+        : ${CASSANDRA_SEEDS:="cassandra"}
+    fi
+    : ${CASSANDRA_SEEDS:="$CASSANDRA_BROADCAST_ADDRESS"}
+    
+    sed -ri 's/(- seeds:).*/\1 "'"$CASSANDRA_SEEDS"'"/' "$CASSANDRA_CONFIG/cassandra.yaml"
+
+    for yaml in \
+        broadcast_address \
+        broadcast_rpc_address \
+        cluster_name \
+        endpoint_snitch \
+        listen_address \
+        num_tokens \
+        rpc_address \
+        start_rpc \
+    ; do
+        var="CASSANDRA_${yaml^^}"
+        val="${!var}"
+        if [ "$val" ]; then
+            sed -ri 's/^(# )?('"$yaml"':).*/\2 '"$val"'/' "$CASSANDRA_CONFIG/cassandra.yaml"
+        fi
+    done
+
+    for rackdc in dc rack; do
+        var="CASSANDRA_${rackdc^^}"
+        val="${!var}"
+        if [ "$val" ]; then
+            sed -ri 's/^('"$rackdc"'=).*/\1 '"$val"'/' "$CASSANDRA_CONFIG/cassandra-rackdc.properties"
+        fi
+    done
+fi
+
+echo "Updating username and password"
+for f in /docker-entrypoint-initdb.d/music*.cql; do
+    if [ "${CASSUSER}" ]; then
+        sed -ri 's/CASSUSER/'${CASSUSER}'/' "$f"
+    fi
+    if [ "${CASSPASS}" ]; then
+        sed -ri 's/CASSPASS/'${CASSPASS}'/' "$f"
+    fi
+done
+echo "Updating username and password - Complete"
+
+
+
+
+echo "################################ Let run cql's ##############################"
+for f in /docker-entrypoint-initdb.d/*; do
+    
+    case "$f" in
+        *.cql)
+            echo "$0: running $f" && until cqlsh -u cassandra -p cassandra -f "$f"; do >&2 echo "Cassandra is unavailable - sleeping"; sleep 2; done & ;;
+        *)        echo "$0: ignoring $f" ;;
+    esac
+    echo
+done
+
+exec "$@"

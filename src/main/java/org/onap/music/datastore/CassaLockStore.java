@@ -108,7 +108,7 @@ public class CassaLockStore {
 	 * @param keyspace of the application. 
 	 * @param table of the application. 
 	 * @param key is the primary key of the application table
-	 * @param the UUID lock reference that needs to be dequeued. 
+	 * @param lockReferenceUUID the UUID lock reference that needs to be dequeued.
 	 * @throws MusicServiceException
 	 * @throws MusicQueryException
 	 */	
@@ -124,16 +124,18 @@ public class CassaLockStore {
 	 * Given the time of write for an update in a critical section, this method provides a transformed timestamp
 	 * that ensures that a previous lock holder who is still alive can never corrupt a later critical section.
 	 * The main idea is to us the lock reference to clearly demarcate the timestamps across critical sections. 
-	 * @param the UUID lock reference associated with the write. 
-	 * @param the long timeOfWrite which is the actual time at which the write took place 
+	 * @param lockReferenceUUID the UUID lock reference associated with the write.
+	 * @param timeOfWrite the long timeOfWrite which is the actual time at which the write took place
 	 * @throws MusicServiceException
 	 * @throws MusicQueryException
 	 */	
 	public long genTransformedTimeStamp(UUID lockReferenceUUID, long timeOfWrite) throws MusicServiceException, MusicQueryException{
-		
-		long test = (lockReferenceUUID.timestamp()-MusicUtil.startOfAllEpochs);
-		long timeStamp = (lockReferenceUUID.timestamp()-MusicUtil.startOfAllEpochs)*MusicUtil.maxCriticalSectionPerionInMilliSeconds
-				+timeOfWrite; 
+		// Convert UUID-timestamp to unix timestamp in miliseconds
+		long lrts = (lockReferenceUUID.timestamp() / 10000) + 12219292800L;
+
+		long timeStamp = (lrts - MusicUtil.startOfAllEpochs) * MusicUtil.maxCriticalSectionPerionInMilliSeconds
+				+timeOfWrite;
+
 		return timeStamp;
 	}
 

@@ -37,13 +37,13 @@ public class TestCassaLockStore {
 			
 			lockStore.createLockQueue(keyspace, table);
 			
-			UUID lockRefb1 = lockStore.genLockRefandEnQueue(keyspace, table, "bharath");
+			String lockRefb1 = lockStore.genLockRefandEnQueue(keyspace, table, "bharath");
 			
 			
 			
-			UUID lockRefc1 = lockStore.genLockRefandEnQueue(keyspace, table, "cat");
+			String lockRefc1 = lockStore.genLockRefandEnQueue(keyspace, table, "cat");
 
-			UUID lockRefc2 = lockStore.genLockRefandEnQueue(keyspace, table, "cat");
+			String lockRefc2 = lockStore.genLockRefandEnQueue(keyspace, table, "cat");
 
 
 			assert(lockStore.peekLockQueue(keyspace, table, "cat").equals(lockRefc1));

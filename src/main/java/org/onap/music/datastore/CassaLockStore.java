@@ -8,6 +8,7 @@ import org.onap.music.exceptions.MusicServiceException;
 import org.onap.music.main.MusicUtil;
 
 import com.datastax.driver.core.ResultSet;
+import com.datastax.driver.core.Row;
 import com.datastax.driver.core.utils.UUIDs;
 
 /*
@@ -17,7 +18,18 @@ import com.datastax.driver.core.utils.UUIDs;
 public class CassaLockStore {
 	
 	private EELFLoggerDelegate logger = EELFLoggerDelegate.getLogger(CassaLockStore.class);
-
+	
+	public class LockObject{
+		public UUID lockRef;
+		public String createTime;
+		public String acquireTime;
+		public LockObject(UUID lockRef, String createTime, 	String acquireTime) {
+			this.lockRef = lockRef;
+			this.acquireTime = acquireTime;
+			this.createTime = createTime;
+			
+		}
+	}
 	CassaDataStore dsHandle;
 	public CassaLockStore() {
 		dsHandle = new CassaDataStore();
@@ -42,8 +54,8 @@ public class CassaLockStore {
                 "Create lock queue/table for " +  keyspace+"."+table);
 		table = "lockQ_"+table; 
 		String tabQuery = "CREATE TABLE IF NOT EXISTS "+keyspace+"."+table
-				+ " ( key text, lockReferenceUUID timeuuid, lockStartTime text,   PRIMARY KEY ((key), lockReferenceUUID) ) "
-				+ "WITH CLUSTERING ORDER BY (lockReferenceUUID ASC);";
+				+ " ( key text, lockReference timeuuid, createTime text, acquireTime text,   PRIMARY KEY ((key), lockReference) ) "
+				+ "WITH CLUSTERING ORDER BY (lockReference ASC);";
 		System.out.println(tabQuery);
 		PreparedQueryObject queryObject = new PreparedQueryObject(); 
 		
@@ -65,20 +77,21 @@ public class CassaLockStore {
 	 * @throws MusicServiceException
 	 * @throws MusicQueryException
 	 */
-	public UUID genLockRefandEnQueue(String keyspace, String table, String key) throws MusicServiceException, MusicQueryException {
+	public String genLockRefandEnQueue(String keyspace, String table, String key) throws MusicServiceException, MusicQueryException {
         logger.info(EELFLoggerDelegate.applicationLogger,
                 "Create lock reference  for " +  keyspace+"."+table+"."+key);
 		table = "lockQ_"+table; 
 		UUID timeBasedUuid = UUIDs.timeBased();
         PreparedQueryObject queryObject = new PreparedQueryObject();
-		String values = "(?,?,?)";
+		String values = "(?,?,?,?)";
 		queryObject.addValue(key);
 		queryObject.addValue(timeBasedUuid);
 		queryObject.addValue(timeBasedUuid.timestamp()+"");
-		String insQuery = "INSERT INTO "+keyspace+"."+table+"(key, lockReferenceUUID, lockStartTime) VALUES"+values+" IF NOT EXISTS;";	
+		queryObject.addValue("0");
+		String insQuery = "INSERT INTO "+keyspace+"."+table+"(key, lockReference, createTime, acquireTime) VALUES"+values+" IF NOT EXISTS;";	
         queryObject.appendQueryString(insQuery);
         dsHandle.executePut(queryObject, "critical");	
-		return timeBasedUuid;
+		return timeBasedUuid+"";
 	}
 	
 	
@@ -91,7 +104,7 @@ public class CassaLockStore {
 	 * @throws MusicServiceException
 	 * @throws MusicQueryException
 	 */
-	public UUID peekLockQueue(String keyspace, String table, String key) throws MusicServiceException, MusicQueryException{
+	public LockObject peekLockQueue(String keyspace, String table, String key) throws MusicServiceException, MusicQueryException{
         logger.info(EELFLoggerDelegate.applicationLogger,
                 "Peek in lock table for " +  keyspace+"."+table+"."+key);
 		table = "lockQ_"+table; 
@@ -99,7 +112,12 @@ public class CassaLockStore {
         PreparedQueryObject queryObject = new PreparedQueryObject();
         queryObject.appendQueryString(selectQuery);
 		ResultSet results = dsHandle.executeEventualGet(queryObject);
-		return results.one().getUUID("lockReferenceUUID");
+		Row row = results.one();
+		UUID lockReference = row.getUUID("lockReference");
+		String createTime = row.getString("createTime");
+		String acquireTime = row.getString("acquireTime");
+
+		return new LockObject(lockReference, createTime,acquireTime);
 	}
 	
 	
@@ -112,32 +130,23 @@ public class CassaLockStore {
 	 * @throws MusicServiceException
 	 * @throws MusicQueryException
 	 */	
-	public void deQueueLockRef(String keyspace, String table, String key, UUID lockReferenceUUID) throws MusicServiceException, MusicQueryException{
+	public void deQueueLockRef(String keyspace, String table, String key, String lockReference) throws MusicServiceException, MusicQueryException{
 		table = "lockQ_"+table; 
         PreparedQueryObject queryObject = new PreparedQueryObject();
-        String deleteQuery = "delete from "+keyspace+"."+table+" where key='"+key+"' AND lockReferenceUUID ="+lockReferenceUUID+" IF EXISTS;";	
+        String deleteQuery = "delete from "+keyspace+"."+table+" where key='"+key+"' AND lockReference ="+lockReference+" IF EXISTS;";	
         queryObject.appendQueryString(deleteQuery);
 		dsHandle.executePut(queryObject, "critical");	
 	}
 	
-	/**
-	 * Given the time of write for an update in a critical section, this method provides a transformed timestamp
-	 * that ensures that a previous lock holder who is still alive can never corrupt a later critical section.
-	 * The main idea is to us the lock reference to clearly demarcate the timestamps across critical sections. 
-	 * @param the UUID lock reference associated with the write. 
-	 * @param the long timeOfWrite which is the actual time at which the write took place 
-	 * @throws MusicServiceException
-	 * @throws MusicQueryException
-	 */	
-	public long genTransformedTimeStamp(UUID lockReferenceUUID, long timeOfWrite) throws MusicServiceException, MusicQueryException{
-		
-		long test = (lockReferenceUUID.timestamp()-MusicUtil.startOfAllEpochs);
-		long timeStamp = (lockReferenceUUID.timestamp()-MusicUtil.startOfAllEpochs)*MusicUtil.maxCriticalSectionPerionInMilliSeconds
-				+timeOfWrite; 
-		return timeStamp;
+
+	public void updateLockAcquireTime(String keyspace, String table, String key, String lockReference) throws MusicServiceException, MusicQueryException{
+		table = "lockQ_"+table; 
+        PreparedQueryObject queryObject = new PreparedQueryObject();
+        String updateQuery = "update "+keyspace+"."+table+" set acquireTime='"+ System.currentTimeMillis()+"' where key='"+key+"' AND lockReference ="+lockReference+" IF EXISTS;";	
+        queryObject.appendQueryString(updateQuery);
+		dsHandle.executePut(queryObject, "eventual");	
+
 	}
-
-
 	
 
 }

@@ -130,8 +130,7 @@ public class TestMusicCoreIntegration {
         MusicLockState musicLockState1 = new MusicLockState(LockStatus.UNLOCKED, "id1");
         MusicCore.whoseTurnIsIt(lockName);
         MusicLockState mls = MusicCore.getMusicLockState(lockName);
-        boolean voluntaryRelease = true;
-        MusicLockState mls1 = MusicCore.releaseLock(lockName,lockId, voluntaryRelease);
+        MusicLockState mls1 = MusicCore.voluntaryReleaseLock(lockName,lockId);
         assertEquals(musicLockState.getLockStatus(), mls.getLockStatus());
         assertEquals(musicLockState1.getLockStatus(), mls1.getLockStatus());
     }

@@ -356,10 +356,8 @@ public class RestMusicLocksAPI {
             logger.error(EELFLoggerDelegate.errorLogger,"", AppMessages.INCORRECTDATA  ,ErrorSeverity.CRITICAL, ErrorTypes.GENERALSERVICEERROR);
             return response.status(Status.BAD_REQUEST).entity(resultMap).build();
         }
-        boolean voluntaryRelease = true; 
         String fullyQualifiedKey = lockId.substring(lockId.indexOf('$')+1, lockId.lastIndexOf('$'));
-        boolean voluntaryRelase = true;
-        MusicLockState mls = MusicCore.releaseLock(fullyQualifiedKey, lockId, voluntaryRelease);
+        MusicLockState mls = MusicCore.voluntaryReleaseLock(fullyQualifiedKey, lockId);
         		
         if(mls.getErrorMessage() != null) {
             resultMap.put(ResultType.EXCEPTION.getResult(), mls.getErrorMessage());

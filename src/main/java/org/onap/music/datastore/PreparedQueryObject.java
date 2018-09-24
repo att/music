@@ -34,6 +34,7 @@ public class PreparedQueryObject {
 
     private List<Object> values;
     private StringBuilder query;
+    
 
 
 
@@ -65,6 +66,10 @@ public class PreparedQueryObject {
      */
     public void appendQueryString(String s) {
         this.query.append(s);
+    }
+
+    public void replaceQueryString(String s) {
+        this.query.replace(0, query.length(), s);
     }
 
     /**

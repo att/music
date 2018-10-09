@@ -17,27 +17,28 @@ import com.datastax.driver.core.Row;
  */
 public class TestVotingApp 
 {
-       String keyspaceName;
-       String tableName;
+    String keyspaceName;
+    String tableName;
        
-       public TestVotingApp() throws MusicServiceException {
-              keyspaceName = "VotingAppForMusic"+System.currentTimeMillis();
-              tableName = "votevount";
-              
-              createVotingKeyspace();
-              System.out.println("Created keyspaces");
-              createVotingTable();
-              System.out.println("Created tables");
-              
-              createEntryForCandidate("Popeye");
-              createEntryForCandidate("Judy");
-              createEntryForCandidate("Flash");
-              createEntryForCandidate("Mickey");
-              System.out.println("Created candidates");
-       }
- 
-       private void createVotingKeyspace() throws MusicServiceException {
-              
+    public TestVotingApp() throws MusicServiceException {
+        keyspaceName = "VotingAppForMusic"+System.currentTimeMillis();
+        tableName = "votecount";
+    }
+
+    private void initialize() throws MusicServiceException {
+        createVotingKeyspace();
+        System.out.println("Created keyspaces");
+        createVotingTable();
+        System.out.println("Created tables");
+
+        createEntryForCandidate("Popeye");
+        createEntryForCandidate("Judy");
+        createEntryForCandidate("Flash");
+        createEntryForCandidate("Mickey");
+        System.out.println("Created candidates");
+    }
+
+    private void createVotingKeyspace() throws MusicServiceException {
               Map<String,Object> replicationInfo = new HashMap<String, Object>();
               replicationInfo.put("'class'", "'SimpleStrategy'");
               replicationInfo.put("'replication_factor'", 1);
@@ -49,29 +50,21 @@ public class TestVotingApp
               try {
                      MusicCore.nonKeyRelatedPut(queryObject, "eventual");
               } catch (MusicServiceException e) {
-                     if (e.getMessage().equals("Keyspace votingappformusic already exists")) {
-                           // ignore
-                     } else {
-                           throw(e);
-                     }                   
+                   throw(e);
               }
        }
        
     private void createVotingTable() throws MusicServiceException {
-       PreparedQueryObject queryObject = new PreparedQueryObject();
-              queryObject.appendQueryString(
+        PreparedQueryObject queryObject = new PreparedQueryObject();
+        queryObject.appendQueryString(
                 "CREATE TABLE " + keyspaceName + "." + tableName + " (name text PRIMARY KEY, count int);");
-              
-              try {
-                     MusicCore.createTable(keyspaceName, tableName, queryObject, "eventual");              
-              } catch (MusicServiceException e) {
-                     if (e.getMessage().equals("Table votingappformusic.votevount already exists")) {
-                           //ignore
-                     } else {
-                           throw(e);
-                     }
-              }
-       }
+
+        try {
+            MusicCore.createTable(keyspaceName, tableName, queryObject, "eventual");
+        } catch (MusicServiceException e) {
+            throw (e);
+        }
+    }
  
        private void createEntryForCandidate(String candidateName) throws MusicServiceException {
               PreparedQueryObject queryObject = new PreparedQueryObject();
@@ -86,7 +79,7 @@ public class TestVotingApp
        private void updateVoteCount(String candidateName, int numVotes) throws MusicLockingException, MusicQueryException, MusicServiceException {
               PreparedQueryObject queryObject = new PreparedQueryObject();
               queryObject.appendQueryString(
-                "UPDATE " + keyspaceName + "." + tableName + " SET count="+numVotes+" where name='"+candidateName+"';");
+                "UPDATE " + keyspaceName + "." + tableName + " SET count="+numVotes + " where name='"+candidateName+"';");
               MusicCore.atomicPut(keyspaceName, tableName, candidateName, queryObject, null);
        }
  
@@ -102,13 +95,15 @@ public class TestVotingApp
        }
        
        public static void main( String[] args ) throws Exception {
-        TestVotingApp vHandle = new TestVotingApp();
-        vHandle.updateVoteCount("Popeye",5);
-        vHandle.updateVoteCount("Judy",9);
-        vHandle.updateVoteCount("Mickey",8);
-        vHandle.updateVoteCount("Flash",2);
+        TestVotingApp tva = new TestVotingApp();
+        tva.initialize();
+
+        tva.updateVoteCount("Popeye",5);
+        tva.updateVoteCount("Judy",9);
+        tva.updateVoteCount("Mickey",8);
+        tva.updateVoteCount("Flash",2);
         
-        HashMap<String, Integer> voteCount = vHandle.readAllVotes();
+        HashMap<String, Integer> voteCount = tva.readAllVotes();
         System.out.println(voteCount);
 		assert(voteCount.get("Popeye") == 5);
 		assert(voteCount.get("Judy") == 9);

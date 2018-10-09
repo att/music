@@ -23,4 +23,7 @@ target/
 .project
 # Idea
 .idea
+*.iml
 
+# build classes
+src/main/webapp/WEB-INF/classes/

@@ -95,10 +95,9 @@ public class MusicUtil {
     private static String aafEndpointUrl = null;
     public static ConcurrentMap<String, Long> zkNodeMap = new ConcurrentHashMap<>();
     
-    public static final long startOfAllEpochs = 1533142234414L;
+    public static final long MusicEternityEpochMillis = 1533081600000L; // Wednesday, August 1, 2018 12:00:00 AM
     
-    public static final long maxCriticalSectionPerionInMilliSeconds= 604800000;//1 week
-
+    public static final long MaxCriticalSectionDurationMillis = 1L * 24 * 60 * 60 * 1000; // 1 day
 
     private MusicUtil() {
         throw new IllegalStateException("Utility Class");

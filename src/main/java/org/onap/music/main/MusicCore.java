@@ -28,14 +28,11 @@ import java.util.Map;
 import java.util.StringTokenizer;
 import java.util.UUID;
 
-import org.apache.zookeeper.KeeperException;
-import org.apache.zookeeper.KeeperException.NoNodeException;
 import org.onap.music.datastore.CassaDataStore;
 import org.onap.music.datastore.CassaLockStore;
 import org.onap.music.datastore.CassaLockStore.LockObject;
 import org.onap.music.datastore.MusicLockState;
 import org.onap.music.datastore.PreparedQueryObject;
-import org.onap.music.datastore.jsonobjects.JsonKeySpace;
 import org.onap.music.eelf.logging.EELFLoggerDelegate;
 import org.onap.music.eelf.logging.format.AppMessages;
 import org.onap.music.eelf.logging.format.ErrorSeverity;
@@ -43,7 +40,6 @@ import org.onap.music.eelf.logging.format.ErrorTypes;
 import org.onap.music.exceptions.MusicLockingException;
 import org.onap.music.exceptions.MusicQueryException;
 import org.onap.music.exceptions.MusicServiceException;
-import org.onap.music.unittests.CassandraCQL;
 
 import com.datastax.driver.core.ColumnDefinitions;
 import com.datastax.driver.core.ColumnDefinitions.Definition;
@@ -148,15 +144,14 @@ public class MusicCore {
         String[] splitString = fullyQualifiedKey.split("\\.");
         String keyspace = splitString[0];
         String table = splitString[1];
-        String primaryKeyValue = splitString[2];
+        String lockName = splitString[2];
 
-        logger.info(EELFLoggerDelegate.applicationLogger,"Creating lock reference for lock name:" + primaryKeyValue);
+        logger.info(EELFLoggerDelegate.applicationLogger,"Creating lock reference for lock name:" + lockName);
         long start = System.currentTimeMillis();
         String lockReference = null;
         try {
-			lockReference = getLockingServiceHandle().genLockRefandEnQueue(keyspace, table, primaryKeyValue)+"";
+			lockReference = "" + getLockingServiceHandle().genLockRefandEnQueue(keyspace, table, lockName);
 		} catch (MusicLockingException | MusicServiceException | MusicQueryException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
         long end = System.currentTimeMillis();
@@ -192,25 +187,25 @@ public class MusicCore {
     private static ReturnType isTopOfLockStore(String keyspace, String table, String primaryKeyValue, String lockReference) throws MusicLockingException, MusicQueryException, MusicServiceException {
         
         //return failure to lock holders too early or already evicted from the lock store
-    		UUID topOfLockStore = getLockingServiceHandle().peekLockQueue(keyspace, table, primaryKeyValue).lockRef;
-    		UUID lockReferenceUUID = UUID.fromString(lockReference);
-    		
-    		if(lockReferenceUUID.timestamp() > topOfLockStore.timestamp()) {
-             logger.info(EELFLoggerDelegate.applicationLogger, lockReference+" is not the lock holder yet");
-    			return new ReturnType(ResultType.FAILURE, lockReference+" is not the lock holder yet");
-    		}
+        String topOfLockStoreS = getLockingServiceHandle().peekLockQueue(keyspace, table, primaryKeyValue).lockRef;
+        long topOfLockStoreL = Long.parseLong(topOfLockStoreS.substring(1));
+        long lockReferenceL = Long.parseLong(lockReference.substring(1));
+
+        if(lockReferenceL > topOfLockStoreL) {
+            logger.info(EELFLoggerDelegate.applicationLogger, lockReference+" is not the lock holder yet");
+            return new ReturnType(ResultType.FAILURE, lockReference+" is not the lock holder yet");
+        }
     			
 
-    		if(lockReferenceUUID.timestamp() < topOfLockStore.timestamp()) {
-                logger.info(EELFLoggerDelegate.applicationLogger, lockReference+" is no longer/or was never in the lock store queue");
-       			return new ReturnType(ResultType.FAILURE, lockReference+" is no longer/or was never in the lock store queue");
+        if(lockReferenceL < topOfLockStoreL) {
+            logger.info(EELFLoggerDelegate.applicationLogger, lockReference+" is no longer/or was never in the lock store queue");
+            return new ReturnType(ResultType.FAILURE, lockReference+" is no longer/or was never in the lock store queue");
        	}
     		
-    		return new ReturnType(ResultType.SUCCESS, lockReference+" is top of lock store");
+       	return new ReturnType(ResultType.SUCCESS, lockReference+" is top of lock store");
     }
     
     public static ReturnType acquireLock(String fullyQualifiedKey, String lockReference) throws MusicLockingException, MusicQueryException, MusicServiceException {
-    	
         String[] splitString = fullyQualifiedKey.split("\\.");
         String keyspace = splitString[0];
         String table = splitString[1];
@@ -221,7 +216,7 @@ public class MusicCore {
         if(result.getResult().equals(ResultType.FAILURE))
         		return result;//not top of the lock store q
     		
-    		//check to see if the value of the key has to be synced in case there was a forceful release
+        //check to see if the value of the key has to be synced in case there was a forceful release
         String syncTable = keyspace+".unsyncedKeys_"+table;
 		String query = "select * from "+syncTable+" where key='"+fullyQualifiedKey+"';";
         PreparedQueryObject readQueryObject = new PreparedQueryObject();
@@ -373,7 +368,7 @@ public class MusicCore {
 
     /**
      * 
-     * @param lockName
+     * @param fullyQualifiedKey lockName
      * @return
      */
     public static String whoseTurnIsIt(String fullyQualifiedKey) {
@@ -466,9 +461,6 @@ public class MusicCore {
 
     /**
      * 
-     * @param keyspaceName
-     * @param tableName
-     * @param primaryKey
      * @param queryObject
      * @return ReturnType
      * @throws MusicServiceException
@@ -549,10 +541,11 @@ public class MusicCore {
         try {
             result = getDSHandle().executePut(queryObject, consistency);
         } catch (MusicQueryException | MusicServiceException ex) {
-        	logger.error(EELFLoggerDelegate.errorLogger,ex.getMessage(), AppMessages.UNKNOWNERROR  ,ErrorSeverity.WARN, ErrorTypes.MUSICSERVICEERROR);
+        	logger.error(EELFLoggerDelegate.errorLogger, ex.getMessage(), AppMessages.UNKNOWNERROR,
+                    ErrorSeverity.WARN, ErrorTypes.MUSICSERVICEERROR);
             throw new MusicServiceException(ex.getMessage());
         }
-        return result?ResultType.SUCCESS:ResultType.FAILURE;
+        return result ? ResultType.SUCCESS : ResultType.FAILURE;
     }
 
     /**
@@ -613,7 +606,6 @@ public class MusicCore {
      */
     public static ReturnType atomicPut(String keyspaceName, String tableName, String primaryKey,
                     PreparedQueryObject queryObject, Condition conditionInfo) throws MusicLockingException, MusicQueryException, MusicServiceException {
-
         long start = System.currentTimeMillis();
         String fullyQualifiedKey = keyspaceName + "." + tableName + "." + primaryKey;
         String lockReference = createLockReference(fullyQualifiedKey);
@@ -799,13 +791,21 @@ public class MusicCore {
 	 * @throws MusicQueryException
 	 */	
 	private static long v2sTimeStampInMicroseconds(String lockReference, long timeOfWrite) throws MusicServiceException, MusicQueryException{
-		/*
-		long test = (lockReferenceUUID.timestamp()-MusicUtil.startOfAllEpochs);
-		long timeStamp = (lockReferenceUUID.timestamp()-MusicUtil.startOfAllEpochs)*MusicUtil.maxCriticalSectionPerionInMilliSeconds
-				+timeOfWrite; 
-		return timeStamp;
-		*/
-		return timeOfWrite*1000; 
+        long lockEpochMillis = Long.parseLong(lockReference.substring(1));
+
+        long lockEternityMillis = lockEpochMillis - MusicUtil.MusicEternityEpochMillis;
+
+        long ts = lockEternityMillis * MusicUtil.MaxCriticalSectionDurationMillis
+                + (timeOfWrite - lockEpochMillis);
+
+        return ts;
+
+//		long test = (lockReferenceUUID.timestamp()-MusicUtil.MusicEternityEpochMillis);
+//		long timeStamp = (lockReferenceUUID.timestamp()-MusicUtil.MusicEternityEpochMillis)*MusicUtil.MaxCriticalSectionDurationMillis
+//				+timeOfWrite;
+//		return timeStamp;
+
+//		return timeOfWrite*1000;
 	}
 
 	public static void main(String[] args) {

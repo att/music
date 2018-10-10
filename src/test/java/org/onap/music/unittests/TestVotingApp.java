@@ -101,8 +101,9 @@ public class TestVotingApp
         tva.updateVoteCount("Popeye",5);
         tva.updateVoteCount("Judy",9);
         tva.updateVoteCount("Mickey",8);
-        tva.updateVoteCount("Flash",2);
-        
+       tva.updateVoteCount("Flash",1);
+       tva.updateVoteCount("Flash",2);
+
         HashMap<String, Integer> voteCount = tva.readAllVotes();
         System.out.println(voteCount);
 		assert(voteCount.get("Popeye") == 5);

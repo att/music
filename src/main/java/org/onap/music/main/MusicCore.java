@@ -188,8 +188,8 @@ public class MusicCore {
         
         //return failure to lock holders too early or already evicted from the lock store
         String topOfLockStoreS = getLockingServiceHandle().peekLockQueue(keyspace, table, primaryKeyValue).lockRef;
-        long topOfLockStoreL = Long.parseLong(topOfLockStoreS.substring(1));
-        long lockReferenceL = Long.parseLong(lockReference.substring(1));
+        long topOfLockStoreL = Long.parseLong(topOfLockStoreS);
+        long lockReferenceL = Long.parseLong(lockReference);
 
         if(lockReferenceL > topOfLockStoreL) {
             logger.info(EELFLoggerDelegate.applicationLogger, lockReference+" is not the lock holder yet");
@@ -791,7 +791,7 @@ public class MusicCore {
 	 * @throws MusicQueryException
 	 */	
 	private static long v2sTimeStampInMicroseconds(String lockReference, long timeOfWrite) throws MusicServiceException, MusicQueryException{
-        long lockEpochMillis = Long.parseLong(lockReference.substring(1));
+        long lockEpochMillis = Long.parseLong(lockReference);
 
         long lockEternityMillis = lockEpochMillis - MusicUtil.MusicEternityEpochMillis;
 

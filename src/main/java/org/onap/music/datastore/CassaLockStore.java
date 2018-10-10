@@ -54,13 +54,13 @@ public class CassaLockStore {
                 "Create lock queue/table for " +  keyspace+"."+table);
 		table = "lockQ_"+table; 
 		String tabQuery = "CREATE TABLE IF NOT EXISTS "+keyspace+"."+table
-				+ " ( key text, lockReference text, createTime text, acquireTime text,   PRIMARY KEY ((key), lockReference) ) "
+				+ " ( key text, lockReference bigint, createTime text, acquireTime text, guard bigint static, PRIMARY KEY ((key), lockReference) ) "
 				+ "WITH CLUSTERING ORDER BY (lockReference ASC);";
 		System.out.println(tabQuery);
 		PreparedQueryObject queryObject = new PreparedQueryObject(); 
 		
 		queryObject.appendQueryString(tabQuery);
-		boolean result = false;
+		boolean result;
 		result = dsHandle.executePut(queryObject, "eventual");
 		return result;
 	}
@@ -79,22 +79,38 @@ public class CassaLockStore {
                 "Create lock reference for " +  keyspace + "." + table + "." + lockName);
 		table = "lockQ_" + table;
 		long lockEpochMillis = System.currentTimeMillis();
-		String lockRef = "R" + lockEpochMillis;
+		long lockRef = lockEpochMillis;
 
 		logger.info(EELFLoggerDelegate.applicationLogger,
 				"Created lock reference for " +  keyspace + "." + table + "." + lockName + ":" + lockRef);
 
-		PreparedQueryObject queryObject = new PreparedQueryObject();
-		String values = "(?,?,?,?)";
-		queryObject.addValue(lockName);
-		queryObject.addValue(lockRef);
-		queryObject.addValue(String.valueOf(lockEpochMillis));
-		queryObject.addValue("0");
-		String insQuery = "INSERT INTO " + keyspace + "." + table +
-				"(key, lockReference, createTime, acquireTime) VALUES" + values + " IF NOT EXISTS;";
+        PreparedQueryObject queryObject = new PreparedQueryObject();
+        String defaultQuery = " UPDATE " + keyspace + "." + table + " SET guard=-1 WHERE key=? IF guard = NULL;";
+
+        queryObject.addValue(lockName);
+        queryObject.appendQueryString(defaultQuery);
+        boolean dqResult = dsHandle.executePut(queryObject, "critical");
+//        System.out.println("dqResult: " + dqResult);
+
+
+        queryObject = new PreparedQueryObject();
+		String insQuery = "BEGIN BATCH" +
+                " UPDATE " + keyspace + "." + table + " SET guard=? WHERE key=? IF guard < ?;" +
+                " INSERT INTO " + keyspace + "." + table +
+				"(key, lockReference, createTime, acquireTime) VALUES (?,?,?,?) IF NOT EXISTS; APPLY BATCH;";
+
+        queryObject.addValue(lockRef);
+        queryObject.addValue(lockName);
+        queryObject.addValue(lockRef);
+
+        queryObject.addValue(lockName);
+        queryObject.addValue(lockRef);
+        queryObject.addValue(String.valueOf(lockEpochMillis));
+        queryObject.addValue("0");
         queryObject.appendQueryString(insQuery);
-        dsHandle.executePut(queryObject, "critical");	
-		return lockRef;
+        boolean pResult = dsHandle.executePut(queryObject, "critical");
+//        System.out.println("pResult: " + pResult);
+		return String.valueOf(lockRef);
 	}
 	
 	
@@ -116,7 +132,7 @@ public class CassaLockStore {
         queryObject.appendQueryString(selectQuery);
 		ResultSet results = dsHandle.executeEventualGet(queryObject);
 		Row row = results.one();
-		String lockReference = row.getString("lockReference");
+		String lockReference = "" + row.getLong("lockReference");
 		String createTime = row.getString("createTime");
 		String acquireTime = row.getString("acquireTime");
 
@@ -136,7 +152,8 @@ public class CassaLockStore {
 	public void deQueueLockRef(String keyspace, String table, String key, String lockReference) throws MusicServiceException, MusicQueryException{
 		table = "lockQ_"+table; 
         PreparedQueryObject queryObject = new PreparedQueryObject();
-        String deleteQuery = "delete from "+keyspace+"."+table+" where key='"+key+"' AND lockReference ='"+lockReference+"' IF EXISTS;";
+        Long lockReferenceL = Long.parseLong(lockReference);
+        String deleteQuery = "delete from "+keyspace+"."+table+" where key='"+key+"' AND lockReference ="+lockReferenceL+" IF EXISTS;";
         queryObject.appendQueryString(deleteQuery);
 		dsHandle.executePut(queryObject, "critical");	
 	}
@@ -145,7 +162,8 @@ public class CassaLockStore {
 	public void updateLockAcquireTime(String keyspace, String table, String key, String lockReference) throws MusicServiceException, MusicQueryException{
 		table = "lockQ_"+table; 
         PreparedQueryObject queryObject = new PreparedQueryObject();
-        String updateQuery = "update "+keyspace+"."+table+" set acquireTime='"+ System.currentTimeMillis()+"' where key='"+key+"' AND lockReference = '"+lockReference+"' IF EXISTS;";
+        Long lockReferenceL = Long.parseLong(lockReference);
+        String updateQuery = "update "+keyspace+"."+table+" set acquireTime='"+ System.currentTimeMillis()+"' where key='"+key+"' AND lockReference = "+lockReferenceL+" IF EXISTS;";
         queryObject.appendQueryString(updateQuery);
 		dsHandle.executePut(queryObject, "eventual");	
 
